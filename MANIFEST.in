@@ -1,0 +1,2 @@
+global-exclude .gitignore
+exclude src/GeoEco/_version.py
