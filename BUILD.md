@@ -46,8 +46,8 @@ On success, the sdist (source distribution) and wheels will appear in the
 
 After the sdist (source distribution) is built, wheels are built from it.
 During that stage, you may see the following error one or more times.
-Apparently, this is OK to ignore. See [here](pypa/setuptools_scm#997) and
-[here](pypa/packaging-problems#742) for more information.
+Apparently, this is OK to ignore. See pypa/setuptools_scm#997 and
+pypa/packaging-problems#742 for more information.
 
 ```{console}
 ERROR setuptools_scm._file_finders.git listing git files failed - pretending there aren't any
@@ -89,8 +89,8 @@ git tag -a v3.0.0.dev0 -m "Starting development of v3.0.0"
 
 Note that you should still include the full three digits for the major, minor,
 and patch numbers, e.g. `v3.0.0.dev0`, even if some of them are `0`. If you
-now build after you added the tag (before you have made any other commits),
-setuptools-scm will set the version number to that of the tag.
+now build (after you added the tag but before you have made any other
+commits), setuptools-scm will set the version number to that of the tag.
 
 ### When starting the development of a patch release
 
@@ -117,8 +117,7 @@ After committing the final code change for a release, tag it with the version
 number unadorned with `.devX`, like this:
 
 ```
-git tag -a v3.0.0
- -m "Completed development of v3.0.0"
+git tag -a v3.0.0 -m "Completed development of v3.0.0"
 ```
 Note that you should still include the full three digits for the major, minor,
 and patch number, e.g. `v3.0.0`, even if some of them are `0`. As above, if
