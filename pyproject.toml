@@ -23,8 +23,7 @@ classifiers = [
     "Topic :: Scientific/Engineering :: GIS",
     "Topic :: Scientific/Engineering :: Oceanography"
 ]
-dependencies = [
-]
+dependencies = ["docutils"]
 dynamic = ["version"]
 
 [project.urls]
