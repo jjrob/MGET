@@ -1,0 +1,42 @@
+@import url("theme.css");
+
+
+/* Change the sidebar width from 300px to 320px so it can fit 'GeoEco - Marine Geospatial Ecology Tools' without wrapping */
+
+:root {
+  --new-sidebar-width: 320px;
+  --new-sidebar-width-plus-20px: 340px;
+  --new-sidebar-width-negative: -320px;
+}
+
+
+.wy-tray-container {
+    width: var(--new-sidebar-width);
+}
+.wy-menu-vertical {
+    width: var(--new-sidebar-width);
+}
+.wy-side-nav-search {
+    width: var(--new-sidebar-width);
+}
+.wy-nav-side {
+    width: var(--new-sidebar-width);
+}
+.wy-side-scroll {
+    width: var(--new-sidebar-width-plus-20px);
+}
+.wy-nav-content-wrap {
+    margin-left: var(--new-sidebar-width);
+}
+
+@media screen and (max-width:768px) {
+    .wy-nav-side {
+        left: var(--new-sidebar-width-negative)
+    }
+}
+
+/* Change the width of the main content area to take up most of the monitor */
+
+.wy-nav-content {
+    max-width: 1200px;
+}
