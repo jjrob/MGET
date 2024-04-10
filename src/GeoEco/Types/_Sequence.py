@@ -14,15 +14,15 @@ import xml.dom
 
 from ..DynamicDocString import DynamicDocString
 from ..Internationalization import _
-from ..Metadata import Metadata, TypeMetadata
 
-from .Base import _RaiseException
+from ._Base import _RaiseException, TypeMetadata
 
 
 # Python sequence types
 
 
 class SequenceTypeMetadata(TypeMetadata):
+    __doc__ = DynamicDocString()
 
     def __init__(self,
                  elementType,
@@ -280,6 +280,7 @@ class SequenceTypeMetadata(TypeMetadata):
 
 
 class ListTypeMetadata(SequenceTypeMetadata):
+    __doc__ = DynamicDocString()
 
     def __init__(self,
                  elementType,
@@ -322,6 +323,7 @@ class ListTypeMetadata(SequenceTypeMetadata):
 
 
 class TupleTypeMetadata(SequenceTypeMetadata):
+    __doc__ = DynamicDocString()
 
     def __init__(self,
                  elementType,
@@ -373,6 +375,7 @@ class TupleTypeMetadata(SequenceTypeMetadata):
 
 
 class DictionaryTypeMetadata(TypeMetadata):
+    __doc__ = DynamicDocString()
 
     def __init__(self,
                  keyType,
@@ -473,6 +476,7 @@ class DictionaryTypeMetadata(TypeMetadata):
 
 
 class ListTableTypeMetadata(TypeMetadata):
+    __doc__ = DynamicDocString()
 
     def __init__(self,
                  columnTypes,
@@ -682,3 +686,17 @@ class ListTableTypeMetadata(TypeMetadata):
         # Return successfully.
 
         return rows
+
+
+###############################################################################
+# Names exported by this module
+#
+# Note: This module is not meant to be imported directly. Import Types.py
+# instead.
+###############################################################################
+
+__all__ = ['SequenceTypeMetadata',
+           'ListTypeMetadata',
+           'TupleTypeMetadata',
+           'DictionaryTypeMetadata',
+           'ListTableTypeMetadata']

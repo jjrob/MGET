@@ -28,7 +28,7 @@ Create and activate a virtual environment:
 Install/upgrade packages the that are needed to build:
 
 ```{console}
-(.venv) ~/dev/MGET$ python3 -m pip install -U pip setuptools setuptools_scm build
+(.venv) ~/dev/MGET$ python3 -m pip install -U pip setuptools setuptools_scm build sphinx sphinx_rtd_theme
 ...
 ```
 

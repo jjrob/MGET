@@ -336,7 +336,7 @@ class ClassMetadata(Metadata):
             (valueChanged, newValue) = propMetadata.Type.ValidateValue(_locals[args[1]], '%s property' % (propMetadata.Name))
             if valueChanged:
                 parentFrame.f_locals[args[1]] = newValue
-                from .MetadataUtils import SaveChangesToFrameLocals
+                from ._MetadataUtils import SaveChangesToFrameLocals
                 SaveChangesToFrameLocals(parentFrame)
 
             pass
@@ -393,7 +393,7 @@ class ClassMetadata(Metadata):
             # change the values. Also initialize dependencies for the argument,
             # if needed.
 
-            from .MetadataUtils import SaveChangesToFrameLocals
+            from ._MetadataUtils import SaveChangesToFrameLocals
 
             for i in range(len(args)):        
                 argMetadata = methodMetadata.Arguments[i]
@@ -459,6 +459,7 @@ class ClassMetadata(Metadata):
 
 
 class PropertyMetadata(Metadata):
+    __doc__ = DynamicDocString()
 
     def __init__(self, name, classMetadata, typeMetadata, shortDescription=None, longDescription=None, isExposedToPythonCallers=False):
         super(PropertyMetadata, self).__init__(name, shortDescription, longDescription)
@@ -500,23 +501,19 @@ class PropertyMetadata(Metadata):
         return getattr(self.Class.Object, self.Name)
 
     def _GetDocString(self):
-        if self.ShortDescription is not None:
-            doc = self.ShortDescription.strip() + '\n'
-        else:
-            doc = 'No description available.'
+        doc = '(%s | :py:data:`None`)' % self.Type.SphinxMarkup if self.Type.CanBeNone else '(%s)' % self.Type.SphinxMarkup
+
+        doc += ' ' + self.ShortDescription.strip() if self.ShortDescription is not None else ''
 
         if self.IsReadOnly:
-            doc = doc + '\nAccessibility:  Get only\n'
-        else:
-            doc = doc + '\nAccessibility:  Get and set\n'
-        doc = doc + 'Python type:    %s\n' % self.Type.PythonTypeDescription
+            doc += ' Read only.'
 
         constraints = self.Type.GetConstraintDescriptionStrings()
         if len(constraints) > 0:
-            doc = doc + '\n'.join(constraints) + '\n'
+            doc += ''.join([' ' + c.replace(':','\uA789') + '.' for c in constraints])   # Replace ASCII colons with Unicode 0xA789. Unfortunately Sphinx or its extensions interpret colons as markup and it messes up the documentation.
 
         if self.LongDescription is not None:
-            doc = doc + '\n' + self.LongDescription
+            doc += '\n' + self.LongDescription
 
         return doc
 
@@ -529,6 +526,7 @@ class PropertyMetadata(Metadata):
         
     
 class MethodMetadata(Metadata):
+    __doc__ = DynamicDocString()
 
     def __init__(self, name, classMetadata, shortDescription=None, longDescription=None, isExposedToPythonCallers=False, isExposedAsArcGISTool=False, arcGISDisplayName=None, arcGISToolCategory=None, isOutOfProcArcGISTool=False, arcGISMinVersion=None, arcGISMaxVersion=None, dependencies=[]):
         super(MethodMetadata, self).__init__(name, shortDescription, longDescription)
@@ -729,43 +727,32 @@ class MethodMetadata(Metadata):
         return getattr(self.Class.Object, self.Name)
 
     def _GetDocString(self):
-        doc = ''
-        if self.ShortDescription is not None:
-            doc = doc + self.ShortDescription.strip() + '\n'
+        deps = None     # TODO: Dependencies
 
-        if self.Dependencies is not None and len(self.Dependencies) > 0:
-            constraints = reduce(lambda a, b: a+b, [d.GetConstraintDescriptionStrings() for d in self.Dependencies])
-            if len(constraints) > 0:
-                doc = doc + '\nRequires: ' + ', '.join(constraints) + '\n'
-
+        args = None
         if len(self.Arguments) > 1 or len(self.Arguments) == 1 and self.IsStaticMethod:
+            args = 'Args:\n'
             for i in range(1 - int(self.IsStaticMethod), len(self.Arguments)):
-                doc = doc + '\n%s - %s\n' % (self.Arguments[i].Name, self.Arguments[i].Type.PythonTypeDescription)
+                typeStr = '%s, optional' % self.Arguments[i].Type.SphinxMarkup if self.Arguments[i].HasDefault else self.Arguments[i].Type.SphinxMarkup
+                descr = self.Arguments[i].Description.strip().replace('\n','        \n') if self.Arguments[i].Description is not None else 'No description available.'
+                args += '    %s (%s): %s\n' % (self.Arguments[i].Name, typeStr, descr)
 
-                constraints = self.Arguments[i].Type.GetConstraintDescriptionStrings()
-                if self.Arguments[i].Dependencies is not None and len(self.Arguments[i].Dependencies) > 0:
-                    constraints.append('Requires:       ' + ', '.join(reduce(lambda a, b: a+b, [d.GetConstraintDescriptionStrings() for d in self.Arguments[i].Dependencies])))
-                if len(constraints) > 0:
-                    doc = doc + '\n    ' + '\n    '.join(constraints) + '\n'
-                    
-                if self.Arguments[i].Description is not None:
-                    doc = doc + '\n    ' + re.subn(r'\n', '\n    ', self.Arguments[i].Description)[0]
-                if doc[-1] != '\n':
-                    doc = doc + '\n'
-
+        results = None
         if len(self.Results) > 0:
-            doc = doc + '\nReturns:\n'
-            for i in range(len(self.Results)):
-                doc = doc + '\n%s - %s\n' % (self.Results[i].Name, self.Results[i].Type.PythonTypeDescription)
-                    
-                if self.Results[i].Description is not None:
-                    doc = doc + '\n    ' + re.subn(r'\n', '\n    ', self.Results[i].Description)[0]
-                if doc[-1] != '\n':
-                    doc = doc + '\n'
+            # Google-style doc strings only support 1 result. Fail if we have more than 1.
+            assert len(self.Results) == 1, 'The method %s.%s.%s has %i ResultMetadata objects but currently GeoEco.Metadata.MethodMetadata._GetDocString() only supports ResultMetadata object, in conformance with Google-style docstrings. To work around this, you could use a single ResultMetadata with Type set to TupleTypeMetadata or ListTypeMetadata.' % (self.Class.Module.Name, self.Class.Name, self.Name, len(self.Results))
 
-        if self.LongDescription is not None:
-            doc = doc + '\n' + self.LongDescription
-            
+            results = 'Returns:\n'
+            for i in range(len(self.Results)):
+                descr = self.Results[i].Description.strip().replace('\n','    \n') if self.Results[i].Description is not None else 'No description available.'
+                results += '    %s: %s\n' % (self.Results[i].Type.SphinxMarkup, descr)
+
+        doc = '\n\n'.join(filter(None, [self.ShortDescription.strip() if self.ShortDescription is not None and self.Name != '__init__' else None,   # Omit ShortDescription for __init__, because it always says something uninformative, like "Construct a new XYZ instance"
+                                        self.LongDescription.strip() if self.LongDescription is not None else None,
+                                        deps,
+                                        args,
+                                        results]))
+
         if len(doc) <= 0:
             return 'No description available.'
         return doc
@@ -806,6 +793,7 @@ class MethodMetadata(Metadata):
 
 
 class ArgumentMetadata(object):
+    __doc__ = DynamicDocString()
 
     def __init__(self, name, methodMetadata, typeMetadata, description=None, direction='Input', initializeToArcGISGeoprocessorVariable=None, arcGISDisplayName=None, arcGISCategory=None, arcGISParameterDependencies=None, dependencies=[]):
         assert isinstance(name, str), 'name must be a string.'
@@ -1007,6 +995,7 @@ class ArgumentMetadata(object):
 
 
 class ResultMetadata(object):
+    __doc__ = DynamicDocString()
 
     def __init__(self, name, methodMetadata, typeMetadata, description=None, arcGISDisplayName=None, arcGISParameterDependencies=None):
         assert isinstance(name, str), 'name must be a string.'
@@ -1083,170 +1072,6 @@ class ResultMetadata(object):
         if self.ArcGISParameterDependencies is not None:
             for param in self.ArcGISParameterDependencies:
                 depNode.appendChild(document.createElement('Parameter')).appendChild(document.createTextNode(param))
-
-
-class TypeMetadata(object):
-
-    def __init__(self, pythonType, canBeNone=False, allowedValues=None, arcGISType=None, arcGISAssembly=None, canBeArcGISInputParameter=False, canBeArcGISOutputParameter=False):
-        assert isinstance(pythonType, type), 'pythonType must be a type.'
-        assert isinstance(canBeNone, bool), 'canBeNone must be a boolean.'
-        assert isinstance(allowedValues, (type(None), list, tuple)), 'allowedValues must be a list or tuple of values, or None.'
-        if isinstance(allowedValues, tuple):
-            allowedValues = list(allowedValues)
-        assert arcGISType is None and arcGISAssembly is None or isinstance(arcGISType, str) and isinstance(arcGISAssembly, str), 'arcGISType and arcGISAssembly must both be strings or both be None.'
-        assert isinstance(canBeArcGISInputParameter, bool), 'canBeArcGISInputParameter must be a boolean.'
-        assert isinstance(canBeArcGISOutputParameter, bool), 'canBeArcGISOutputParameter must be a boolean.'
-        self._PythonType = pythonType
-        self._CanBeNone = canBeNone
-        self._AllowedValues = allowedValues
-        self._ArcGISType = arcGISType
-        self._ArcGISAssembly = arcGISAssembly
-        self._CanBeArcGISInputParameter = canBeArcGISInputParameter
-        self._CanBeArcGISOutputParameter = canBeArcGISOutputParameter
-
-    def _GetPythonType(self):
-        return self._PythonType
-    
-    PythonType = property(_GetPythonType, doc=DynamicDocString())
-
-    def _GetCanBeNone(self):
-        return self._CanBeNone
-
-    def _SetCanBeNone(self, value):
-        assert isinstance(value, bool), 'CanBeNone must be a boolean.'
-        self._CanBeNone = value
-    
-    CanBeNone = property(_GetCanBeNone, _SetCanBeNone, doc=DynamicDocString())
-
-    def _GetAllowedValues(self):
-        return self._AllowedValues
-    
-    AllowedValues = property(_GetAllowedValues, doc=DynamicDocString())
-
-    def _GetArcGISType(self):
-        return self._ArcGISType
-    
-    ArcGISType = property(_GetArcGISType, doc=DynamicDocString())
-
-    def _GetArcGISAssembly(self):
-        return self._ArcGISAssembly
-    
-    ArcGISAssembly = property(_GetArcGISAssembly, doc=DynamicDocString())
-
-    def _GetCanBeArcGISInputParameter(self):
-        return self._CanBeArcGISInputParameter
-    
-    CanBeArcGISInputParameter = property(_GetCanBeArcGISInputParameter, doc=DynamicDocString())
-
-    def _GetCanBeArcGISInputParameter(self):
-        return self._CanBeArcGISInputParameter
-    
-    CanBeArcGISInputParameter = property(_GetCanBeArcGISInputParameter, doc=DynamicDocString())
-
-    def _GetCanBeArcGISOutputParameter(self):
-        return self._CanBeArcGISOutputParameter
-    
-    CanBeArcGISOutputParameter = property(_GetCanBeArcGISOutputParameter, doc=DynamicDocString())
-
-    def _GetPythonTypeDescriptionBase(self):
-        return self._GetPythonTypeDescription()
-    
-    PythonTypeDescription = property(_GetPythonTypeDescriptionBase, doc=DynamicDocString())
-
-    def _GetPythonTypeDescription(self, plural=False):
-        if plural:
-            if self.CanBeNone:
-                return _('instances of %(type)s or %(noneType)s') % {'type': str(self.PythonType), 'noneType': str(type(None))}
-            else:
-                return _('instances of %(type)s') % {'type': str(self.PythonType)}
-        if self.CanBeNone:
-            return _('instance of %(type)s or %(noneType)s') % {'type': str(self.PythonType), 'noneType': str(type(None))}
-        else:
-            return _('instance of %(type)s') % {'type': str(self.PythonType)}
-
-    def GetConstraintDescriptionStrings(self):
-        if self.AllowedValues is not None and len(self.AllowedValues) > 0:
-            return ['Allowed values: ' + ', '.join(map(repr, self.AllowedValues))]
-        return []
-
-    def AppendXMLNodes(self, node, document):
-        assert isinstance(node, xml.dom.Node) and node.nodeType == xml.dom.Node.ELEMENT_NODE, 'node must be an instance of xml.dom.Node with nodeType==ELEMENT_NODE'
-        assert isinstance(document, xml.dom.Node) and document.nodeType == xml.dom.Node.DOCUMENT_NODE, 'node must be an instance of xml.dom.Node with nodeType==DOCUMENT_NODE'
-        node.setAttribute('xsi:type', self.__class__.__name__)
-        if self.PythonType.__module__ == '__builtin__':
-            node.appendChild(document.createElement('PythonType')).appendChild(document.createTextNode(self.PythonType.__name__))
-        else:
-            node.appendChild(document.createElement('PythonType')).appendChild(document.createTextNode(self.PythonType.__module__ + '.' + self.PythonType.__name__))
-        Metadata.AppendPropertyXMLNode(self, 'CanBeNone', node, document)
-        allowedValuesNode = node.appendChild(document.createElement('AllowedValues'))
-        if self.AllowedValues is not None:
-            listNode = allowedValuesNode.appendChild(document.createElement('ArrayList'))
-            for i in range(len(self.AllowedValues)):
-                assert isinstance(self.AllowedValues[i], self.PythonType), '%s.AllowedValues[%i] is %r %r but it must be an instance of %s' % (self.__class__.__name__, i, type(self.AllowedValues[i]), self.AllowedValues[i], self.PythonType.__name__)
-                self.AppendXMLNodesForValue(self.AllowedValues[i], listNode, document)
-        Metadata.AppendPropertyXMLNode(self, 'ArcGISType', node, document)
-        Metadata.AppendPropertyXMLNode(self, 'ArcGISAssembly', node, document)
-        Metadata.AppendPropertyXMLNode(self, 'CanBeArcGISInputParameter', node, document)
-        Metadata.AppendPropertyXMLNode(self, 'CanBeArcGISOutputParameter', node, document)
-
-    def AppendXMLNodesForValue(self, value, node, document):
-        raise NotImplementedError('The derived class must override this method.')
-
-    def ValidateValue(self, value, variableName, methodLocals=None, argMetadata=None):
-        if value is None:
-            if not self.CanBeNone:
-                from .Logging import Logger
-                Logger.RaiseException(TypeError(_('The %s is required. Please provide a value.') % variableName))
-        else:
-            if not isinstance(value, self.PythonType):
-                from .Logging import Logger
-                Logger.RaiseException(TypeError(_('The value provided for the %(variable)s is an invalid type ("%(badType)s" in Python). Please provide a value having the Python type "%(goodType)s".') % {'variable' : variableName, 'badType' : type(value).__name__, 'goodType' : self.PythonType.__name__}))
-            if self.AllowedValues is not None:
-                if issubclass(self.PythonType, str):
-                    allowedValues = list(map(str.lower, self.AllowedValues))
-                    if value.lower() not in allowedValues:
-                        from .Logging import Logger
-                        Logger.RaiseException(ValueError(_('The value provided for the %(variable)s is not an allowed value. Please provide one of the following: %(values)s. (These values are not case-sensitive.)') % {'variable' : variableName, 'values' : ', '.join(map(str, allowedValues))}))
-                else:
-                    if value not in self.AllowedValues:
-                        from .Logging import Logger
-                        Logger.RaiseException(ValueError(_('The value provided for the %(variable)s is not an allowed value. Please provide one of the following: %(values)s.') % {'variable' : variableName, 'values' : ', '.join(map(str, self.AllowedValues))}))
-        return (False, value)
-
-    def ParseValueFromArcGISInputParameterString(self, paramString, paramDisplayName, paramIndex):
-        assert isinstance(paramString, str), 'paramString must be a string'
-        assert isinstance(paramDisplayName, str), 'paramDisplayName must be a string'
-        assert isinstance(paramIndex, int) and paramIndex > 0, 'paramIndex must be an integer greater than zero'
-
-        # If this type of parameter cannot be an ArcGIS input parameter, it is a
-        # programming error to invoke this function.
-
-        if not self.CanBeArcGISInputParameter:
-            raise NotImplementedError('Methods with input parameters of data type %s cannot be invoked from ArcGIS because ArcGIS does not support this data type.' % self.__class__.__name__)
-
-        # Return the string
-
-        return paramString
-
-    def GetArcGISOutputParameterStringForValue(self, value, paramDisplayName, paramIndex):
-        assert isinstance(paramDisplayName, str), 'paramDisplayName must be a string'
-        assert isinstance(paramIndex, int) and paramIndex > 0, 'paramIndex must be an integer greater than zero'
-
-        # If this type of parameter cannot be an ArcGIS output parameter, it is
-        # a programming error to invoke this function.
-
-        if not self.CanBeArcGISOutputParameter:
-            raise NotImplementedError('Methods with output parameters of data type %s cannot be invoked from ArcGIS because ArcGIS does not support this data type.' % self.__class__.__name__)
-
-        # Return the string
-
-        if value is None:
-            return ''
-
-        return str(value)
-    
-    def DependenciesAreNeededForValue(self, value):
-        return value is not None
 
 
 # Private helper functions
@@ -1464,7 +1289,7 @@ def CopyResultMetadata(fromMethod, fromResultName, toMethod, toResultName, fromC
 
 from .Types import *
 
-AddModuleMetadata(shortDescription=_('Classes used to describe the modules, classes, properties and methods in the GeoEco Python package.'))
+AddModuleMetadata(shortDescription=_('Classes used to describe the modules, classes, properties, and methods in the GeoEco Python package.'))
 
 ###############################################################################
 # Metadata: Metadata class
@@ -1670,7 +1495,7 @@ AddResultMetadata(Metadata._GetDocString, 's',
 # Metadata: ModuleMetadata class
 ###############################################################################
 
-AddClassMetadata(ModuleMetadata, shortDescription=_('Metadata for a Python module.'))
+AddClassMetadata(ModuleMetadata, shortDescription=_('Metadata that describes a Python module.'))
 
 # Constructor
 
@@ -1701,7 +1526,7 @@ AddResultMetadata(ModuleMetadata.__init__, 'metadata',
 # Metadata: ClassMetadata class
 ###############################################################################
 
-AddClassMetadata(ClassMetadata, shortDescription=_('Metadata for a Python class.'))
+AddClassMetadata(ClassMetadata, shortDescription=_('Metadata that describes a Python class.'))
 
 # Public properties
 
@@ -1841,6 +1666,30 @@ AddArgumentMetadata(ClassMetadata.ValidateMethodInvocation, 'self',
     typeMetadata=ClassInstanceTypeMetadata(cls=ClassMetadata),
     description=_('%s instance.') % ClassMetadata.__name__)
 
+###############################################################################
+# Metadata: PropertyMetadata class
+###############################################################################
+
+AddClassMetadata(PropertyMetadata, shortDescription=_('Metadata that describes a property of a Python class.'))
+
+###############################################################################
+# Metadata: MethodMetadata class
+###############################################################################
+
+AddClassMetadata(MethodMetadata, shortDescription=_('Metadata that describes a method of a Python class.'))
+
+###############################################################################
+# Metadata: ArgumentMetadata class
+###############################################################################
+
+AddClassMetadata(ArgumentMetadata, shortDescription=_('Metadata that describes a parameter of a method of a Python class.'))
+
+###############################################################################
+# Metadata: ResultMetadata class
+###############################################################################
+
+AddClassMetadata(ResultMetadata, shortDescription=_('Metadata that describes the value returned by a method of a Python class.'))
+
 
 ###############################################################################
 # Names exported by this module
@@ -1853,7 +1702,6 @@ __all__ = ['Metadata',
            'MethodMetadata',
            'ArgumentMetadata',
            'ResultMetadata',
-           'TypeMetadata',
            'AddModuleMetadata',
            'AddClassMetadata',
            'AddPropertyMetadata',

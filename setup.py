@@ -4,8 +4,8 @@ from setuptools import Extension, setup
 setup(
     ext_modules=[
         Extension(
-            name='GeoEco.MetadataUtils',
-            sources=[os.path.join('src', 'GeoEco', 'MetadataUtils.cpp')],
+            name='GeoEco._MetadataUtils',
+            sources=[os.path.join('src', 'GeoEco', '_MetadataUtils.cpp')],
         ),
     ]
 )

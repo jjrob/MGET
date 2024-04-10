@@ -1,4 +1,4 @@
-.. image:: _static/MGET_Logo.png
+.. image:: static/MGET_Logo.png
    :align: right
 
 GeoEco - Marine Geospatial Ecology Tools
@@ -20,4 +20,7 @@ MGET was developed by the Duke University `Marine Geospatial Ecology Lab
 
 .. toctree::
    :maxdepth: 2
-   :caption: Contents:
+   :caption: Reference
+
+   PublicAPI
+   InternalAPI

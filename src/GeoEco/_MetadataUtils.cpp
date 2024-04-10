@@ -1,4 +1,4 @@
-// MetadataUtils.cpp - Implements C utility functions used by Metadata.py. Not
+// _MetadataUtils.cpp - Implements C utility functions used by Metadata.py. Not
 // intended to be called from any code outside of Metadata.py.
 //
 // Copyright (C) 2024 Jason J. Roberts
@@ -45,23 +45,23 @@ static PyObject *SaveChangesToFrameLocals(PyObject *self, PyObject *args)
 	return Py_None;
 }
 
-static PyMethodDef MetadataUtilsMethods[] =
+static PyMethodDef _MetadataUtilsMethods[] =
 {
     {"SaveChangesToFrameLocals", SaveChangesToFrameLocals, METH_VARARGS, "Save the changes to the frame.f_locals dictionary to the actual frame object."},
     {NULL, NULL, 0, NULL}
 };
 
-static struct PyModuleDef metadataUtilsModule = {
+static struct PyModuleDef _MetadataUtilsModule = {
     PyModuleDef_HEAD_INIT,
-    "MetadataUtils",   /* name of module */
+    "_MetadataUtils",   /* name of module */
     NULL,              /* module documentation, may be NULL */
     -1,                /* size of per-interpreter state of the module,
                           or -1 if the module keeps state in global variables. */
-    MetadataUtilsMethods
+    _MetadataUtilsMethods
 };
 
 
 PyMODINIT_FUNC PyInit_MetadataUtils(void)
 {
-    return PyModule_Create(&metadataUtilsModule);
+    return PyModule_Create(&_MetadataUtilsModule);
 }

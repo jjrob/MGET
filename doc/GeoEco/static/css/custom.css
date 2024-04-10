@@ -1,6 +1,5 @@
 @import url("theme.css");
 
-
 /* Change the sidebar width from 300px to 320px so it can fit 'GeoEco - Marine Geospatial Ecology Tools' without wrapping */
 
 :root {
@@ -8,7 +7,6 @@
   --new-sidebar-width-plus-20px: 340px;
   --new-sidebar-width-negative: -320px;
 }
-
 
 .wy-tray-container {
     width: var(--new-sidebar-width);
@@ -35,8 +33,14 @@
     }
 }
 
-/* Change the width of the main content area to take up most of the monitor */
+/* Change the width of the main content area to take up most of a large monitor */
 
 .wy-nav-content {
     max-width: 1200px;
+}
+
+/* Fix for horizontal stacking weirdness in the RTD theme with Python properties: https://github.com/readthedocs/sphinx_rtd_theme/issues/1301 */
+
+.py.property {
+  display: block !important;
 }

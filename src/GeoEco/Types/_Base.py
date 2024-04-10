@@ -18,7 +18,6 @@ import xml.dom
 
 from ..DynamicDocString import DynamicDocString
 from ..Internationalization import _
-from ..Metadata import Metadata, TypeMetadata
 
 
 # Private helper function for raising exceptions
@@ -27,10 +26,188 @@ def _RaiseException(e):
     raise e
 
 
+# Base class for metadata classes that describe the values that class properties and method arguments and return values can take.
+
+class TypeMetadata(object):
+    __doc__ = DynamicDocString()
+
+    def __init__(self, pythonType, canBeNone=False, allowedValues=None, arcGISType=None, arcGISAssembly=None, canBeArcGISInputParameter=False, canBeArcGISOutputParameter=False, sphinxMarkup=None):
+        assert isinstance(pythonType, type), 'pythonType must be a type.'
+        assert isinstance(canBeNone, bool), 'canBeNone must be a boolean.'
+        assert isinstance(allowedValues, (type(None), list, tuple)), 'allowedValues must be a list or tuple of values, or None.'
+        if isinstance(allowedValues, tuple):
+            allowedValues = list(allowedValues)
+        assert arcGISType is None and arcGISAssembly is None or isinstance(arcGISType, str) and isinstance(arcGISAssembly, str), 'arcGISType and arcGISAssembly must both be strings or both be None.'
+        assert isinstance(canBeArcGISInputParameter, bool), 'canBeArcGISInputParameter must be a boolean.'
+        assert isinstance(canBeArcGISOutputParameter, bool), 'canBeArcGISOutputParameter must be a boolean.'
+        assert isinstance(sphinxMarkup, (type(None), str)), 'sphinxMarkup must be a str or None.'
+        self._PythonType = pythonType
+        self._CanBeNone = canBeNone
+        self._AllowedValues = allowedValues
+        self._ArcGISType = arcGISType
+        self._ArcGISAssembly = arcGISAssembly
+        self._CanBeArcGISInputParameter = canBeArcGISInputParameter
+        self._CanBeArcGISOutputParameter = canBeArcGISOutputParameter
+        self._SphinxMarkup = sphinxMarkup
+
+    def _GetPythonType(self):
+        return self._PythonType
+    
+    PythonType = property(_GetPythonType, doc=DynamicDocString())
+
+    def _GetCanBeNone(self):
+        return self._CanBeNone
+
+    def _SetCanBeNone(self, value):
+        assert isinstance(value, bool), 'CanBeNone must be a boolean.'
+        self._CanBeNone = value
+    
+    CanBeNone = property(_GetCanBeNone, _SetCanBeNone, doc=DynamicDocString())
+
+    def _GetAllowedValues(self):
+        return self._AllowedValues
+    
+    AllowedValues = property(_GetAllowedValues, doc=DynamicDocString())
+
+    def _GetArcGISType(self):
+        return self._ArcGISType
+    
+    ArcGISType = property(_GetArcGISType, doc=DynamicDocString())
+
+    def _GetArcGISAssembly(self):
+        return self._ArcGISAssembly
+    
+    ArcGISAssembly = property(_GetArcGISAssembly, doc=DynamicDocString())
+
+    def _GetCanBeArcGISInputParameter(self):
+        return self._CanBeArcGISInputParameter
+    
+    CanBeArcGISInputParameter = property(_GetCanBeArcGISInputParameter, doc=DynamicDocString())
+
+    def _GetCanBeArcGISInputParameter(self):
+        return self._CanBeArcGISInputParameter
+    
+    CanBeArcGISInputParameter = property(_GetCanBeArcGISInputParameter, doc=DynamicDocString())
+
+    def _GetCanBeArcGISOutputParameter(self):
+        return self._CanBeArcGISOutputParameter
+    
+    CanBeArcGISOutputParameter = property(_GetCanBeArcGISOutputParameter, doc=DynamicDocString())
+
+    def _GetPythonTypeDescriptionBase(self):
+        return self._GetPythonTypeDescription()
+    
+    PythonTypeDescription = property(_GetPythonTypeDescriptionBase, doc=DynamicDocString())
+
+    def _GetPythonTypeDescription(self, plural=False):
+        if plural:
+            if self.CanBeNone:
+                return _('instances of %(type)s or %(noneType)s') % {'type': str(self.PythonType), 'noneType': str(type(None))}
+            else:
+                return _('instances of %(type)s') % {'type': str(self.PythonType)}
+        if self.CanBeNone:
+            return _('instance of %(type)s or %(noneType)s') % {'type': str(self.PythonType), 'noneType': str(type(None))}
+        else:
+            return _('instance of %(type)s') % {'type': str(self.PythonType)}
+
+    def _GetSphinxMarkup(self):
+        if self._SphinxMarkup is not None:
+            return self._SphinxMarkup
+        return self.PythonTypeDescription
+    
+    SphinxMarkup = property(_GetSphinxMarkup, doc=DynamicDocString())
+
+    def GetConstraintDescriptionStrings(self):
+        if self.AllowedValues is not None and len(self.AllowedValues) > 0:
+            return ['Allowed values: ' + ', '.join(map(repr, self.AllowedValues))]
+        return []
+
+    def AppendXMLNodes(self, node, document):
+        assert isinstance(node, xml.dom.Node) and node.nodeType == xml.dom.Node.ELEMENT_NODE, 'node must be an instance of xml.dom.Node with nodeType==ELEMENT_NODE'
+        assert isinstance(document, xml.dom.Node) and document.nodeType == xml.dom.Node.DOCUMENT_NODE, 'node must be an instance of xml.dom.Node with nodeType==DOCUMENT_NODE'
+        node.setAttribute('xsi:type', self.__class__.__name__)
+        if self.PythonType.__module__ == '__builtin__':
+            node.appendChild(document.createElement('PythonType')).appendChild(document.createTextNode(self.PythonType.__name__))
+        else:
+            node.appendChild(document.createElement('PythonType')).appendChild(document.createTextNode(self.PythonType.__module__ + '.' + self.PythonType.__name__))
+        from ..Metadata import Metadata
+        Metadata.AppendPropertyXMLNode(self, 'CanBeNone', node, document)
+        allowedValuesNode = node.appendChild(document.createElement('AllowedValues'))
+        if self.AllowedValues is not None:
+            listNode = allowedValuesNode.appendChild(document.createElement('ArrayList'))
+            for i in range(len(self.AllowedValues)):
+                assert isinstance(self.AllowedValues[i], self.PythonType), '%s.AllowedValues[%i] is %r %r but it must be an instance of %s' % (self.__class__.__name__, i, type(self.AllowedValues[i]), self.AllowedValues[i], self.PythonType.__name__)
+                self.AppendXMLNodesForValue(self.AllowedValues[i], listNode, document)
+        Metadata.AppendPropertyXMLNode(self, 'ArcGISType', node, document)
+        Metadata.AppendPropertyXMLNode(self, 'ArcGISAssembly', node, document)
+        Metadata.AppendPropertyXMLNode(self, 'CanBeArcGISInputParameter', node, document)
+        Metadata.AppendPropertyXMLNode(self, 'CanBeArcGISOutputParameter', node, document)
+
+    def AppendXMLNodesForValue(self, value, node, document):
+        raise NotImplementedError('The derived class must override this method.')
+
+    def ValidateValue(self, value, variableName, methodLocals=None, argMetadata=None):
+        if value is None:
+            if not self.CanBeNone:
+                from .Logging import Logger
+                Logger.RaiseException(TypeError(_('The %s is required. Please provide a value.') % variableName))
+        else:
+            if not isinstance(value, self.PythonType):
+                from .Logging import Logger
+                Logger.RaiseException(TypeError(_('The value provided for the %(variable)s is an invalid type ("%(badType)s" in Python). Please provide a value having the Python type "%(goodType)s".') % {'variable' : variableName, 'badType' : type(value).__name__, 'goodType' : self.PythonType.__name__}))
+            if self.AllowedValues is not None:
+                if issubclass(self.PythonType, str):
+                    allowedValues = list(map(str.lower, self.AllowedValues))
+                    if value.lower() not in allowedValues:
+                        from .Logging import Logger
+                        Logger.RaiseException(ValueError(_('The value provided for the %(variable)s is not an allowed value. Please provide one of the following: %(values)s. (These values are not case-sensitive.)') % {'variable' : variableName, 'values' : ', '.join(map(str, allowedValues))}))
+                else:
+                    if value not in self.AllowedValues:
+                        from .Logging import Logger
+                        Logger.RaiseException(ValueError(_('The value provided for the %(variable)s is not an allowed value. Please provide one of the following: %(values)s.') % {'variable' : variableName, 'values' : ', '.join(map(str, self.AllowedValues))}))
+        return (False, value)
+
+    def ParseValueFromArcGISInputParameterString(self, paramString, paramDisplayName, paramIndex):
+        assert isinstance(paramString, str), 'paramString must be a string'
+        assert isinstance(paramDisplayName, str), 'paramDisplayName must be a string'
+        assert isinstance(paramIndex, int) and paramIndex > 0, 'paramIndex must be an integer greater than zero'
+
+        # If this type of parameter cannot be an ArcGIS input parameter, it is a
+        # programming error to invoke this function.
+
+        if not self.CanBeArcGISInputParameter:
+            raise NotImplementedError('Methods with input parameters of data type %s cannot be invoked from ArcGIS because ArcGIS does not support this data type.' % self.__class__.__name__)
+
+        # Return the string
+
+        return paramString
+
+    def GetArcGISOutputParameterStringForValue(self, value, paramDisplayName, paramIndex):
+        assert isinstance(paramDisplayName, str), 'paramDisplayName must be a string'
+        assert isinstance(paramIndex, int) and paramIndex > 0, 'paramIndex must be an integer greater than zero'
+
+        # If this type of parameter cannot be an ArcGIS output parameter, it is
+        # a programming error to invoke this function.
+
+        if not self.CanBeArcGISOutputParameter:
+            raise NotImplementedError('Methods with output parameters of data type %s cannot be invoked from ArcGIS because ArcGIS does not support this data type.' % self.__class__.__name__)
+
+        # Return the string
+
+        if value is None:
+            return ''
+
+        return str(value)
+    
+    def DependenciesAreNeededForValue(self, value):
+        return value is not None
+
+
 # Types representing Python class instances or classes
 
 
 class AnyObjectTypeMetadata(TypeMetadata):
+    __doc__ = DynamicDocString()
 
     def __init__(self, canBeNone=False):
         super(AnyObjectTypeMetadata, self).__init__(pythonType=object,
@@ -38,13 +215,17 @@ class AnyObjectTypeMetadata(TypeMetadata):
                                                     arcGISType='ESRI.ArcGIS.Geoprocessing.GPTypeClass',
                                                     arcGISAssembly='ESRI.ArcGIS.Geoprocessing',
                                                     canBeArcGISInputParameter=True,
-                                                    canBeArcGISOutputParameter=True)
+                                                    canBeArcGISOutputParameter=True,
+                                                    sphinxMarkup=':py:class:`object`')
 
 
 class NoneTypeMetadata(TypeMetadata):
+    __doc__ = DynamicDocString()
 
     def __init__(self):
-        super(NoneTypeMetadata, self).__init__(pythonType=type(None), canBeNone=True)
+        super(NoneTypeMetadata, self).__init__(pythonType=type(None), 
+                                               canBeNone=True,
+                                               sphinxMarkup=':py:data:`None`')
 
     def ValidateValue(self, value, variableName, methodLocals=None, argMetadata=None):
         if value is not None:
@@ -58,10 +239,16 @@ class NoneTypeMetadata(TypeMetadata):
 
 
 class ClassTypeMetadata(TypeMetadata):
+    __doc__ = DynamicDocString()
 
-    def __init__(self, cls, canBeNone=False):
+    def __init__(self, cls, canBeNone=False, sphinxMarkup=None):
         assert inspect.isclass(cls), 'cls must be a class'
-        super(ClassTypeMetadata, self).__init__(pythonType=cls, canBeNone=canBeNone)
+        assert isinstance(sphinxMarkup, (str, type(None))), 'sphinxMarkup must be a str or None'
+        if sphinxMarkup is None:
+            sphinxMarkup = ':class:`~%s.%s`' % (cls.__module__, cls.__name__)
+        super(ClassTypeMetadata, self).__init__(pythonType=cls, 
+                                                canBeNone=canBeNone,
+                                                sphinxMarkup=sphinxMarkup)
 
     def ValidateValue(self, value, variableName, methodLocals=None, argMetadata=None):
         if value is None:
@@ -74,25 +261,37 @@ class ClassTypeMetadata(TypeMetadata):
     def _GetPythonTypeDescription(self, plural=False):
         if plural:
             if self.CanBeNone:
-                return _('subclasses of %(type)s or instances of %(noneType)s') % {'type': str(self.PythonType), 'noneType': str(type(None))}
+                return _('subclasses of %(type)s or None') % {'type': str(self.PythonType)}
             return _('subclasses of %(type)s') % {'type': str(self.PythonType)}
         if self.CanBeNone:
-            return _('subclass of %(type)s or instance of %(noneType)s') % {'type': str(self.PythonType), 'noneType': str(type(None))}
+            return _('subclass of %(type)s or None') % {'type': str(self.PythonType)}
         return _('subclass of %(type)s') % {'type': str(self.PythonType)}
 
 
 class ClassInstanceTypeMetadata(TypeMetadata):
+    __doc__ = DynamicDocString()
 
-    def __init__(self, cls, canBeNone=False):
+    def __init__(self, cls, canBeNone=False, sphinxMarkup=None):
         assert inspect.isclass(cls), 'cls must be a class'
-        super(ClassInstanceTypeMetadata, self).__init__(pythonType=cls, canBeNone=canBeNone)
+        assert isinstance(sphinxMarkup, (str, type(None))), 'sphinxMarkup must be a str or None'
+        if sphinxMarkup is None:
+            sphinxMarkup = ':class:`~%s.%s`' % (cls.__module__, cls.__name__)
+        super(ClassInstanceTypeMetadata, self).__init__(pythonType=cls, 
+                                                        canBeNone=canBeNone,
+                                                        sphinxMarkup=sphinxMarkup)
 
 
 class ClassOrClassInstanceTypeMetadata(TypeMetadata):
+    __doc__ = DynamicDocString()
 
-    def __init__(self, cls, canBeNone=False):
+    def __init__(self, cls, canBeNone=False, sphinxMarkup=None):
         assert inspect.isclass(cls), 'cls must be a class'
-        super(ClassOrClassInstanceTypeMetadata, self).__init__(pythonType=cls, canBeNone=canBeNone)
+        assert isinstance(sphinxMarkup, (str, type(None))), 'sphinxMarkup must be a str or None'
+        if sphinxMarkup is None:
+            sphinxMarkup = ':class:`~%s.%s`' % (cls.__module__, cls.__name__)
+        super(ClassOrClassInstanceTypeMetadata, self).__init__(pythonType=cls, 
+                                                               canBeNone=canBeNone,
+                                                               sphinxMarkup=sphinxMarkup)
 
     def ValidateValue(self, value, variableName, methodLocals=None, argMetadata=None):
         if value is None:
@@ -105,10 +304,10 @@ class ClassOrClassInstanceTypeMetadata(TypeMetadata):
     def _GetPythonTypeDescription(self, plural=False):
         if plural:
             if self.CanBeNone:
-                return _('instances or subclasses of %(type)s or instances of %(noneType)s') % {'type': str(self.PythonType), 'noneType': str(type(None))}
+                return _('instances or subclasses of %(type)s or None') % {'type': str(self.PythonType)}
             return _('instances or subclasses of %(type)s') % {'type': str(self.PythonType)}
         if self.CanBeNone: 
-            return _('instance or subclass of %(type)s or instance of %(noneType)s') % {'type': str(self.PythonType), 'noneType': str(type(None))}
+            return _('instance or subclass of %(type)s or None') % {'type': str(self.PythonType)}
         return _('instance or subclass of %(type)s') % {'type': str(self.PythonType)}
 
 
@@ -116,6 +315,7 @@ class ClassOrClassInstanceTypeMetadata(TypeMetadata):
 
 
 class BooleanTypeMetadata(TypeMetadata):
+    __doc__ = DynamicDocString()
 
     def __init__(self,
                  canBeNone=False,
@@ -127,7 +327,8 @@ class BooleanTypeMetadata(TypeMetadata):
                                                   arcGISType='ESRI.ArcGIS.Geoprocessing.GPBooleanTypeClass',
                                                   arcGISAssembly='ESRI.ArcGIS.Geoprocessing',
                                                   canBeArcGISInputParameter=True,
-                                                  canBeArcGISOutputParameter=True)
+                                                  canBeArcGISOutputParameter=True,
+                                                  sphinxMarkup=':py:class:`bool`')
 
     def AppendXMLNodesForValue(self, value, node, document):
         assert isinstance(value, self.PythonType), 'value must be an instance of %s' % self.PythonType.__name__
@@ -145,6 +346,7 @@ class BooleanTypeMetadata(TypeMetadata):
 
 
 class DateTimeTypeMetadata(TypeMetadata):
+    __doc__ = DynamicDocString()
 
     def __init__(self,
                  minValue=None,
@@ -170,7 +372,8 @@ class DateTimeTypeMetadata(TypeMetadata):
                                                    arcGISType='ESRI.ArcGIS.Geoprocessing.GPDateTypeClass',
                                                    arcGISAssembly='ESRI.ArcGIS.Geoprocessing',
                                                    canBeArcGISInputParameter=True,
-                                                   canBeArcGISOutputParameter=True)
+                                                   canBeArcGISOutputParameter=True,
+                                                   sphinxMarkup=':py:class:`~datetime.datetime`')
         self._MinValue = minValue
         self._MustBeGreaterThan = mustBeGreaterThan
         self._MaxValue = maxValue
@@ -370,6 +573,7 @@ class DateTimeTypeMetadata(TypeMetadata):
 
 
 class FloatTypeMetadata(TypeMetadata):
+    __doc__ = DynamicDocString()
 
     def __init__(self,
                  minValue=None,
@@ -395,7 +599,8 @@ class FloatTypeMetadata(TypeMetadata):
                                                 arcGISType='ESRI.ArcGIS.Geoprocessing.GPDoubleTypeClass',
                                                 arcGISAssembly='ESRI.ArcGIS.Geoprocessing',
                                                 canBeArcGISInputParameter=True,
-                                                canBeArcGISOutputParameter=True)
+                                                canBeArcGISOutputParameter=True,
+                                                sphinxMarkup=':py:class:`float`')
         self._MinValue = minValue
         self._MustBeGreaterThan = mustBeGreaterThan
         self._MaxValue = maxValue
@@ -423,6 +628,7 @@ class FloatTypeMetadata(TypeMetadata):
 
     def AppendXMLNodes(self, node, document):
         super(FloatTypeMetadata, self).AppendXMLNodes(node, document)
+        from ..Metadata import Metadata
         Metadata.AppendPropertyXMLNode(self, 'MinValue', node, document)
         Metadata.AppendPropertyXMLNode(self, 'MustBeGreaterThan', node, document)
         Metadata.AppendPropertyXMLNode(self, 'MinValue', node, document)
@@ -502,6 +708,7 @@ class FloatTypeMetadata(TypeMetadata):
 
 
 class IntegerTypeMetadata(TypeMetadata):
+    __doc__ = DynamicDocString()
 
     def __init__(self,
                  minValue=None,
@@ -527,7 +734,8 @@ class IntegerTypeMetadata(TypeMetadata):
                                                   arcGISType='ESRI.ArcGIS.Geoprocessing.GPLongTypeClass',
                                                   arcGISAssembly='ESRI.ArcGIS.Geoprocessing',
                                                   canBeArcGISInputParameter=True,
-                                                  canBeArcGISOutputParameter=True)
+                                                  canBeArcGISOutputParameter=True,
+                                                  sphinxMarkup=':py:class:`int`')
         self._MinValue = minValue
         self._MustBeGreaterThan = mustBeGreaterThan
         self._MaxValue = maxValue
@@ -555,6 +763,7 @@ class IntegerTypeMetadata(TypeMetadata):
 
     def AppendXMLNodes(self, node, document):
         super(IntegerTypeMetadata, self).AppendXMLNodes(node, document)
+        from ..Metadata import Metadata
         Metadata.AppendPropertyXMLNode(self, 'MinValue', node, document)
         Metadata.AppendPropertyXMLNode(self, 'MustBeGreaterThan', node, document)
         Metadata.AppendPropertyXMLNode(self, 'MinValue', node, document)
@@ -601,6 +810,7 @@ class IntegerTypeMetadata(TypeMetadata):
 
 
 class UnicodeStringTypeMetadata(TypeMetadata):
+    __doc__ = DynamicDocString()
 
     def __init__(self,
                  stripWhitespace=True,
@@ -630,7 +840,8 @@ class UnicodeStringTypeMetadata(TypeMetadata):
                                                         arcGISType=arcGISType,
                                                         arcGISAssembly=arcGISAssembly,
                                                         canBeArcGISInputParameter=canBeArcGISInputParameter,
-                                                        canBeArcGISOutputParameter=canBeArcGISOutputParameter)
+                                                        canBeArcGISOutputParameter=canBeArcGISOutputParameter,
+                                                        sphinxMarkup=':py:class:`str`')
         self._StripWhitespace = stripWhitespace
         self._MakeLowercase = makeLowercase
         self._MakeUppercase = makeUppercase
@@ -669,6 +880,7 @@ class UnicodeStringTypeMetadata(TypeMetadata):
 
     def AppendXMLNodes(self, node, document):
         super(UnicodeStringTypeMetadata, self).AppendXMLNodes(node, document)
+        from ..Metadata import Metadata
         Metadata.AppendPropertyXMLNode(self, 'StripWhitespace', node, document)
         Metadata.AppendPropertyXMLNode(self, 'MakeLowercase', node, document)
         Metadata.AppendPropertyXMLNode(self, 'MakeUppercase', node, document)
@@ -727,7 +939,8 @@ class UnicodeStringTypeMetadata(TypeMetadata):
 # instead.
 ###############################################################################
 
-__all__ = ['AnyObjectTypeMetadata',
+__all__ = ['TypeMetadata',
+           'AnyObjectTypeMetadata',
            'NoneTypeMetadata',
            'ClassTypeMetadata',
            'ClassInstanceTypeMetadata',

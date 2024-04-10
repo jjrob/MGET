@@ -5,8 +5,7 @@
 
 import os
 
-# -- Project information -----------------------------------------------------
-# https://www.sphinx-doc.org/en/master/usage/configuration.html#project-information
+# Hardcoded project information
 
 project = 'GeoEco'
 copyright = '2024, Jason J. Roberts'
@@ -16,20 +15,42 @@ author = 'Jason J. Roberts'
 
 from setuptools_scm import get_version
 
-release = get_version(os.path.join(os.path.dirname(__file__), '..', '..'))
-version = ".".join(release.split('.')[:3])
+version = get_version(os.path.join(os.path.dirname(__file__), '..', '..'))
+release = version
 
-# -- General configuration ---------------------------------------------------
-# https://www.sphinx-doc.org/en/master/usage/configuration.html#general-configuration
+# General configuration
 
-extensions = []
+extensions = [
+    'sphinx.ext.autodoc',           # To document classes, methods, etc. automatically
+    'sphinx.ext.napoleon',          # To parse Google-style or numpy-style syntax from docstrings
+    'sphinx.ext.autosummary',       # To generate summary tables of classes, methods, etc. and linked pages recursively by wrapping autodoc
+    'sphinx.ext.intersphinx',       # To hyperlink types in property, argument, and return values
+]
 
-templates_path = ['_templates']
-exclude_patterns = ['_build', 'Thumbs.db', '.DS_Store']
+templates_path = ['templates']
 
-# -- Options for HTML output -------------------------------------------------
-# https://www.sphinx-doc.org/en/master/usage/configuration.html#options-for-html-output
+exclude_patterns = [
+    '_build', 
+    'Thumbs.db', 
+    '.DS_Store',
+]
+
+root_doc = 'Index'
+
+# Options for HTML output
 
 html_theme = 'sphinx_rtd_theme'
-html_static_path = ['_static']
+html_static_path = ['static']
 html_style = os.path.join('css', 'custom.css')
+
+# autodoc, autosummary, and insersphinx configuration
+
+autoclass_content = 'both'                              # For autoclass directives, concatenate and insert both the class's and the __init__ method's docstrings.
+autodoc_default_options = {'show-inheritance': True}    # Display parent classes
+
+autosummary_imported_members = True     # Turn this on so that package __init__.py modules (e.g. GeoEco/Types/__init__.py) can import and re-export names from private submodules (e.g. GeoEco/Types/_Base.py) and have them be documented as if they were part of the package's __init__.py 
+autosummary_ignore_module_all = False   # Turn this off so that if a module defines __all__, then autosummary uses it to determine the list of names to document
+
+intersphinx_mapping = {
+    'python': ('https://docs.python.org/3', None),
+}
