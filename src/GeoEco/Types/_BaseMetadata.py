@@ -22,70 +22,70 @@ AddClassMetadata('TypeMetadata', module=__package__, shortDescription=_('Base cl
 # Metadata: AnyObjectTypeMetadata class
 ###############################################################################
 
-AddClassMetadata('AnyObjectTypeMetadata', module=__package__, shortDescription=_('Metadata indicating that any Python object may be provided.'))
+AddClassMetadata('AnyObjectTypeMetadata', module=__package__, shortDescription=_('Metadata specifying that a value may be any Python object.'))
 
 
 ###############################################################################
 # Metadata: NoneTypeMetadata class
 ###############################################################################
 
-AddClassMetadata('NoneTypeMetadata', module=__package__, shortDescription=_('Metadata indicating that no value may be provided, represented in Python by ``None``.'))
+AddClassMetadata('NoneTypeMetadata', module=__package__, shortDescription=_('Metadata specifying that a value must be :py:data:`None`.'))
 
 
 ###############################################################################
 # Metadata: ClassTypeMetadata class
 ###############################################################################
 
-AddClassMetadata('ClassTypeMetadata', module=__package__, shortDescription=_('Metadata indicating that a Python class, but not an instance of it, may be provided.'))
+AddClassMetadata('ClassTypeMetadata', module=__package__, shortDescription=_('Metadata specifying that a value may be a Python class, but not an instance of it.'))
 
 
 ###############################################################################
 # Metadata: ClassInstanceTypeMetadata class
 ###############################################################################
 
-AddClassMetadata('ClassInstanceTypeMetadata', module=__package__, shortDescription=_('Metadata indicating that an instance of a Python class, but not the class itself, may be provided.'))
+AddClassMetadata('ClassInstanceTypeMetadata', module=__package__, shortDescription=_('Metadata specifying that a value may be an instance of a Python class, but not the class itself.'))
 
 
 ###############################################################################
 # Metadata: ClassOrClassInstanceTypeMetadata class
 ###############################################################################
 
-AddClassMetadata('ClassOrClassInstanceTypeMetadata', module=__package__, shortDescription=_('Metadata indicating that a Python class or its instance may be provided.'))
+AddClassMetadata('ClassOrClassInstanceTypeMetadata', module=__package__, shortDescription=_('Metadata specifying that a value may be a Python class or its instance may be provided.'))
 
 
 ###############################################################################
 # Metadata: BooleanTypeMetadata class
 ###############################################################################
 
-AddClassMetadata('BooleanTypeMetadata', module=__package__, shortDescription=_('Metadata indicating that a Boolean may be provided, represented in Python by a ``bool`` instance.'))
+AddClassMetadata('BooleanTypeMetadata', module=__package__, shortDescription=_('Metadata specifying that a value must be a :py:class:`bool`, a Boolean (true or false) value.'))
 
 
 ###############################################################################
 # Metadata: DateTimeTypeMetadata class
 ###############################################################################
 
-AddClassMetadata('DateTimeTypeMetadata', module=__package__, shortDescription=_('Metadata indicating that a date and time may be provided, represented in Python by a ``datetime.datetime`` instance.'))
+AddClassMetadata('DateTimeTypeMetadata', module=__package__, shortDescription=_('Metadata specifying that a value must be a :py:class:`datetime.datetime`, a date with a time.'))
 
 
 ###############################################################################
 # Metadata: FloatTypeMetadata class
 ###############################################################################
 
-AddClassMetadata('FloatTypeMetadata', module=__package__, shortDescription=_('Metadata indicating that a 64-bit floating point number may be provided, represented in Python by a ``float`` instance.'))
+AddClassMetadata('FloatTypeMetadata', module=__package__, shortDescription=_('Metadata specifying that a value must be a :py:class:`float`, a 64-bit floating point number.'))
 
 
 ###############################################################################
 # Metadata: IntegerTypeMetadata class
 ###############################################################################
 
-AddClassMetadata('IntegerTypeMetadata', module=__package__, shortDescription=_('Metadata indicating that a signed integer may be provided, represented in Python by an ``int`` instance.'))
+AddClassMetadata('IntegerTypeMetadata', module=__package__, shortDescription=_('Metadata specifying that a value must be an :py:class:`int`, an integer.'))
 
 
 ###############################################################################
 # Metadata: UnicodeStringTypeMetadata class
 ###############################################################################
 
-AddClassMetadata('UnicodeStringTypeMetadata', module=__package__, shortDescription=_('Metadata indicating that a Unicode string may be provided, represented in Python by an ``str`` instance.'))
+AddClassMetadata('UnicodeStringTypeMetadata', module=__package__, shortDescription=_('Metadata specifying that a value must be a :py:class:`str`, a Unicode string.'))
 
 
 ###############################################################################

@@ -21,19 +21,19 @@ AddClassMetadata('StoredObjectTypeMetadata', module=__package__, shortDescriptio
 # Metadata: FileTypeMetadata class
 ###############################################################################
 
-AddClassMetadata('FileTypeMetadata', module=__package__, shortDescription=_('Metadata indicating that path to a file may be provided, represented in Python by a :py:class:`str`.'))
+AddClassMetadata('FileTypeMetadata', module=__package__, shortDescription=_('Metadata specifying that a value must be a :py:class:`str` that is a path to a file.'))
 
 
 ###############################################################################
 # Metadata: TextFileTypeMetadata class
 ###############################################################################
 
-AddClassMetadata('TextFileTypeMetadata', module=__package__, shortDescription=_('Metadata indicating that path to a text file may be provided, represented in Python by a :py:class:`str`.'))
+AddClassMetadata('TextFileTypeMetadata', module=__package__, shortDescription=_('Metadata specifying that a value must be a :py:class:`str` that is a path to a text file that ArcGIS recognizes as a tabular format (e.g. a .CSV).'))
 
 ###############################################################################
 # Metadata: DirectoryTypeMetadata class
 ###############################################################################
 
-AddClassMetadata('DirectoryTypeMetadata', module=__package__, shortDescription=_('Metadata indicating that path to a directory may be provided, represented in Python by a :py:class:`str`.'))
+AddClassMetadata('DirectoryTypeMetadata', module=__package__, shortDescription=_('Metadata specifying that a value must be a :py:class:`str` that is a path to a directory.'))
 
 __all__ = []
