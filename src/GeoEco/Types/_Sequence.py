@@ -1,4 +1,4 @@
-# Sequence.py - Provides classes derived from GeoEco.Metadata.TypeMetadata
+# _Sequence.py - Provides classes derived from GeoEco.Metadata.TypeMetadata
 # that represent Python sequence types such as lists and dicts.
 #
 # Copyright (C) 2024 Jason J. Roberts
@@ -35,7 +35,8 @@ class SequenceTypeMetadata(TypeMetadata):
                  arcGISType='ESRI.ArcGIS.Geoprocessing.GPMultiValueTypeClass',
                  arcGISAssembly='ESRI.ArcGIS.Geoprocessing',
                  canBeArcGISInputParameter=True,
-                 canBeArcGISOutputParameter=False):
+                 canBeArcGISOutputParameter=False,
+                 sphinxMarkup=None):
         
         assert isinstance(elementType, TypeMetadata), 'elementType must be an instance of TypeMetadata'
         assert isinstance(minLength, int) and minLength >= 0 and minLength <= 2147483647, 'minLength must be an integer between 0 and 2147483647, inclusive'
@@ -52,7 +53,8 @@ class SequenceTypeMetadata(TypeMetadata):
                                                    arcGISType=arcGISType,
                                                    arcGISAssembly=arcGISAssembly,
                                                    canBeArcGISInputParameter=canBeArcGISInputParameter,
-                                                   canBeArcGISOutputParameter=canBeArcGISOutputParameter)
+                                                   canBeArcGISOutputParameter=canBeArcGISOutputParameter,
+                                                   sphinxMarkup=sphinxMarkup)
         self._ElementType = elementType
         self._MinLength = minLength
         self._MaxLength = maxLength
@@ -288,7 +290,11 @@ class ListTypeMetadata(SequenceTypeMetadata):
                  maxLength=2147483647,
                  maxItemsToValidate=2147483647,
                  mustBeSameLengthAsArgument=None,
-                 canBeNone=False):
+                 canBeNone=False,
+                 sphinxMarkup=None):
+
+        if sphinxMarkup is None:
+            sphinxMarkup = ':py:class:`list` of %s' % elementType.SphinxMarkup
         
         super(ListTypeMetadata, self).__init__(elementType=elementType,
                                                minLength=minLength,
@@ -296,7 +302,8 @@ class ListTypeMetadata(SequenceTypeMetadata):
                                                maxItemsToValidate=maxItemsToValidate,
                                                mustBeSameLengthAsArgument=mustBeSameLengthAsArgument,
                                                pythonType=list,
-                                               canBeNone=canBeNone)
+                                               canBeNone=canBeNone,
+                                               sphinxMarkup=sphinxMarkup)
 
     def ValidateValue(self, value, variableName, methodLocals=None, argMetadata=None):
         (valueChanged, value) = super(ListTypeMetadata, self).ValidateValue(value, variableName, methodLocals, argMetadata)
@@ -331,15 +338,20 @@ class TupleTypeMetadata(SequenceTypeMetadata):
                  maxLength=2147483647,
                  maxItemsToValidate=2147483647,
                  mustBeSameLengthAsArgument=None,
-                 canBeNone=False):
+                 canBeNone=False,
+                 sphinxMarkup=None):
         
+        if sphinxMarkup is None:
+            sphinxMarkup = ':py:class:`tuple` of %s' % elementType.SphinxMarkup
+
         super(TupleTypeMetadata, self).__init__(elementType=elementType,
                                                 minLength=minLength,
                                                 maxLength=maxLength,
                                                 maxItemsToValidate=maxItemsToValidate,
                                                 mustBeSameLengthAsArgument=mustBeSameLengthAsArgument,
                                                 pythonType=tuple,
-                                                canBeNone=canBeNone)
+                                                canBeNone=canBeNone,
+                                                sphinxMarkup=sphinxMarkup)
 
     def ValidateValue(self, value, variableName, methodLocals=None, argMetadata=None):
         (valueChanged, value) = super(TupleTypeMetadata, self).ValidateValue(value, variableName, methodLocals, argMetadata)
@@ -383,7 +395,8 @@ class DictionaryTypeMetadata(TypeMetadata):
                  minLength=0,
                  maxLength=2147483647,
                  pythonType=dict,
-                 canBeNone=False):
+                 canBeNone=False,
+                 sphinxMarkup=None):
         
         assert isinstance(keyType, TypeMetadata), 'keyType must be an instance of TypeMetadata'
         assert isinstance(valueType, TypeMetadata), 'valueType must be an instance of TypeMetadata'
@@ -391,9 +404,12 @@ class DictionaryTypeMetadata(TypeMetadata):
         assert isinstance(maxLength, int) and maxLength >= 0 and maxLength <= 2147483647, 'maxLength must be an integer between 0 and 2147483647, inclusive'
         assert maxLength >= minLength, 'maxLength must be greater than or equal to minLength'
 
+        if sphinxMarkup is None:
+            sphinxMarkup = ':py:class:`dict` mapping %s to %s' % (keyType.SphinxMarkup, valueType.SphinxMarkup)
+
         # Initialize the base class.
         
-        super(DictionaryTypeMetadata, self).__init__(pythonType=pythonType, canBeNone=canBeNone)
+        super(DictionaryTypeMetadata, self).__init__(pythonType=pythonType, canBeNone=canBeNone, sphinxMarkup=sphinxMarkup)
         self._KeyType = keyType
         self._ValueType = valueType
         self._MinLength = minLength

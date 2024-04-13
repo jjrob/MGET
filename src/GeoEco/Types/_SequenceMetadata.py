@@ -1,4 +1,4 @@
-# SequenceMetadata.py - Metadata for classes defined in Sequence.py.
+# _SequenceMetadata.py - Metadata for classes defined in _Sequence.py.
 #
 # Copyright (C) 2024 Jason J. Roberts
 #

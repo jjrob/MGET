@@ -1,4 +1,4 @@
-# BaseMetadata.py - Metadata for classes defined in Base.py.
+# _BaseMetadata.py - Metadata for classes defined in _Base.py.
 #
 # Copyright (C) 2024 Jason J. Roberts
 #

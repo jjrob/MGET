@@ -387,7 +387,7 @@ class ClassMetadata(Metadata):
             # Initialize the method's dependencies.
             
             for d in methodMetadata.Dependencies:
-                self.InitializeDependency(d)
+                d.Initialize()
 
             # Validate the value of each argument. The validation code may
             # change the values. Also initialize dependencies for the argument,
@@ -403,7 +403,7 @@ class ClassMetadata(Metadata):
                     SaveChangesToFrameLocals(parentFrame)
                 if argMetadata.Type.DependenciesAreNeededForValue(value):
                     for d in argMetadata.Dependencies:
-                        self.InitializeDependency(d)
+                        d.Initialize()
 
             i = len(args)
             if varargs is not None:
@@ -416,7 +416,7 @@ class ClassMetadata(Metadata):
                 i = i + 1
                 if argMetadata.Type.DependenciesAreNeededForValue(value):
                     for d in argMetadata.Dependencies:
-                        self.InitializeDependency(d)
+                        d.Initialize()
                 
             if varkw is not None:
                 argMetadata = methodMetadata.Arguments[i]
@@ -427,21 +427,10 @@ class ClassMetadata(Metadata):
                     SaveChangesToFrameLocals(parentFrame)
                 if argMetadata.Type.DependenciesAreNeededForValue(value):
                     for d in argMetadata.Dependencies:
-                        self.InitializeDependency(d)
+                        d.Initialize()
 
         finally:
             del parentFrame
-
-    @classmethod
-    def InitializeDependency(cls, d):
-        if d.GetResultCacheKey() is None:
-            d.Initialize()
-        elif d.GetResultCacheKey() not in ClassMetadata._InitializedDependencies:
-            d.Initialize()
-            ClassMetadata._InitializedDependencies[d.GetResultCacheKey()] = True
-
-    def ValidateStaticMethodInvocation():
-        raise NotImplementedError('Not yet implemented.')
 
     def AppendXMLNodes(self, node, document):
         super(ClassMetadata, self).AppendXMLNodes(node, document)
@@ -495,13 +484,13 @@ class PropertyMetadata(Metadata):
     def _GetIsReadOnly(self):
         return self.Object.fset is None
 
-    IsReadOnly = property(_GetIsReadOnly)
+    IsReadOnly = property(_GetIsReadOnly, doc=DynamicDocString())
 
     def _GetObject(self):
         return getattr(self.Class.Object, self.Name)
 
     def _GetDocString(self):
-        doc = '(%s | :py:data:`None`)' % self.Type.SphinxMarkup if self.Type.CanBeNone else '(%s)' % self.Type.SphinxMarkup
+        doc = '(%s or :py:data:`None`)' % self.Type.SphinxMarkup if self.Type.CanBeNone else '(%s)' % self.Type.SphinxMarkup
 
         doc += ' ' + self.ShortDescription.strip() if self.ShortDescription is not None else ''
 
@@ -510,7 +499,10 @@ class PropertyMetadata(Metadata):
 
         constraints = self.Type.GetConstraintDescriptionStrings()
         if len(constraints) > 0:
-            doc += ''.join([' ' + c.replace(':','\uA789') + '.' for c in constraints])   # Replace ASCII colons with Unicode 0xA789. Unfortunately Sphinx or its extensions interpret colons as markup and it messes up the documentation.
+            for c in constraints:
+                doc += ' ' + c.replace(':','\uA789')   # Replace ASCII colons with Unicode 0xA789. Unfortunately Sphinx or its extensions interpret colons as markup and it messes up the documentation.
+                if not doc.endswith('.'):
+                    doc += '.'
 
         if self.LongDescription is not None:
             doc += '\n' + self.LongDescription
@@ -528,7 +520,7 @@ class PropertyMetadata(Metadata):
 class MethodMetadata(Metadata):
     __doc__ = DynamicDocString()
 
-    def __init__(self, name, classMetadata, shortDescription=None, longDescription=None, isExposedToPythonCallers=False, isExposedAsArcGISTool=False, arcGISDisplayName=None, arcGISToolCategory=None, isOutOfProcArcGISTool=False, arcGISMinVersion=None, arcGISMaxVersion=None, dependencies=[]):
+    def __init__(self, name, classMetadata, shortDescription=None, longDescription=None, isExposedToPythonCallers=False, isExposedAsArcGISTool=False, arcGISDisplayName=None, arcGISToolCategory=None, dependencies=[]):
         super(MethodMetadata, self).__init__(name, shortDescription, longDescription)
         assert isinstance(classMetadata, ClassMetadata), 'classMetadata must be an instance of %s.' % ClassMetadata.__name__
         assert hasattr(classMetadata.Object, name) and isinstance(getattr(classMetadata.Object, name), (types.MethodType, types.FunctionType)), 'Class %s must contain a method named %s.' % (classMetadata.Name, name)
@@ -537,9 +529,6 @@ class MethodMetadata(Metadata):
         self.IsExposedAsArcGISTool = isExposedAsArcGISTool
         self.ArcGISDisplayName = arcGISDisplayName
         self.ArcGISToolCategory = arcGISToolCategory
-        self.IsOutOfProcArcGISTool = isOutOfProcArcGISTool
-        self.ArcGISMinVersion = arcGISMinVersion
-        self.ArcGISMaxVersion = arcGISMaxVersion
         self._Arguments = []
         self._Results = []
         self.Dependencies = dependencies
@@ -567,7 +556,7 @@ class MethodMetadata(Metadata):
         
     IsExposedAsArcGISTool = property(_GetIsExposedAsArcGISTool, _SetIsExposedAsArcGISTool, doc=DynamicDocString())
 
-    def IsExposedAsArcGISToolByClass(self, cls):
+    def _IsExposedAsArcGISToolByUsNotParent(self, cls):
         parentClass = inspect.getmro(cls)[1]
         return self._IsExposedAsArcGISTool and self.Name in cls.__dict__ and (not hasattr(parentClass, self.Name) or getattr(parentClass, self.Name).__func__ != getattr(cls, self.Name).__func__)
 
@@ -594,39 +583,6 @@ class MethodMetadata(Metadata):
             self._ArcGISToolCategory = value
         
     ArcGISToolCategory = property(_GetArcGISToolCategory, _SetArcGISToolCategory, doc=DynamicDocString())
-
-    def _GetIsOutOfProcArcGISTool(self):
-        return self._IsOutOfProcArcGISTool
-    
-    def _SetIsOutOfProcArcGISTool(self, value):
-        assert isinstance(value, bool), 'IsOutOfProcArcGISTool must be a boolean'
-        self._IsOutOfProcArcGISTool = value
-        
-    IsOutOfProcArcGISTool = property(_GetIsOutOfProcArcGISTool, _SetIsOutOfProcArcGISTool, doc=DynamicDocString())
-
-    def _GetArcGISMinVersion(self):
-        return self._ArcGISMinVersion
-    
-    def _SetArcGISMinVersion(self, value):
-        assert isinstance(value, (type(None), str)), 'ArcGISMinVersion must be a string, or None.'
-        if value is not None:
-            self._ArcGISMinVersion = value.strip()
-        else:
-            self._ArcGISMinVersion = value
-        
-    ArcGISToolMinVersion = property(_GetArcGISMinVersion, _SetArcGISMinVersion, doc=DynamicDocString())
-
-    def _GetArcGISMaxVersion(self):
-        return self._ArcGISMaxVersion
-    
-    def _SetArcGISMaxVersion(self, value):
-        assert isinstance(value, (type(None), str)), 'ArcGISMaxVersion must be a string, or None.'
-        if value is not None:
-            self._ArcGISMaxVersion = value.strip()
-        else:
-            self._ArcGISMaxVersion = value
-        
-    ArcGISToolMaxVersion = property(_GetArcGISMaxVersion, _SetArcGISMaxVersion, doc=DynamicDocString())
 
     def _GetIsInstanceMethod(self):
         for (name, kind, homecls, obj) in inspect.classify_class_attrs(self.Class.Object):
@@ -761,12 +717,9 @@ class MethodMetadata(Metadata):
         super(MethodMetadata, self).AppendXMLNodes(node, document)
         self.AppendPropertyXMLNode(self, 'IsExposedToPythonCallers', node, document)
         n = node.appendChild(document.createElement('IsExposedAsArcGISTool'))
-        n.appendChild(document.createTextNode(str(self.IsExposedAsArcGISToolByClass(cls)).lower()))     # Only set IsExposedAsArcGISTool to true for classes that define the method, not for child classes.
+        n.appendChild(document.createTextNode(str(self._IsExposedAsArcGISToolByUsNotParent(cls)).lower()))     # Only set IsExposedAsArcGISTool to true for classes that define the method, not for child classes.
         self.AppendPropertyXMLNode(self, 'ArcGISDisplayName', node, document)
         self.AppendPropertyXMLNode(self, 'ArcGISToolCategory', node, document)
-        self.AppendPropertyXMLNode(self, 'IsOutOfProcArcGISTool', node, document)
-        self.AppendPropertyXMLNode(self, 'ArcGISMinVersion', node, document)
-        self.AppendPropertyXMLNode(self, 'ArcGISMaxVersion', node, document)
         self.AppendPropertyXMLNode(self, 'IsInstanceMethod', node, document)
         self.AppendPropertyXMLNode(self, 'IsClassMethod', node, document)
         self.AppendPropertyXMLNode(self, 'IsStaticMethod', node, document)
@@ -837,7 +790,16 @@ class ArgumentMetadata(object):
     Type = property(_GetType, _SetType, doc=DynamicDocString())
 
     def _GetDescription(self):
-        return self._Description
+        doc = self._Description
+
+        constraints = self.Type.GetConstraintDescriptionStrings()
+        if len(constraints) > 0:
+            for c in constraints:
+                doc += ' ' + c.replace(':','\uA789')   # Replace ASCII colons with Unicode 0xA789. Unfortunately Sphinx or its extensions interpret colons as markup and it messes up the documentation.
+                if not doc.endswith('.'):
+                    doc += '.'
+
+        return doc
     
     def _SetDescription(self, value):
         assert isinstance(value, (type(None), str)), 'Description must be a string, or None.'
@@ -1167,6 +1129,13 @@ def _ValidateMethodMetadata(method, cls=None, module=None):
 
 
 def AddModuleMetadata(shortDescription, longDescription=None, module=None):
+    """Creates a :class:`ModuleMetadata` and attaches it to a module.
+
+    Args:
+        shortDescription (:py:class:`str`): One-line description of the module, ideally as plain text (but reStructuredText is OK).
+        longDescription (:py:class:`str`, optional): Detailed description of the module, formatted as reStructuredText.
+        module (:py:class:`~types.ModuleType` or :py:class:`str`, optional): The module object itself, or the fully qualified name of the module (a.k.a. dotted module name). If not provided, the caller's module is used.
+    """
     module = _GetModuleObject(module)
     assert not isinstance(module.__doc__, DynamicDocString) or module.__doc__.Obj is None, 'If %s.__doc__ is an instance of DynamicDocString, %s.__doc__.Obj must be None. Do not call AddModuleMetadata on a module that already has metadata.' % (module.__name__, module.__name__)
 
@@ -1174,6 +1143,18 @@ def AddModuleMetadata(shortDescription, longDescription=None, module=None):
 
 
 def AddClassMetadata(cls, shortDescription, longDescription=None, module=None):
+    """Creates a :class:`ClassMetadata` for a class and adds it to a :class:`ModuleMetadata`.
+
+    Args:
+        cls (:py:class:`type` or :py:class:`str`): The class itself, or the unqualified name of the class (without module or package names).
+        shortDescription (:py:class:`str`): One-line description of the class, ideally as plain text (but reStructuredText is OK).
+        longDescription (:py:class:`str`, optional): Detailed description of the class, formatted as reStructuredText.
+        module (:py:class:`~types.ModuleType` or :py:class:`str`, optional): The module that contains the class, either as the module object itself or the fully qualified name of the module (a.k.a. dotted module name). If not provided, the caller's module is used.
+
+    Note:
+        Before calling this function, use :func:`AddModuleMetadata` to create
+        the :class:`ModuleMetadata` and attach it to the module.
+    """
     module = _GetModuleObject(module)
     assert isinstance(module.__doc__, DynamicDocString) and isinstance(module.__doc__.Obj, ModuleMetadata), 'The __doc__ attribute of module %s must be an instance of GeoEco.Metadata.DynamicDocString, and __doc__.Obj must be an instance of GeoEco.Metadata.ModuleMetadata. Use the GeoEco.Metadata.AddModuleMetadata function to add the module\'s metadata before calling GeoEco.Metadata.AddClassMetadata.' % module.__name__
     cls = _GetClassObject(cls, module)
@@ -1184,6 +1165,23 @@ def AddClassMetadata(cls, shortDescription, longDescription=None, module=None):
 
 
 def AddPropertyMetadata(prop, typeMetadata, shortDescription=None, longDescription=None, isExposedToPythonCallers=False, cls=None, module=None):
+    """Creates a :class:`PropertyMetadata` and for a class property adds it to a :class:`ClassMetadata`.
+
+    Args:
+        prop (:py:class:`property` or :py:class:`str`): The :py:class:`property` object or name of the property. If the name is given, `cls` must also be given.
+        typeMetadata (:class:`GeoEco.Types.TypeMetadata`): A :class:`~GeoEco.Types.TypeMetadata` that describes the data type and allowed values of the property.
+        shortDescription (:py:class:`str`, optional): One-line description of the property, ideally as plain text (but reStructuredText is OK).
+        longDescription (:py:class:`str`, optional): Detailed description of the property, formatted as reStructuredText.
+        isExposedToPythonCallers (:py:class:`bool`, optional): If True, the property should be part of GeoEco's Public API. If False, the default, the property is considered part of GeoEco's Internal API and not recommended for use by external callers.
+        cls (:py:class:`type` or :py:class:`str`, optional): The class containing the property, either as the class itself or the unqualified name of the class (without module or package names). Only needed if `prop` is given as a name rather than a :py:class:`property` object.
+        module (:py:class:`~types.ModuleType` or :py:class:`str`, optional): The module that contains the class, either as the module object itself or the fully qualified name of the module (a.k.a. dotted module name). If not provided, the caller's module is used.
+
+    Note:
+
+        Before calling this function, use :func:`AddClassMetadata` to create
+        the :class:`ClassMetadata` and add it to its module's
+        :class:`ModuleMetadata`.
+    """
     module = _GetModuleObject(module)
     (prop, propName, cls) = _ValidatePropertyInfo(prop, cls, module)
     assert prop.__doc__.Obj is None, '%s.%s.__doc__.Obj must be None. Do not call AddPropertyMetadata on a property that already has metadata.' % (cls.__name__, propName)
@@ -1192,6 +1190,27 @@ def AddPropertyMetadata(prop, typeMetadata, shortDescription=None, longDescripti
 
 
 def CopyPropertyMetadata(fromProperty, toProperty, fromClass=None, fromModule=None, toClass=None, toModule=None):
+    """Copies the :class:`PropertyMetadata` for a specified property from one class's :class:`ClassMetadata` to another's.
+
+    Use this function to duplicate a :class:`PropertyMetadata` when two
+    classes have an identical or very similar property. If they are not
+    exactly the same, you can modify the second property's
+    :class:`PropertyMetadata` after it has been copied.
+
+    Args:
+        fromProperty (:py:class:`property` or :py:class:`str`): The :py:class:`property` object or name of the property to copy :class:`PropertyMetadata` from. If the name is given, `fromClass` must also be given.
+        toProperty (:py:class:`property` or :py:class:`str`): The :py:class:`property` object or name of the property to copy the :class:`PropertyMetadata` to. If the name is given, `toClass` must also be given.
+        fromClass (:py:class:`type` or :py:class:`str`, optional): The class containing `fromProperty`, either as the class itself or the unqualified name of the class (without module or package names). Only needed if `fromProperty` is given as a name rather than a :py:class:`property` object.
+        fromModule (:py:class:`~types.ModuleType` or :py:class:`str`, optional): The module that contains `fromClass`, either as the module object itself or the fully qualified name of the module (a.k.a. dotted module name). If not provided, the caller's module is used.
+        toClass (:py:class:`type` or :py:class:`str`, optional): The class containing `toProperty`, either as the class itself or the unqualified name of the class (without module or package names). Only needed if `toProperty` is given as a name rather than a :py:class:`property` object.
+        toModule (:py:class:`~types.ModuleType` or :py:class:`str`, optional): The module that contains `toClass`, either as the module object itself or the fully qualified name of the module (a.k.a. dotted module name). If not provided, the caller's module is used.
+
+    Note:
+
+        Before calling this function, use :func:`AddPropertyMetadata` to
+        create a :class:`PropertyMetadata` and add it to the
+        :class:`ClassMetadata` of the class that contains `fromProperty`.
+    """
     fromModule = _GetModuleObject(fromModule)
     (fromProperty, fromPropertyName, fromClass) = _ValidatePropertyInfo(fromProperty, fromClass, fromModule)
     assert fromProperty.__doc__.Obj is not None, '%s.%s.__doc__.Obj must not be None. Before calling CopyPropertyMetadata, ensure that fromProperty already has metadata.' % (fromClass.__name__, fromPropertyName)
@@ -1208,7 +1227,27 @@ def CopyPropertyMetadata(fromProperty, toProperty, fromClass=None, fromModule=No
                                               isExposedToPythonCallers=fromProperty.__doc__.Obj.IsExposedToPythonCallers)
 
 
-def AddMethodMetadata(method, shortDescription=None, longDescription=None, isExposedToPythonCallers=False, isExposedAsArcGISTool=False, arcGISDisplayName=None, arcGISToolCategory=None, isOutOfProcArcGISTool=False, arcGISMinVersion=None, arcGISMaxVersion=None, cls=None, module=None, dependencies=[]):
+def AddMethodMetadata(method, shortDescription=None, longDescription=None, isExposedToPythonCallers=False, isExposedAsArcGISTool=False, arcGISDisplayName=None, arcGISToolCategory=None, cls=None, module=None, dependencies=[]):
+    """Creates a :class:`MethodMetadata` for a method and adds it to a :class:`ClassMetadata`.
+
+    Args:
+        method (:py:data:`~types.MethodType` or :py:class:`str`): The method itself or the name of the method. If the name is given, `cls` must also be given.
+        shortDescription (:py:class:`str`, optional): One-line description of the method, ideally as plain text (but reStructuredText is OK).
+        longDescription (:py:class:`str`, optional): Detailed description of the method, formatted as reStructuredText.
+        isExposedToPythonCallers (:py:class:`bool`, optional): If True, the method should be part of GeoEco's Public API. If False, the default, the method is considered part of GeoEco's Internal API and not recommended for use by external callers.
+        isExposedAsArcGISTool (:py:class:`bool`, optional): If True, the method should be part of GeoEco's Public API. If False, the default, the method is considered part of GeoEco's Internal API and not recommended for use by external callers.
+        arcGISDisplayName (:py:class:`str`, optional): Name of the tool, as displayed in MGET's ArcGIS toolbox. Ignored if `isExposedAsArcGISTool` is False.
+        arcGISToolCategory (:py:class:`str`, optional): Toolset that the tool appears under in MGET's ArcGIS toolbox. If :py:data:`None`, the default, the tool appears at the root level. Ignored if `isExposedAsArcGISTool` is False.
+        cls (:py:class:`type` or :py:class:`str`, optional): The class containing the method, either as the class itself or the unqualified name of the class (without module or package names). Only needed if `method` is given as a name rather than the method itself.
+        module (:py:class:`~types.ModuleType` or :py:class:`str`, optional): The module that contains the class, either as the module object itself or the fully qualified name of the module (a.k.a. dotted module name). If not provided, the caller's module is used.
+        dependencies (:py:class:`list` of :class:`~GeoEco.Dependencies.Dependency`, optional): :py:class:`list` of :class:`~GeoEco.Dependencies.Dependency` objects defining software dependencies that should be checked prior to executing this method.
+
+    Note:
+
+        Before calling this function, use :func:`AddClassMetadata` to create
+        the :class:`ClassMetadata` and add it to its module's
+        :class:`ModuleMetadata`.
+    """
     module = _GetModuleObject(module)
     (method, cls) = _ValidateMethodMetadata(method, cls, module)
     if not isinstance(method.__doc__, DynamicDocString):
@@ -1218,10 +1257,32 @@ def AddMethodMetadata(method, shortDescription=None, longDescription=None, isExp
             method.__doc__ = DynamicDocString()
     assert method.__doc__.Obj is None, '%s.%s.__doc__.Obj must be None. Do not call AddMethodMetadata on a method that already has metadata.' % (cls.__name__, method.__name__)
     
-    method.__doc__.Obj = MethodMetadata(str(method.__name__), cls.__doc__.Obj, shortDescription, longDescription, isExposedToPythonCallers, isExposedAsArcGISTool, arcGISDisplayName, arcGISToolCategory, isOutOfProcArcGISTool, arcGISMinVersion, arcGISMaxVersion, dependencies)
+    method.__doc__.Obj = MethodMetadata(str(method.__name__), cls.__doc__.Obj, shortDescription, longDescription, isExposedToPythonCallers, isExposedAsArcGISTool, arcGISDisplayName, arcGISToolCategory, dependencies)
 
 
 def AddArgumentMetadata(method, argumentName, typeMetadata, description=None, direction='Input', initializeToArcGISGeoprocessorVariable=None, arcGISDisplayName=None, arcGISCategory=None, arcGISParameterDependencies=None, cls=None, module=None, dependencies=[]):
+    """Creates an :class:`ArgumentMetadata` for a method parameter and adds it to a :class:`MethodMetadata`.
+
+    Args:
+        method (:py:data:`~types.MethodType` or :py:class:`str`): The method itself or the name of the method. If the name is given, `cls` must also be given.
+        argumentName (:py:class:`str`): Name of the parameter, as it appears in the method's signature.
+        typeMetadata (:class:`~GeoEco.Types.TypeMetadata`): :class:`~GeoEco.Types.TypeMetadata` that describes the data type and allowed values of the parameter.
+        description (:py:class:`str`, optional): The parameter's description, ideally one line of plain text (but reStructuredText is OK). Put long details in :attr:`MethodMetadata.LongDescription`.
+        direction (:py:class:`str`, optional): Direction of the parameter, when the method is exposed as an ArcGIS geoprocessing tool (ignored otherwise). Allowed values꞉ ``'Input'``, ``'Output'``. Case sensitive.
+        initializeToArcGISGeoprocessorVariable (:py:class:`str`, optional): The parameter value should be obtained from this geoprocessor variable, rather than from the user as a tool parameter, when the method is exposed as an ArcGIS geoprocessing tool (ignored otherwise). 
+        arcGISDisplayName (:py:class:`str`, optional): Name of the parameter as it should appear in ArcGIS, when the method is exposed as an ArcGIS geoprocessing tool (ignored otherwise).
+        arcGISToolCategory (:py:class:`str`, optional): Category of the parameter as it should appear in ArcGIS, when the method is exposed as an ArcGIS geoprocessing tool (ignored otherwise).
+        arcGISParameterDependencies (:py:class:`list` of :py:class:`str`, optional): :py:class:`list` of names of parameters that this return value is dependent on (see ArcGIS documentation), when the method is exposed as an ArcGIS geoprocessing tool (ignored otherwise).
+        cls (:py:class:`type` or :py:class:`str`, optional): The class containing the method, either as the class itself or the unqualified name of the class (without module or package names). Only needed if `method` is given as a name rather than the method itself.
+        module (:py:class:`~types.ModuleType` or :py:class:`str`, optional): The module that contains the class, either as the module object itself or the fully qualified name of the module (a.k.a. dotted module name). If not provided, the caller's module is used.
+        dependencies (:py:class:`list` of :class:`~GeoEco.Dependencies.Dependency`, optional): :py:class:`list` of :class:`~GeoEco.Dependencies.Dependency` objects defining software dependencies that should be checked when the value provided for this parameter is not :py:data:`None` when the method is called (ignored otherwise).
+
+    Note:
+
+        Before calling this function, use :func:`AddMethodMetadata` to create
+        the :class:`MethodMetadata` and add it to its class's
+        :class:`ClassMetadata`.
+    """
     module = _GetModuleObject(module)
     (method, cls) = _ValidateMethodMetadata(method, cls, module)
     assert isinstance(method.__doc__, DynamicDocString) and isinstance(method.__doc__.Obj, MethodMetadata), 'The %s.%s.__doc__ must be an instance of GeoEco.Metadata.DynamicDocString, and %s.%s.__doc__.Obj must be an instance of GeoEco.Metadata.MethodMetadata. Before calling GeoEco.Metadata.AddArgumentMetadata, use GeoEco.Metadata.AddMethodMetadata to add MethodMetadata to %s.%s.' % (cls.__name__, method.__name__, cls.__name__, method.__name__, cls.__name__, method.__name__)
@@ -1231,6 +1292,24 @@ def AddArgumentMetadata(method, argumentName, typeMetadata, description=None, di
 
 
 def AddResultMetadata(method, resultName, typeMetadata, description=None, arcGISDisplayName=None, arcGISParameterDependencies=None, cls=None, module=None):
+    """Creates a :class:`ResultMetadata` for a method return value and adds it to a :class:`MethodMetadata`.
+
+    Args:
+        method (:py:data:`~types.MethodType` or :py:class:`str`): The method itself or the name of the method. If the name is given, `cls` must also be given.
+        resultName (:py:class:`str`): Name of the return value. Although Python does not give names to return values, they are needed when a method is exposed as an ArcGIS goeprocessing tool, and can be useful in other contexts.
+        typeMetadata (:class:`~GeoEco.Types.TypeMetadata`): :class:`~GeoEco.Types.TypeMetadata` that describes the data type and allowed values of the return value.
+        description (:py:class:`str`, optional): The return value's description, ideally one line of plain text (but reStructuredText is OK). Put long details in :attr:`MethodMetadata.LongDescription`.
+        arcGISDisplayName (:py:class:`str`, optional): Name of the return value as it should appear in ArcGIS, when the method is exposed as an ArcGIS geoprocessing tool (ignored otherwise).
+        arcGISParameterDependencies (:py:class:`list` of :py:class:`str`, optional): :py:class:`list` of names of parameters that this return value is dependent on (see ArcGIS documentation), when the method is exposed as an ArcGIS geoprocessing tool (ignored otherwise).
+        cls (:py:class:`type` or :py:class:`str`, optional): The class containing the method, either as the class itself or the unqualified name of the class (without module or package names). Only needed if `method` is given as a name rather than the method itself.
+        module (:py:class:`~types.ModuleType` or :py:class:`str`, optional): The module that contains the class, either as the module object itself or the fully qualified name of the module (a.k.a. dotted module name). If not provided, the caller's module is used.
+
+    Note:
+
+        Before calling this function, use :func:`AddMethodMetadata` to create
+        the :class:`MethodMetadata` and add it to its class's
+        :class:`ClassMetadata`.
+    """
     module = _GetModuleObject(module)
     (method, cls) = _ValidateMethodMetadata(method, cls, module)
     assert isinstance(method.__doc__, DynamicDocString) and isinstance(method.__doc__.Obj, MethodMetadata), 'The %s.%s.__doc__ must be an instance of GeoEco.Metadata.DynamicDocString, and %s.%s.__doc__.Obj must be an instance of GeoEco.Metadata.MethodMetadata. Before calling GeoEco.Metadata.AddArgumentMetadata, use GeoEco.Metadata.AddMethodMetadata to add MethodMetadata to %s.%s.' % (cls.__name__, method.__name__, cls.__name__, method.__name__, cls.__name__, method.__name__)
@@ -1240,6 +1319,29 @@ def AddResultMetadata(method, resultName, typeMetadata, description=None, arcGIS
 
 
 def CopyArgumentMetadata(fromMethod, fromArgumentName, toMethod, toArgumentName, fromClass=None, fromModule=None, toClass=None, toModule=None):
+    """Copies the :class:`ArgumentMetadata` for a specified parameter from one methods's :class:`MethodMetadata` to another's.
+
+    Use this function to duplicate an :class:`ArgumentMetadata` when two
+    classes have an identical or very similar parameter. If they are not
+    exactly the same, you can modify the second methods's
+    :class:`ArgumentMetadata` for the parameter after it has been copied.
+
+    Args:
+        fromMethod (:py:data:`~types.MethodType` or :py:class:`str`): The method or name of the method to copy the :class:`ArgumentMetadata` from. If the name is given, `fromClass` must also be given.
+        fromArgumentName (:py:class:`str`): The name of the parameter in `fromMethod` for which the :class:`ArgumentMetadata` should be copied.
+        toMethod (:py:data:`~types.MethodType` or :py:class:`str`): The method or name of the method to copy the :class:`ArgumentMetadata` to. If the name is given, `toClass` must also be given.
+        toArgumentName (:py:class:`str`): The name of the parameter in `toMethod` that should receive the copied :class:`ArgumentMetadata`.
+        fromClass (:py:class:`type` or :py:class:`str`, optional): The class containing `fromMethod`, either as the class itself or the unqualified name of the class (without module or package names). Only needed if `fromMethod` is given as a name rather than the method itself.
+        fromModule (:py:class:`~types.ModuleType` or :py:class:`str`, optional): The module that contains `fromClass`, either as the module object itself or the fully qualified name of the module (a.k.a. dotted module name). If not provided, the caller's module is used.
+        toClass (:py:class:`type` or :py:class:`str`, optional): The class containing `toMethod`, either as the class itself or the unqualified name of the class (without module or package names). Only needed if `toMethod` is given as a name rather than the method itself.
+        toModule (:py:class:`~types.ModuleType` or :py:class:`str`, optional): The module that contains `toClass`, either as the module object itself or the fully qualified name of the module (a.k.a. dotted module name). If not provided, the caller's module is used.
+
+    Note:
+
+        Before calling this function, use :func:`AddArgumentMetadata` to
+        create an :class:`ArgumentMetadata` for `fromArgumentName` and add it
+        to the :class:`MethodMetadata` of `fromMethod`.
+    """
     fromModule = _GetModuleObject(fromModule)
     (fromMethod, fromClass) = _ValidateMethodMetadata(fromMethod, fromClass, fromModule)
     assert isinstance(fromMethod.__doc__, DynamicDocString) and isinstance(fromMethod.__doc__.Obj, MethodMetadata), 'The %s.%s.__doc__ must be an instance of GeoEco.Metadata.DynamicDocString, and %s.%s.__doc__.Obj must be an instance of GeoEco.Metadata.MethodMetadata. Before calling GeoEco.Metadata.CopyArgumentMetadata, use GeoEco.Metadata.AddMethodMetadata to add MethodMetadata to %s.%s.' % (fromClass.__name__, fromMethod.__name__, fromClass.__name__, fromMethod.__name__, fromClass.__name__, fromMethod.__name__)
@@ -1264,6 +1366,29 @@ def CopyArgumentMetadata(fromMethod, fromArgumentName, toMethod, toArgumentName,
 
 
 def CopyResultMetadata(fromMethod, fromResultName, toMethod, toResultName, fromClass=None, fromModule=None, toClass=None, toModule=None):
+    """Copies the :class:`ResultMetadata` for a specified return value from one methods's :class:`MethodMetadata` to another's.
+
+    Use this function to duplicate a :class:`ResultMetadata` when two
+    classes have an identical or very similar return value. If they are not
+    exactly the same, you can modify the second methods's
+    :class:`ResultMetadata` for the return value after it has been copied.
+
+    Args:
+        fromMethod (:py:data:`~types.MethodType` or :py:class:`str`): The method or name of the method to copy the :class:`ResultMetadata` from. If the name is given, `fromClass` must also be given.
+        fromResultName (:py:class:`str`): The name of the return value in `fromMethod` for which the :class:`ResultMetadata` should be copied.
+        toMethod (:py:data:`~types.MethodType` or :py:class:`str`): The method or name of the method to copy the :class:`ResultMetadata` to. If the name is given, `toClass` must also be given.
+        toResultName (:py:class:`str`): The name of the return value in `toMethod` that should receive the copied :class:`ResultMetadata`.
+        fromClass (:py:class:`type` or :py:class:`str`, optional): The class containing `fromMethod`, either as the class itself or the unqualified name of the class (without module or package names). Only needed if `fromMethod` is given as a name rather than the method itself.
+        fromModule (:py:class:`~types.ModuleType` or :py:class:`str`, optional): The module that contains `fromClass`, either as the module object itself or the fully qualified name of the module (a.k.a. dotted module name). If not provided, the caller's module is used.
+        toClass (:py:class:`type` or :py:class:`str`, optional): The class containing `toMethod`, either as the class itself or the unqualified name of the class (without module or package names). Only needed if `toMethod` is given as a name rather than the method itself.
+        toModule (:py:class:`~types.ModuleType` or :py:class:`str`, optional): The module that contains `toClass`, either as the module object itself or the fully qualified name of the module (a.k.a. dotted module name). If not provided, the caller's module is used.
+
+    Note:
+
+        Before calling this function, use :func:`AddResultMetadata` to
+        create a :class:`ResultMetadata` for `fromResultName` and add it
+        to the :class:`MethodMetadata` of `fromMethod`.
+    """
     fromModule = _GetModuleObject(fromModule)
     (fromMethod, fromClass) = _ValidateMethodMetadata(fromMethod, fromClass, fromModule)
     assert isinstance(fromMethod.__doc__, DynamicDocString) and isinstance(fromMethod.__doc__.Obj, MethodMetadata), 'The %s.%s.__doc__ must be an instance of GeoEco.Metadata.DynamicDocString, and %s.%s.__doc__.Obj must be an instance of GeoEco.Metadata.MethodMetadata. Before calling GeoEco.Metadata.CopyResultMetadata, use GeoEco.Metadata.AddMethodMetadata to add MethodMetadata to %s.%s.' % (fromClass.__name__, fromMethod.__name__, fromClass.__name__, fromMethod.__name__, fromClass.__name__, fromMethod.__name__)
@@ -1295,7 +1420,7 @@ AddModuleMetadata(shortDescription=_('Classes used to describe the modules, clas
 # Metadata: Metadata class
 ###############################################################################
 
-AddClassMetadata(Metadata, shortDescription=_('Base class for all metadata classes.'))
+AddClassMetadata(Metadata, shortDescription=_('Base class for most metadata classes.'))
 
 # Constructor
 
@@ -1312,11 +1437,11 @@ AddArgumentMetadata(Metadata.__init__, 'name',
 
 AddArgumentMetadata(Metadata.__init__, 'shortDescription',
     typeMetadata=UnicodeStringTypeMetadata(canBeNone=True),
-    description=_('One-line description of the entity, formatted as plain text (not reStructuredText).'))
+    description=_('One-line description, ideally as plain text (but reStructuredText is OK).'))
 
 AddArgumentMetadata(Metadata.__init__, 'longDescription',
     typeMetadata=UnicodeStringTypeMetadata(canBeNone=True),
-    description=_('Detailed description of the entity, formatted as reStructuredText.'))
+    description=_('Detailed description, formatted as reStructuredText.'))
 
 AddResultMetadata(Metadata.__init__, 'metadata',
     typeMetadata=ClassInstanceTypeMetadata(cls=Metadata),
@@ -1326,56 +1451,55 @@ AddResultMetadata(Metadata.__init__, 'metadata',
 
 AddPropertyMetadata(Metadata.Name,
     typeMetadata=UnicodeStringTypeMetadata(),
-    shortDescription=_('Name of the entity.'))
+    shortDescription=_('Name, as provided to the constructor.'))
 
 AddPropertyMetadata(Metadata.ShortDescription,
     typeMetadata=UnicodeStringTypeMetadata(canBeNone=True),
-    shortDescription=_('One-line description of the entity, formatted as plain text (not reStructuredText).'),
+    shortDescription=_('One-line description, ideally as plain text (but reStructuredText is OK).'),
     longDescription=_(
-"""All entities should have a ShortDescription. Keep it as concise as possible,
-ideally just one sentence. *Do not* include newline characters in this string.
-Put detailed information about the entity in LongDescription."""))
+"""Keep the ShortDescription as concise as possible, ideally just one
+sentence. *Do not* include newline characters in the ShortDescription. Put
+detailed information in LongDescription (which can contain newlines)."""))
 
 AddPropertyMetadata(Metadata.LongDescription,
     typeMetadata=UnicodeStringTypeMetadata(canBeNone=True),
-    shortDescription=_('Detailed description of the entity, formatted as reStructuredText.'),
+    shortDescription=_('Detailed description, formatted as reStructuredText.'),
     longDescription=_(
-"""LongDescription is optional; if an entity is sufficiently simple, you need
-only write a ShortDescription."""))
+"""LongDescription is optional; if detailed information is not needed, you
+need only write a ShortDescription."""))
 
 AddPropertyMetadata(Metadata.Object,
     typeMetadata=ClassInstanceTypeMetadata(cls=object),
     shortDescription=_('Python object to which this metadata applies.'),
     longDescription=_(
-"""The type of this property depends on which ``Metadata`` class this property
-is a member of:
+"""The type the Python object depends on which type of metadata is involved:
 
-+---------------------+----------------------------------+
-| Class               | Type of the ``Object`` Property  |
-+=====================+==================================+
-| ``ModuleMetadata``  | instance of ``types.ModuleType`` |
-+---------------------+----------------------------------+
-| ``ClassMetdata``    | Python class                     |
-+---------------------+----------------------------------+
-| ``PropertyMetdata`` | instance of ``property``         |
-+---------------------+----------------------------------+
-| ``MethodMetadata``  | instance of ``types.MethodType`` |
-+---------------------+----------------------------------+
++---------------------------+----------------------------------+
+| Type of metadata          | Type of the ``Object`` property  |
++===========================+==================================+
+| :class:`ModuleMetadata`   | :py:class:`~types.ModuleType`    |
++---------------------------+----------------------------------+
+| :class:`ClassMetadata`    | :py:class:`type`                 |
++---------------------------+----------------------------------+
+| :class:`PropertyMetadata` | :py:class:`property`             |
++---------------------------+----------------------------------+
+| :class:`MethodMetadata`   | :py:data:`~types.MethodType`     |
++---------------------------+----------------------------------+
 """))
 
 AddPropertyMetadata(Metadata.DocString,
     typeMetadata=UnicodeStringTypeMetadata(),
-    shortDescription=_('Python "doc string" for the entity (the value used for the entity\'s __doc__ attribute).'),
-    longDescription=_('This property is assembled dynamically from entity\'s metadata.'))
+    shortDescription=_('Python docstring (the value used for the ``__doc__`` attribute).'),
+    longDescription=_('The docstring is constructed dynamically from metadata. It uses the format described in Google\'s Python Style Guide.'))
 
 # Public method: AppendXMLNodes
 
 AddMethodMetadata(Metadata.AppendXMLNodes,
-    shortDescription=_('Appends the metadata to the specified xml.dom.Node object as child nodes.'),
+    shortDescription=_('Appends the metadata to the specified :ref:`xml.dom.Node <python:dom-node-objects>` object as child nodes.'),
     longDescription=_(
-"""This function is called by the build script when it produces the file
-Metadata.xml, which contains all of the GeoEco metadata in a single XML file.
-This file is input to various other build operations."""))
+"""This function is called by the GeoEco build script when it produces the
+file Metadata.xml, which contains all of the GeoEco metadata in a single XML
+file. This file is input to various other build operations."""))
 
 AddArgumentMetadata(Metadata.AppendXMLNodes, 'self',
     typeMetadata=ClassInstanceTypeMetadata(cls=Metadata),
@@ -1383,21 +1507,20 @@ AddArgumentMetadata(Metadata.AppendXMLNodes, 'self',
 
 AddArgumentMetadata(Metadata.AppendXMLNodes, 'node',
     typeMetadata=ClassInstanceTypeMetadata(cls=xml.dom.Node),
-    description=_('XML element node to which metadata should be appended.'))
+    description=_(':ref:`xml.dom.Node <python:dom-node-objects>` to which metadata should be appended.'))
 
 AddArgumentMetadata(Metadata.AppendXMLNodes, 'document',
     typeMetadata=ClassInstanceTypeMetadata(cls=xml.dom.Node),
-    description=_('XML element node that represents the XML document. The function uses this node to create new objects.'))
+    description=_(':ref:`xml.dom.Node <python:dom-node-objects>` that represents the XML document. The function uses this node to create new objects.'))
 
 # Public method: AppendPropertyXMLNode
 
 AddMethodMetadata(Metadata.AppendPropertyXMLNode,
-    shortDescription=_('Appends the specified property to the specified xml.dom.Node object as a child element.'),
+    shortDescription=_('Appends the specified property to the specified :ref:`xml.dom.Node <python:dom-node-objects>` object as a child element.'),
     longDescription=_(
-"""This is a helper function intended to be called by derived class
-implementations of AppendXMLNodes. It is also called from classes that do not
-derive from GeoEco.Metadata.Metadata, which is why it has both a cls and an
-instance argument."""))
+"""This is a helper function mainly intended to be called by derived class
+implementations of :func:`AppendXMLNodes`. In certain circumstances, it is
+also called from classes that do not derive from :class:`Metadata`."""))
 
 AddArgumentMetadata(Metadata.AppendPropertyXMLNode, 'cls',
     typeMetadata=ClassOrClassInstanceTypeMetadata(cls=Metadata),
@@ -1405,29 +1528,28 @@ AddArgumentMetadata(Metadata.AppendPropertyXMLNode, 'cls',
 
 AddArgumentMetadata(Metadata.AppendPropertyXMLNode, 'instance',
     typeMetadata=ClassInstanceTypeMetadata(cls=object),
-    description=_('Instance of a class that has the property specified by propertyName.'))
+    description=_('Instance of a class that has the property specified by `propertyName`.'))
 
 AddArgumentMetadata(Metadata.AppendPropertyXMLNode, 'propertyName',
     typeMetadata=UnicodeStringTypeMetadata(),
-    description=_('Property to append to the specified XML node as a child element.'))
+    description=_('Name of the property to append to `node` as a child element.'))
 
 AddArgumentMetadata(Metadata.AppendPropertyXMLNode, 'node',
     typeMetadata=ClassInstanceTypeMetadata(cls=xml.dom.Node),
-    description=_('XML element node to which metadata should be appended.'))
+    description=_(':ref:`xml.dom.Node <python:dom-node-objects>` to which metadata should be appended.'))
 
 AddArgumentMetadata(Metadata.AppendPropertyXMLNode, 'document',
     typeMetadata=ClassInstanceTypeMetadata(cls=xml.dom.Node),
-    description=_('XML element node that represents the XML document.'))
+    description=_(':ref:`xml.dom.Node <python:dom-node-objects>` that represents the XML document.'))
 
 # Public method: AppendPropertyDocutilsXMLNodes
 
 AddMethodMetadata(Metadata.AppendPropertyDocutilsXMLNodes,
-    shortDescription=_('Appends the specified property to the specified xml.dom.Node object as a child element, first running it through the docutils processor to translate reStructuredText into docutils XML.'),
+    shortDescription=_('Appends the specified property to the specified :ref:`xml.dom.Node <python:dom-node-objects>` object as a child element, first running it through the docutils processor to translate reStructuredText into docutils XML.'),
     longDescription=_(
-"""This is a helper function intended to be called by derived class
-implementations of AppendXMLNodes. It is also called from classes that do not
-derive from GeoEco.Metadata.Metadata, which is why it has both a cls and an
-instance argument."""))
+"""This is a helper function mainly intended to be called by derived class
+implementations of :func:`AppendXMLNodes`. In certain circumstances, it is
+also called from classes that do not derive from :class:`Metadata`."""))
 
 AddArgumentMetadata(Metadata.AppendPropertyDocutilsXMLNodes, 'cls',
     typeMetadata=ClassOrClassInstanceTypeMetadata(cls=Metadata),
@@ -1435,19 +1557,50 @@ AddArgumentMetadata(Metadata.AppendPropertyDocutilsXMLNodes, 'cls',
 
 AddArgumentMetadata(Metadata.AppendPropertyDocutilsXMLNodes, 'instance',
     typeMetadata=ClassInstanceTypeMetadata(cls=object),
-    description=_('Instance of a class that has the property specified by propertyName.'))
+    description=_('Instance of a class that has the property specified by `propertyName`.'))
 
 AddArgumentMetadata(Metadata.AppendPropertyDocutilsXMLNodes, 'propertyName',
     typeMetadata=UnicodeStringTypeMetadata(),
-    description=_('Property to append to the specified XML node as a child element.'))
+    description=_('Name of the property to append to `node` as a child element.'))
 
 AddArgumentMetadata(Metadata.AppendPropertyDocutilsXMLNodes, 'node',
     typeMetadata=ClassInstanceTypeMetadata(cls=xml.dom.Node),
-    description=_('XML element node to which metadata should be appended.'))
+    description=_(':ref:`xml.dom.Node <python:dom-node-objects>` to which metadata should be appended.'))
 
 AddArgumentMetadata(Metadata.AppendPropertyDocutilsXMLNodes, 'document',
     typeMetadata=ClassInstanceTypeMetadata(cls=xml.dom.Node),
-    description=_('XML element node that represents the XML document.'))
+    description=_(':ref:`xml.dom.Node <python:dom-node-objects>` that represents the XML document.'))
+
+# Public method: WriteDocutilsXMLCache
+
+AddMethodMetadata(Metadata.WriteDocutilsXMLCache,
+    shortDescription=_('Writes :class:`Metadata`\'s internal cache of docutils XML to the specified file.'),
+    longDescription=_(
+"""This is a helper function used by the GeoEco build script. One of the tasks
+done by that script is to convert all of the reStructuredText documentation
+from :class:`Metadata` objects into `docutils
+<https://pypi.org/project/docutils/>`_ XML format. The docutils function for
+doing this can be slow, so to speed up the build process when repeatedly
+building GeoEco during development, we cache its output.
+
+Note:
+    After upgrading docutils, you should delete the cache file to force it to
+    be recreated, in case the docutils XML format was changed.
+"""))
+
+AddArgumentMetadata(Metadata.WriteDocutilsXMLCache, 'cacheFile',
+    typeMetadata=FileTypeMetadata(),
+    description=_('Path to the file to write. If it exists, it will be overwritten.'))
+
+# Public method: LoadDocutilsXMLCache
+
+AddMethodMetadata(Metadata.LoadDocutilsXMLCache,
+    shortDescription=_('Initializes :class:`Metadata`\'s internal cache of docutils XML from the specified file.'),
+    longDescription=Metadata.WriteDocutilsXMLCache.__doc__.Obj.LongDescription)
+
+AddArgumentMetadata(Metadata.LoadDocutilsXMLCache, 'cacheFile',
+    typeMetadata=FileTypeMetadata(mustExist=True),
+    description=_('Path to the file to read.'))
 
 # Private method: _GetObject
 
@@ -1508,7 +1661,7 @@ AddArgumentMetadata(ModuleMetadata.__init__, 'self',
 
 AddArgumentMetadata(ModuleMetadata.__init__, 'name',
     typeMetadata=UnicodeStringTypeMetadata(canBeNone=True),
-    description=_('Name of the module. If None, the name of the caller\'s module is used.'))
+    description=_('Fully qualified name of the module (a.k.a. dotted module name). If :py:data:`None`, the name of the caller\'s module is used.'))
 
 AddArgumentMetadata(ModuleMetadata.__init__, 'shortDescription',
     typeMetadata=UnicodeStringTypeMetadata(canBeNone=True),
@@ -1522,6 +1675,17 @@ AddResultMetadata(ModuleMetadata.__init__, 'metadata',
     typeMetadata=ClassInstanceTypeMetadata(cls=ModuleMetadata),
     description=_('New %s instance.') % ModuleMetadata.__name__)
 
+# Public properties
+
+AddPropertyMetadata(ModuleMetadata.IsExposedToPythonCallers,
+    typeMetadata=BooleanTypeMetadata(),
+    shortDescription=_('If True, the module is part of GeoEco\'s Public API.'),
+    longDescription=_(
+"""The value of this property is determined by whether there are any classes
+in the module that are part of the Public API. If not, this property will be
+False, and the module is considered part of GeoEco's Internal API and not
+recommended for use by external callers. """))
+
 ###############################################################################
 # Metadata: ClassMetadata class
 ###############################################################################
@@ -1532,7 +1696,7 @@ AddClassMetadata(ClassMetadata, shortDescription=_('Metadata that describes a Py
 
 AddPropertyMetadata(ClassMetadata.Module,
     typeMetadata=ClassInstanceTypeMetadata(cls=ModuleMetadata),
-    shortDescription=_('%s instance for the module that contains this class.') % ModuleMetadata.__name__)
+    shortDescription=_('%s for the module that contains this class.') % ModuleMetadata.__name__)
 
 # Constructor
 
@@ -1545,11 +1709,11 @@ AddArgumentMetadata(ClassMetadata.__init__, 'self',
 
 AddArgumentMetadata(ClassMetadata.__init__, 'name',
     typeMetadata=UnicodeStringTypeMetadata(),
-    description=_('Name of the class.'))
+    description=_('Unqualified name of the class (without module or package names).'))
 
 AddArgumentMetadata(ClassMetadata.__init__, 'moduleMetadata',
     typeMetadata=ClassInstanceTypeMetadata(cls=ModuleMetadata, canBeNone=True),
-    description=_('%s instance for the module that contains this class. If None, the caller\'s module is used.') % ModuleMetadata.__name__)
+    description=_(':class:`ModuleMetadata` for the module that contains this class. If None, the caller\'s module is used.'))
 
 AddArgumentMetadata(ClassMetadata.__init__, 'shortDescription',
     typeMetadata=UnicodeStringTypeMetadata(canBeNone=True),
@@ -1563,16 +1727,30 @@ AddResultMetadata(ClassMetadata.__init__, 'metadata',
     typeMetadata=ClassInstanceTypeMetadata(cls=ClassMetadata),
     description=_('New %s instance.') % ClassMetadata.__name__)
 
+# Public properties
+
+AddPropertyMetadata(ClassMetadata.IsExposedToPythonCallers,
+    typeMetadata=BooleanTypeMetadata(),
+    shortDescription=_('If True, the class is part of GeoEco\'s Public API.'),
+    longDescription=_(
+"""The value of this property is determined by whether there are any methods
+or properties of the class that are part of the Public API. If not, this
+property will be False, and the class is considered part of GeoEco's Internal
+API and not recommended for use by external callers. """))
+
 # Public method: ValidatePropertyAssignment
 
 AddMethodMetadata(ClassMetadata.ValidatePropertyAssignment,
-    shortDescription=_('Validates the value provided to a property\'s fset method using the property\'s metadata.'),
+    shortDescription=_('Validates a property\'s value using the property\'s :class:`PropertyMetadata`.'),
     longDescription=_(
-"""This method is intended to be called from the fset method of a property for
-which PropertyMetadata has been written. It calls the ValidateValue method of
-the TypeMetadata object specified in the PropertyMetadata. ValidateValue raises
-an exception if the specified value does not pass whatever checks are implemented
-for that TypeMetadata instance. For example::
+
+"""This method is intended to be called from the setter method of a property
+to which a :class:`PropertyMetadata` has been added. It calls the
+:func:`~GeoEco.Types.TypeMetadata.ValidateValue` method of the
+:class:`~GeoEco.Types.TypeMetadata` obtained from :attr:`PropertyMetadata.Type`
+for the property. :func:`~GeoEco.Types.TypeMetadata.ValidateValue` raises an
+exception if the specified value does not pass whatever checks are implemented
+by the :class:`~GeoEco.Types.TypeMetadata`. For example::
 
     from GeoEco.Internationalization import _
     import GeoEco.Metadata
@@ -1609,20 +1787,23 @@ AddArgumentMetadata(ClassMetadata.ValidatePropertyAssignment, 'self',
 # Public method: ValidateMethodInvocation
 
 AddMethodMetadata(ClassMetadata.ValidateMethodInvocation,
-    shortDescription=_('Validates the values provided for a method\'s arguments using the method\'s metadata.'),
+    shortDescription=_('Validates a classmethod\'s or instance method\'s arguments using the method\'s :class:`MethodMetadata`.'),
     longDescription=_(
-"""This method is intended to be called from the top of a class or instance
-method for which MethodMetadata has been written. Do not call it from static
-methods; call ValidateStaticMethodInvocation instead.
+"""This method is intended to be called from the top of a classmethod or
+instance method to which a :class:`MethodMetadata` has been added. Do not call
+it from static methods; at this time a validation function for static methods
+has not been implemented.
 
 Before performing any validation, this method initializes the calling method's
-dependencies, if any are specified in the method's metadata. If any dependency
-initializer raises an exception, it will bubble up and validation will fail.
-Assuming all dependencies succeed, this method then validates each of the
-calling method's arguments by calling ArgumentMetadata.Type.ValidateValue on the
-passed-in value. ValidateValue raises an exception if the specified value does
-not pass whatever checks are implemented for that TypeMetadata instance. For
-example::
+dependencies, if any are specified in the method's metadata. If any
+:class:`~GeoEco.Dependencies.Dependency` initializer raises an exception, it 
+will bubble up and validation will fail. Assuming all dependencies succeed,
+this method then validates each of the calling method's arguments by calling
+the :func:`~GeoEco.Types.TypeMetadata.ValidateValue` method of the
+:class:`~GeoEco.Types.TypeMetadata` obtained from :attr:`ArgumentMetadata.Type`
+for the argument. :func:`~GeoEco.Types.TypeMetadata.ValidateValue` raises an
+exception if the specified value does not pass whatever checks are implemented
+by the :class:`~GeoEco.Types.TypeMetadata`. For example::
 
     from GeoEco.Internationalization import _
     import GeoEco.Metadata
@@ -1656,11 +1837,12 @@ example::
     y = MyClass.IncrementInteger('a')   # 'a' is not an int; ValidateMethodInvocation will raise TypeError
 
 After each argument is validated, this method examines the argument's metadata
-to determine if the argument has any dependencies. If it does, this method then
-checks the metadata to see if the argument value requires the dependencies to
-be initialized, and if so, initializes them. (By default, if the argument is
-something other than None, the dependencies will be initialized. This behavior
-may be overridden for by subclasses of TypeMetadata.)"""))
+to determine if the argument has any dependencies. If it does, this method
+then checks the metadata to see if the argument value requires the
+dependencies to be initialized, and if so, initializes them. (By default, if
+the argument is something other than :py:data:`None`, the dependencies will be
+initialized. This behavior may be overridden for by subclasses of
+:class:`~GeoEco.Types.TypeMetadata`.)"""))
 
 AddArgumentMetadata(ClassMetadata.ValidateMethodInvocation, 'self',
     typeMetadata=ClassInstanceTypeMetadata(cls=ClassMetadata),
@@ -1672,11 +1854,220 @@ AddArgumentMetadata(ClassMetadata.ValidateMethodInvocation, 'self',
 
 AddClassMetadata(PropertyMetadata, shortDescription=_('Metadata that describes a property of a Python class.'))
 
+# Constructor
+
+AddMethodMetadata(PropertyMetadata.__init__,
+    shortDescription=_('Constructs a new %s instance.') % PropertyMetadata.__name__)
+
+AddArgumentMetadata(PropertyMetadata.__init__, 'self',
+    typeMetadata=ClassInstanceTypeMetadata(cls=PropertyMetadata),
+    description=_('%s instance.') % PropertyMetadata.__name__)
+
+AddArgumentMetadata(PropertyMetadata.__init__, 'name',
+    typeMetadata=UnicodeStringTypeMetadata(),
+    description=_('Name of the property.'))
+
+AddArgumentMetadata(PropertyMetadata.__init__, 'classMetadata',
+    typeMetadata=ClassInstanceTypeMetadata(cls=ClassMetadata),
+    description=_('The :class:`ClassMetadata` for the class that contains the property.'))
+
+AddArgumentMetadata(PropertyMetadata.__init__, 'typeMetadata',
+    typeMetadata=ClassInstanceTypeMetadata(cls=TypeMetadata),
+    description=_('A :class:`~GeoEco.Types.TypeMetadata` that describes the data type and allowed values of the property.'))
+
+AddArgumentMetadata(PropertyMetadata.__init__, 'shortDescription',
+    typeMetadata=UnicodeStringTypeMetadata(canBeNone=True),
+    description=Metadata.__init__.__doc__.Obj.Arguments[2].Description)
+
+AddArgumentMetadata(PropertyMetadata.__init__, 'longDescription',
+    typeMetadata=UnicodeStringTypeMetadata(canBeNone=True),
+    description=Metadata.__init__.__doc__.Obj.Arguments[3].Description)
+
+AddArgumentMetadata(PropertyMetadata.__init__, 'isExposedToPythonCallers',
+    typeMetadata=BooleanTypeMetadata(),
+    description=_('If True, the property should be part of GeoEco\'s Public API.'))
+
+AddResultMetadata(PropertyMetadata.__init__, 'metadata',
+    typeMetadata=ClassInstanceTypeMetadata(cls=PropertyMetadata),
+    description=_('New %s instance.') % PropertyMetadata.__name__)
+
+# Public properties
+
+AddPropertyMetadata(PropertyMetadata.Class,
+    typeMetadata=ClassInstanceTypeMetadata(cls=ClassMetadata),
+    shortDescription=_('%s for the class that contains this property.') % ClassMetadata.__name__)
+
+AddPropertyMetadata(PropertyMetadata.IsExposedToPythonCallers,
+    typeMetadata=BooleanTypeMetadata(),
+    shortDescription=_('If True, this property is part of GeoEco\'s Public API.'),
+    longDescription=_(
+"""If False, the default, this property is considered part of GeoEco's Internal
+API and not recommended for use by external callers. """))
+
+AddPropertyMetadata(PropertyMetadata.IsReadOnly,
+    typeMetadata=BooleanTypeMetadata(),
+    shortDescription=_('If True, this property is read only (you can get it but not set it).'))
+
+AddPropertyMetadata(PropertyMetadata.Type,
+    typeMetadata=ClassInstanceTypeMetadata(cls=TypeMetadata),
+    shortDescription=_('A :class:`~GeoEco.Types.TypeMetadata` that describes the data type and allowed values of this property.'))
+
 ###############################################################################
 # Metadata: MethodMetadata class
 ###############################################################################
 
 AddClassMetadata(MethodMetadata, shortDescription=_('Metadata that describes a method of a Python class.'))
+
+# Constructor
+
+AddMethodMetadata(MethodMetadata.__init__,
+    shortDescription=_('Constructs a new %s instance.') % MethodMetadata.__name__)
+
+AddArgumentMetadata(MethodMetadata.__init__, 'self',
+    typeMetadata=ClassInstanceTypeMetadata(cls=MethodMetadata),
+    description=_('%s instance.') % MethodMetadata.__name__)
+
+AddArgumentMetadata(MethodMetadata.__init__, 'name',
+    typeMetadata=UnicodeStringTypeMetadata(),
+    description=_('Name of the method.'))
+
+AddArgumentMetadata(MethodMetadata.__init__, 'classMetadata',
+    typeMetadata=ClassInstanceTypeMetadata(cls=ClassMetadata),
+    description=_('The :class:`ClassMetadata` for the class that contains the method.'))
+
+AddArgumentMetadata(MethodMetadata.__init__, 'shortDescription',
+    typeMetadata=UnicodeStringTypeMetadata(canBeNone=True),
+    description=Metadata.__init__.__doc__.Obj.Arguments[2].Description)
+
+AddArgumentMetadata(MethodMetadata.__init__, 'longDescription',
+    typeMetadata=UnicodeStringTypeMetadata(canBeNone=True),
+    description=Metadata.__init__.__doc__.Obj.Arguments[3].Description)
+
+AddArgumentMetadata(MethodMetadata.__init__, 'isExposedToPythonCallers',
+    typeMetadata=BooleanTypeMetadata(),
+    description=_('If True, the method should be part of GeoEco\'s Public API.'))
+
+AddArgumentMetadata(MethodMetadata.__init__, 'isExposedAsArcGISTool',
+    typeMetadata=BooleanTypeMetadata(),
+    description=_('If True, the method should be exposed as a geoprocessing tool in MGET\'s ArcGIS toolbox.'))
+
+AddArgumentMetadata(MethodMetadata.__init__, 'arcGISDisplayName',
+    typeMetadata=UnicodeStringTypeMetadata(canBeNone=True),
+    description=_('Name of the tool, as displayed in MGET\'s ArcGIS toolbox. Ignored if `isExposedAsArcGISTool` is False.'))
+
+AddArgumentMetadata(MethodMetadata.__init__, 'arcGISToolCategory',
+    typeMetadata=UnicodeStringTypeMetadata(canBeNone=True),
+    description=_('Toolset that the tool appears under in MGET\'s ArcGIS toolbox. If not provided, the tool will appear at the root level. Ignored if `isExposedAsArcGISTool` is False.'))
+
+AddArgumentMetadata(MethodMetadata.__init__, 'dependencies',
+    typeMetadata=ListTypeMetadata(elementType=AnyObjectTypeMetadata()),     # We'd like to use elementType=ClassInstanceTypeMetadata(cls=Dependency), but that would require importing Dependency here, which would create a circular import. So we use AnyObjectTypeMetadata instead.
+    description=_(':py:class:`list` of :class:`~GeoEco.Dependencies.Dependency` objects defining software dependencies that should be checked prior to executing this method.'))
+
+AddResultMetadata(MethodMetadata.__init__, 'metadata',
+    typeMetadata=ClassInstanceTypeMetadata(cls=MethodMetadata),
+    description=_('New %s instance.') % MethodMetadata.__name__)
+
+# Public properties
+
+AddPropertyMetadata(MethodMetadata.Class,
+    typeMetadata=ClassInstanceTypeMetadata(cls=ClassMetadata),
+    shortDescription=_('%s for the class that contains this method.') % ClassMetadata.__name__)
+
+AddPropertyMetadata(MethodMetadata.IsExposedToPythonCallers,
+    typeMetadata=BooleanTypeMetadata(),
+    shortDescription=_('If True, this method is part of GeoEco\'s Public API.'),
+    longDescription=_(
+"""If False, the default, this method is considered part of GeoEco's Internal
+API and not recommended for use by external callers. """))
+
+AddPropertyMetadata(MethodMetadata.IsExposedAsArcGISTool,
+    typeMetadata=BooleanTypeMetadata(),
+    shortDescription=_('If True, this method is exposed as a geoprocessing tool in MGET\'s ArcGIS toolbox.'))
+
+AddPropertyMetadata(MethodMetadata.ArcGISDisplayName,
+    typeMetadata=UnicodeStringTypeMetadata(canBeNone=True),
+    shortDescription=_('Name of the tool, as displayed in MGET\'s ArcGIS toolbox. Ignored if :attr:`IsExposedAsArcGISTool` is False.'))
+
+AddPropertyMetadata(MethodMetadata.ArcGISToolCategory,
+    typeMetadata=UnicodeStringTypeMetadata(canBeNone=True),
+    shortDescription=_('Toolset that the tool appears under in MGET\'s ArcGIS toolbox. If :py:data:`None`, the tool appears at the root level. Ignored if :attr:`IsExposedAsArcGISTool` is False.'))
+
+AddPropertyMetadata(MethodMetadata.IsClassMethod,
+    typeMetadata=BooleanTypeMetadata(),
+    shortDescription=_('True if this method is a :py:func:`classmethod`.'))
+
+AddPropertyMetadata(MethodMetadata.IsInstanceMethod,
+    typeMetadata=BooleanTypeMetadata(),
+    shortDescription=_('True if this method is an instance method (not a :py:func:`classmethod` or :py:func:`staticmethod`).'))
+
+AddPropertyMetadata(MethodMetadata.IsStaticMethod,
+    typeMetadata=BooleanTypeMetadata(),
+    shortDescription=_('True if this method is a :py:func:`staticmethod`.'))
+
+AddPropertyMetadata(MethodMetadata.Arguments,
+    typeMetadata=ListTypeMetadata(elementType=ClassInstanceTypeMetadata(cls=ArgumentMetadata)),
+    shortDescription=_(':py:class:`list` of :class:`ArgumentMetadata` objects describing each of this method\'s arguments.'),
+    longDescription=_(
+"""We recommend using :func:`AddArgumentMetadata` to add them, rather than
+modifying the :attr:`Arguments` property directly."""))
+
+AddPropertyMetadata(MethodMetadata.Dependencies,
+    typeMetadata=ListTypeMetadata(elementType=AnyObjectTypeMetadata()),     # We'd like to use elementType=ClassInstanceTypeMetadata(cls=Dependency), but that would require importing Dependency here, which would create a circular import. So we use AnyObjectTypeMetadata instead.
+    shortDescription=_(':py:class:`list` of :class:`~GeoEco.Dependencies.Dependency` objects defining software dependencies that are checked prior to executing this method.'),
+    longDescription=_(
+"""The dependencies are checked by
+:func:`ClassMetadata.ValidateMethodInvocation`, which is traditionally placed at
+the top of the method's implementation. See
+:func:`ClassMetadata.ValidateMethodInvocation` for an example."""))
+
+AddPropertyMetadata(MethodMetadata.Results,
+    typeMetadata=ListTypeMetadata(elementType=ClassInstanceTypeMetadata(cls=ResultMetadata)),
+    shortDescription=_(':py:class:`list` of :class:`ResultMetadata` objects describing each of this method\'s return values.'),
+    longDescription=_(
+"""We recommend using :func:`AddResultMetadata` to add them, rather than
+modifying the :attr:`Results` property directly. If the method does not return
+a value, leave :attr:`Results` an empty list."""))
+
+# Public method: GetArgumentByName
+
+AddMethodMetadata(MethodMetadata.GetArgumentByName,
+    shortDescription=_('Returns the :class:`ArgumentMetadata` for an argument given its name.'),
+    longDescription=_(
+"""Returns :py:data:`None` if the method doesn't have an argument with the
+requested name, or if an :class:`ArgumentMetadata` has not been added to this
+:class:`MethodMetadata` yet."""))
+
+AddArgumentMetadata(MethodMetadata.GetArgumentByName, 'self',
+    typeMetadata=ClassInstanceTypeMetadata(cls=MethodMetadata),
+    description=_('%s instance.') % MethodMetadata.__name__)
+
+AddArgumentMetadata(MethodMetadata.GetArgumentByName, 'name',
+    typeMetadata=UnicodeStringTypeMetadata(),
+    description=_('Name of the argument.'))
+
+AddResultMetadata(MethodMetadata.GetArgumentByName, 'arg',
+    typeMetadata=ClassInstanceTypeMetadata(cls=ArgumentMetadata, canBeNone=True),
+    description=_('The %s instance for the argument.') % ArgumentMetadata.__name__)
+
+# Public method: GetResultByName
+
+AddMethodMetadata(MethodMetadata.GetResultByName,
+    shortDescription=_('Returns the :class:`ResultMetadata` for a return value given its name.'),
+    longDescription=_(
+"""Returns :py:data:`None` a :class:`ResultMetadata` with the given name has
+not been added to this :class:`MethodMetadata` yet."""))
+
+AddArgumentMetadata(MethodMetadata.GetResultByName, 'self',
+    typeMetadata=ClassInstanceTypeMetadata(cls=MethodMetadata),
+    description=_('%s instance.') % MethodMetadata.__name__)
+
+AddArgumentMetadata(MethodMetadata.GetResultByName, 'name',
+    typeMetadata=UnicodeStringTypeMetadata(),
+    description=_('Name of the return value.'))
+
+AddResultMetadata(MethodMetadata.GetResultByName, 'arg',
+    typeMetadata=ClassInstanceTypeMetadata(cls=ResultMetadata, canBeNone=True),
+    description=_('The %s instance for the return value.') % ResultMetadata.__name__)
 
 ###############################################################################
 # Metadata: ArgumentMetadata class
@@ -1684,12 +2075,231 @@ AddClassMetadata(MethodMetadata, shortDescription=_('Metadata that describes a m
 
 AddClassMetadata(ArgumentMetadata, shortDescription=_('Metadata that describes a parameter of a method of a Python class.'))
 
+# Constructor
+
+AddMethodMetadata(ArgumentMetadata.__init__,
+    shortDescription=_('Constructs a new %s instance.') % ArgumentMetadata.__name__)
+
+AddArgumentMetadata(ArgumentMetadata.__init__, 'self',
+    typeMetadata=ClassInstanceTypeMetadata(cls=ArgumentMetadata),
+    description=_('%s instance.') % ArgumentMetadata.__name__)
+
+AddArgumentMetadata(ArgumentMetadata.__init__, 'name',
+    typeMetadata=UnicodeStringTypeMetadata(),
+    description=_('Name of the parameter, as it appears in the method\'s signature.'))
+
+AddArgumentMetadata(ArgumentMetadata.__init__, 'methodMetadata',
+    typeMetadata=ClassInstanceTypeMetadata(cls=MethodMetadata),
+    description=_('The :class:`MethodMetadata` for the method.'))
+
+AddArgumentMetadata(ArgumentMetadata.__init__, 'typeMetadata',
+    typeMetadata=ClassInstanceTypeMetadata(cls=TypeMetadata),
+    description=_('A :class:`~GeoEco.Types.TypeMetadata` that describes the data type and allowed values of this parameter.'))
+
+AddArgumentMetadata(ArgumentMetadata.__init__, 'description',
+    typeMetadata=UnicodeStringTypeMetadata(canBeNone=True),
+    description=_('The parameter\'s description, ideally one line of plain text (but reStructuredText is OK). Put long details in :attr:`MethodMetadata.LongDescription`.'))
+
+AddArgumentMetadata(ArgumentMetadata.__init__, 'direction',
+    typeMetadata=UnicodeStringTypeMetadata(allowedValues=['Input', 'Output']),
+    description=_('Direction of the parameter, when the method is exposed as an ArcGIS geoprocessing tool (ignored otherwise).'))
+
+AddArgumentMetadata(ArgumentMetadata.__init__, 'initializeToArcGISGeoprocessorVariable',
+    typeMetadata=UnicodeStringTypeMetadata(canBeNone=True),
+    description=_('The parameter value should be obtained from this geoprocessor variable, rather than from the user as a tool parameter, when the method is exposed as an ArcGIS geoprocessing tool (ignored otherwise).'))
+
+AddArgumentMetadata(ArgumentMetadata.__init__, 'arcGISDisplayName',
+    typeMetadata=UnicodeStringTypeMetadata(canBeNone=True),
+    description=_('Name of the parameter as it should appear in ArcGIS, when the method is exposed as an ArcGIS geoprocessing tool (ignored otherwise).'))
+
+AddArgumentMetadata(ArgumentMetadata.__init__, 'arcGISCategory',
+    typeMetadata=UnicodeStringTypeMetadata(canBeNone=True),
+    description=_('Category of the parameter as it should appear in ArcGIS, when the method is exposed as an ArcGIS geoprocessing tool (ignored otherwise).'))
+
+AddArgumentMetadata(ArgumentMetadata.__init__, 'arcGISParameterDependencies',
+    typeMetadata=ListTypeMetadata(elementType=UnicodeStringTypeMetadata(), canBeNone=True),
+    description=_(':py:class:`list` of names of parameters that this parameter is dependent on (see ArcGIS documentation), when the method is exposed as an ArcGIS geoprocessing tool (ignored otherwise).'))
+
+AddArgumentMetadata(ArgumentMetadata.__init__, 'dependencies',
+    typeMetadata=ListTypeMetadata(elementType=AnyObjectTypeMetadata()),     # We'd like to use elementType=ClassInstanceTypeMetadata(cls=Dependency), but that would require importing Dependency here, which would create a circular import. So we use AnyObjectTypeMetadata instead.
+    description=_(':py:class:`list` of :class:`~GeoEco.Dependencies.Dependency` objects defining software dependencies that should be checked when the value provided for this parameter is not :py:data:`None` when the method is called (ignored otherwise).'))
+
+AddResultMetadata(ArgumentMetadata.__init__, 'metadata',
+    typeMetadata=ClassInstanceTypeMetadata(cls=ArgumentMetadata),
+    description=_('New %s instance.') % ArgumentMetadata.__name__)
+
+# Public properties
+
+AddPropertyMetadata(ArgumentMetadata.Name,
+    typeMetadata=ArgumentMetadata.__init__.__doc__.Obj.Arguments[1].Type,
+    shortDescription=ArgumentMetadata.__init__.__doc__.Obj.Arguments[1]._Description)
+
+AddPropertyMetadata(ArgumentMetadata.Method,
+    typeMetadata=ClassInstanceTypeMetadata(cls=MethodMetadata),
+    shortDescription=_('%s for the class that contains this method.') % MethodMetadata.__name__)
+
+AddPropertyMetadata(ArgumentMetadata.Type,
+    typeMetadata=ArgumentMetadata.__init__.__doc__.Obj.Arguments[3].Type,
+    shortDescription=ArgumentMetadata.__init__.__doc__.Obj.Arguments[3]._Description)
+
+AddPropertyMetadata(ArgumentMetadata.Description,
+    typeMetadata=ArgumentMetadata.__init__.__doc__.Obj.Arguments[4].Type,
+    shortDescription=ArgumentMetadata.__init__.__doc__.Obj.Arguments[4]._Description)
+
+AddPropertyMetadata(ArgumentMetadata.Direction,
+    typeMetadata=ArgumentMetadata.__init__.__doc__.Obj.Arguments[5].Type,
+    shortDescription=ArgumentMetadata.__init__.__doc__.Obj.Arguments[5]._Description)
+
+AddPropertyMetadata(ArgumentMetadata.InitializeToArcGISGeoprocessorVariable,
+    typeMetadata=ArgumentMetadata.__init__.__doc__.Obj.Arguments[6].Type,
+    shortDescription=ArgumentMetadata.__init__.__doc__.Obj.Arguments[6]._Description)
+
+AddPropertyMetadata(ArgumentMetadata.ArcGISDisplayName,
+    typeMetadata=ArgumentMetadata.__init__.__doc__.Obj.Arguments[7].Type,
+    shortDescription=ArgumentMetadata.__init__.__doc__.Obj.Arguments[7]._Description)
+
+AddPropertyMetadata(ArgumentMetadata.ArcGISCategory,
+    typeMetadata=ArgumentMetadata.__init__.__doc__.Obj.Arguments[8].Type,
+    shortDescription=ArgumentMetadata.__init__.__doc__.Obj.Arguments[8]._Description)
+
+AddPropertyMetadata(ArgumentMetadata.ArcGISParameterDependencies,
+    typeMetadata=ArgumentMetadata.__init__.__doc__.Obj.Arguments[9].Type,
+    shortDescription=ArgumentMetadata.__init__.__doc__.Obj.Arguments[9]._Description)
+
+AddPropertyMetadata(ArgumentMetadata.Dependencies,
+    typeMetadata=ArgumentMetadata.__init__.__doc__.Obj.Arguments[10].Type,
+    shortDescription=ArgumentMetadata.__init__.__doc__.Obj.Arguments[10]._Description)
+
+AddPropertyMetadata(ArgumentMetadata.IsFormalParameter,
+    typeMetadata=BooleanTypeMetadata(),
+    shortDescription=_('True if the parameter is the default kind of parameter in Python, known in Python as a :py:term:`positional-or-keyword <parameter>` parameter.'))
+
+AddPropertyMetadata(ArgumentMetadata.IsArbitraryArgumentList,
+    typeMetadata=BooleanTypeMetadata(),
+    shortDescription=_('True if the parameter an arbitrary sequence of positional arguments, traditionally written ``*args`` in the method signature and known in Python as the :py:term:`var-positional <parameter>` parameter.'))
+
+AddPropertyMetadata(ArgumentMetadata.IsKeywordArgumentDictionary,
+    typeMetadata=BooleanTypeMetadata(),
+    shortDescription=_('True if the parameter a dictionary of arbitrarily many keyword arguments, traditionally written ``**kwargs`` in the method signature and known in Python as the :py:term:`var-keyword <parameter>` parameter.'))
+
+AddPropertyMetadata(ArgumentMetadata.HasDefault,
+    typeMetadata=BooleanTypeMetadata(),
+    shortDescription=_('True if the parameter has a default value defined in the method signature. If so, the parameter is optional.'))
+
+AddPropertyMetadata(ArgumentMetadata.Default,
+    typeMetadata=AnyObjectTypeMetadata(canBeNone=True),
+    shortDescription=_('The default value of the parameter as defined in the method signature, if :attr:`HasDefault` is True. :py:data:`None` otherwise.'))
+
+# Public method: AppendXMLNodes
+
+AddMethodMetadata(ArgumentMetadata.AppendXMLNodes,
+    shortDescription=_('Appends the metadata to the specified :ref:`xml.dom.Node <python:dom-node-objects>` object as child nodes.'),
+    longDescription=_(
+"""This function is called by the GeoEco build script when it produces the
+file Metadata.xml, which contains all of the GeoEco metadata in a single XML
+file. This file is input to various other build operations."""))
+
+AddArgumentMetadata(ArgumentMetadata.AppendXMLNodes, 'self',
+    typeMetadata=ClassInstanceTypeMetadata(cls=ArgumentMetadata),
+    description=_('%s instance.') % ArgumentMetadata.__name__)
+
+AddArgumentMetadata(ArgumentMetadata.AppendXMLNodes, 'node',
+    typeMetadata=ClassInstanceTypeMetadata(cls=xml.dom.Node),
+    description=_(':ref:`xml.dom.Node <python:dom-node-objects>` to which metadata should be appended.'))
+
+AddArgumentMetadata(ArgumentMetadata.AppendXMLNodes, 'document',
+    typeMetadata=ClassInstanceTypeMetadata(cls=xml.dom.Node),
+    description=_(':ref:`xml.dom.Node <python:dom-node-objects>` that represents the XML document. The function uses this node to create new objects.'))
+
 ###############################################################################
 # Metadata: ResultMetadata class
 ###############################################################################
 
 AddClassMetadata(ResultMetadata, shortDescription=_('Metadata that describes the value returned by a method of a Python class.'))
 
+# Constructor
+
+AddMethodMetadata(ResultMetadata.__init__,
+    shortDescription=_('Constructs a new %s instance.') % ResultMetadata.__name__)
+
+AddArgumentMetadata(ResultMetadata.__init__, 'self',
+    typeMetadata=ClassInstanceTypeMetadata(cls=ResultMetadata),
+    description=_('%s instance.') % ResultMetadata.__name__)
+
+AddArgumentMetadata(ResultMetadata.__init__, 'name',
+    typeMetadata=UnicodeStringTypeMetadata(),
+    description=_('Name of the return value. Although Python does not give names to return values, they are needed when a method is exposed as an ArcGIS goeprocessing tool, and can be useful in other contexts.'))
+
+AddArgumentMetadata(ResultMetadata.__init__, 'methodMetadata',
+    typeMetadata=ClassInstanceTypeMetadata(cls=MethodMetadata),
+    description=_('The :class:`MethodMetadata` for the method.'))
+
+AddArgumentMetadata(ResultMetadata.__init__, 'typeMetadata',
+    typeMetadata=ClassInstanceTypeMetadata(cls=TypeMetadata),
+    description=_('A :class:`~GeoEco.Types.TypeMetadata` that describes the data type and allowed values of this return value.'))
+
+AddArgumentMetadata(ResultMetadata.__init__, 'description',
+    typeMetadata=UnicodeStringTypeMetadata(canBeNone=True),
+    description=_('Return value description, ideally one line of plain text (but reStructuredText is OK). Put long details in :attr:`MethodMetadata.LongDescription`.'))
+
+AddArgumentMetadata(ResultMetadata.__init__, 'arcGISDisplayName',
+    typeMetadata=UnicodeStringTypeMetadata(canBeNone=True),
+    description=_('Name of the return value as it should appear in ArcGIS, when the method is exposed as an ArcGIS geoprocessing tool (ignored otherwise).'))
+
+AddArgumentMetadata(ResultMetadata.__init__, 'arcGISParameterDependencies',
+    typeMetadata=ListTypeMetadata(elementType=UnicodeStringTypeMetadata(), canBeNone=True),
+    description=_(':py:class:`list` of names of parameters that this return value is dependent on (see ArcGIS documentation), when the method is exposed as an ArcGIS geoprocessing tool (ignored otherwise).'))
+
+AddResultMetadata(ResultMetadata.__init__, 'metadata',
+    typeMetadata=ClassInstanceTypeMetadata(cls=ResultMetadata),
+    description=_('New %s instance.') % ResultMetadata.__name__)
+
+# Public properties
+
+AddPropertyMetadata(ResultMetadata.Name,
+    typeMetadata=ResultMetadata.__init__.__doc__.Obj.Arguments[1].Type,
+    shortDescription=ResultMetadata.__init__.__doc__.Obj.Arguments[1]._Description)
+
+AddPropertyMetadata(ResultMetadata.Method,
+    typeMetadata=ClassInstanceTypeMetadata(cls=MethodMetadata),
+    shortDescription=_('%s for the class that contains this method.') % MethodMetadata.__name__)
+
+AddPropertyMetadata(ResultMetadata.Type,
+    typeMetadata=ResultMetadata.__init__.__doc__.Obj.Arguments[3].Type,
+    shortDescription=ResultMetadata.__init__.__doc__.Obj.Arguments[3]._Description)
+
+AddPropertyMetadata(ResultMetadata.Description,
+    typeMetadata=ResultMetadata.__init__.__doc__.Obj.Arguments[4].Type,
+    shortDescription=ResultMetadata.__init__.__doc__.Obj.Arguments[4]._Description)
+
+AddPropertyMetadata(ResultMetadata.ArcGISDisplayName,
+    typeMetadata=ResultMetadata.__init__.__doc__.Obj.Arguments[5].Type,
+    shortDescription=ResultMetadata.__init__.__doc__.Obj.Arguments[5]._Description)
+
+AddPropertyMetadata(ResultMetadata.ArcGISParameterDependencies,
+    typeMetadata=ResultMetadata.__init__.__doc__.Obj.Arguments[6].Type,
+    shortDescription=ResultMetadata.__init__.__doc__.Obj.Arguments[6]._Description)
+
+# Public method: AppendXMLNodes
+
+AddMethodMetadata(ResultMetadata.AppendXMLNodes,
+    shortDescription=_('Appends the metadata to the specified :ref:`xml.dom.Node <python:dom-node-objects>` object as child nodes.'),
+    longDescription=_(
+"""This function is called by the GeoEco build script when it produces the
+file Metadata.xml, which contains all of the GeoEco metadata in a single XML
+file. This file is input to various other build operations."""))
+
+AddArgumentMetadata(ResultMetadata.AppendXMLNodes, 'self',
+    typeMetadata=ClassInstanceTypeMetadata(cls=ResultMetadata),
+    description=_('%s instance.') % ResultMetadata.__name__)
+
+AddArgumentMetadata(ResultMetadata.AppendXMLNodes, 'node',
+    typeMetadata=ClassInstanceTypeMetadata(cls=xml.dom.Node),
+    description=_(':ref:`xml.dom.Node <python:dom-node-objects>` to which metadata should be appended.'))
+
+AddArgumentMetadata(ResultMetadata.AppendXMLNodes, 'document',
+    typeMetadata=ClassInstanceTypeMetadata(cls=xml.dom.Node),
+    description=_(':ref:`xml.dom.Node <python:dom-node-objects>` that represents the XML document. The function uses this node to create new objects.'))
 
 ###############################################################################
 # Names exported by this module

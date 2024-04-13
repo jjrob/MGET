@@ -27,6 +27,10 @@ from ._Sequence import ListTypeMetadata
 from ._Sequence import TupleTypeMetadata
 from ._Sequence import DictionaryTypeMetadata
 from ._Sequence import ListTableTypeMetadata
+from ._StoredObject import StoredObjectTypeMetadata
+from ._StoredObject import FileTypeMetadata
+from ._StoredObject import TextFileTypeMetadata
+from ._StoredObject import DirectoryTypeMetadata
 
 
 ###############################################################################
@@ -45,6 +49,7 @@ AddModuleMetadata(shortDescription=_('Classes used to describe and validate prop
 
 from ._BaseMetadata import *
 from ._SequenceMetadata import *
+from ._StoredObjectMetadata import *
 
 
 ###############################################################################
@@ -67,10 +72,10 @@ __all__ = ['TypeMetadata',
            'TupleTypeMetadata',
            'DictionaryTypeMetadata',
            'ListTableTypeMetadata',
-           # 'StoredObjectTypeMetadata',
-           # 'FileTypeMetadata',
-           # 'TextFileTypeMetadata',
-           # 'DirectoryTypeMetadata',
+           'StoredObjectTypeMetadata',
+           'FileTypeMetadata',
+           'TextFileTypeMetadata',
+           'DirectoryTypeMetadata',
            # 'ArcGISGeoDatasetTypeMetadata',
            # 'ArcGISRasterTypeMetadata',
            # 'ArcGISRasterLayerTypeMetadata',

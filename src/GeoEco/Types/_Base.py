@@ -1,4 +1,4 @@
-# Base.py - Provides classes derived from GeoEco.Metadata.TypeMetadata that
+# _Base.py - Provides classes derived from GeoEco.Metadata.TypeMetadata that
 # represent basic Python types such as integers, floats, and strings.
 #
 # Copyright (C) 2024 Jason J. Roberts
@@ -119,7 +119,7 @@ class TypeMetadata(object):
 
     def GetConstraintDescriptionStrings(self):
         if self.AllowedValues is not None and len(self.AllowedValues) > 0:
-            return ['Allowed values: ' + ', '.join(map(repr, self.AllowedValues))]
+            return ['Allowed values: ' + ', '.join(['``' + repr(av) + '``' for av in self.AllowedValues])]
         return []
 
     def AppendXMLNodes(self, node, document):
@@ -929,6 +929,8 @@ class UnicodeStringTypeMetadata(TypeMetadata):
                 constraints.append('Maximum length: ' + repr(self.MaxLength))
             if self.MustMatchRegEx is not None:
                 constraints.append('Must match exp: ' + repr(self.MustMatchRegEx))
+        elif not self.MakeLowercase and not self.MakeUppercase:
+            constraints.append('Case sensitive')
         return constraints
 
 
