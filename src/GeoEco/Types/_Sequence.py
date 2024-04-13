@@ -18,9 +18,6 @@ from ..Internationalization import _
 from ._Base import _RaiseException, TypeMetadata
 
 
-# Python sequence types
-
-
 class SequenceTypeMetadata(TypeMetadata):
     __doc__ = DynamicDocString()
 
@@ -711,8 +708,4 @@ class ListTableTypeMetadata(TypeMetadata):
 # instead.
 ###############################################################################
 
-__all__ = ['SequenceTypeMetadata',
-           'ListTypeMetadata',
-           'TupleTypeMetadata',
-           'DictionaryTypeMetadata',
-           'ListTableTypeMetadata']
+__all__ = []

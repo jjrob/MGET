@@ -53,4 +53,5 @@ autosummary_ignore_module_all = False   # Turn this off so that if a module defi
 
 intersphinx_mapping = {
     'python': ('https://docs.python.org/3', None),
+    'numpy': ('https://numpy.org/doc/stable/', None),
 }

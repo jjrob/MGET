@@ -31,7 +31,16 @@ def _RaiseException(e):
 class TypeMetadata(object):
     __doc__ = DynamicDocString()
 
-    def __init__(self, pythonType, canBeNone=False, allowedValues=None, arcGISType=None, arcGISAssembly=None, canBeArcGISInputParameter=False, canBeArcGISOutputParameter=False, sphinxMarkup=None):
+    def __init__(self, 
+                 pythonType, 
+                 canBeNone=False, 
+                 allowedValues=None, 
+                 arcGISType=None, 
+                 arcGISAssembly=None, 
+                 canBeArcGISInputParameter=False, 
+                 canBeArcGISOutputParameter=False, 
+                 sphinxMarkup=None):
+
         assert isinstance(pythonType, type), 'pythonType must be a type.'
         assert isinstance(canBeNone, bool), 'canBeNone must be a boolean.'
         assert isinstance(allowedValues, (type(None), list, tuple)), 'allowedValues must be a list or tuple of values, or None.'
@@ -241,7 +250,11 @@ class NoneTypeMetadata(TypeMetadata):
 class ClassTypeMetadata(TypeMetadata):
     __doc__ = DynamicDocString()
 
-    def __init__(self, cls, canBeNone=False, sphinxMarkup=None):
+    def __init__(self, 
+                 cls, 
+                 canBeNone=False, 
+                 sphinxMarkup=None):
+
         assert inspect.isclass(cls), 'cls must be a class'
         assert isinstance(sphinxMarkup, (str, type(None))), 'sphinxMarkup must be a str or None'
         if sphinxMarkup is None:
@@ -271,7 +284,11 @@ class ClassTypeMetadata(TypeMetadata):
 class ClassInstanceTypeMetadata(TypeMetadata):
     __doc__ = DynamicDocString()
 
-    def __init__(self, cls, canBeNone=False, sphinxMarkup=None):
+    def __init__(self, 
+                 cls, 
+                 canBeNone=False, 
+                 sphinxMarkup=None):
+
         assert inspect.isclass(cls), 'cls must be a class'
         assert isinstance(sphinxMarkup, (str, type(None))), 'sphinxMarkup must be a str or None'
         if sphinxMarkup is None:
@@ -284,7 +301,11 @@ class ClassInstanceTypeMetadata(TypeMetadata):
 class ClassOrClassInstanceTypeMetadata(TypeMetadata):
     __doc__ = DynamicDocString()
 
-    def __init__(self, cls, canBeNone=False, sphinxMarkup=None):
+    def __init__(self, 
+                 cls, 
+                 canBeNone=False, 
+                 sphinxMarkup=None):
+
         assert inspect.isclass(cls), 'cls must be a class'
         assert isinstance(sphinxMarkup, (str, type(None))), 'sphinxMarkup must be a str or None'
         if sphinxMarkup is None:
@@ -941,14 +962,4 @@ class UnicodeStringTypeMetadata(TypeMetadata):
 # instead.
 ###############################################################################
 
-__all__ = ['TypeMetadata',
-           'AnyObjectTypeMetadata',
-           'NoneTypeMetadata',
-           'ClassTypeMetadata',
-           'ClassInstanceTypeMetadata',
-           'ClassOrClassInstanceTypeMetadata',
-           'BooleanTypeMetadata',
-           'DateTimeTypeMetadata',
-           'FloatTypeMetadata',
-           'IntegerTypeMetadata',
-           'UnicodeStringTypeMetadata']
+__all__ = []

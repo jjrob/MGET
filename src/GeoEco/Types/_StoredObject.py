@@ -19,9 +19,6 @@ from ..Internationalization import _
 from ._Base import _RaiseException, UnicodeStringTypeMetadata
 
 
-# Types that represents stored objects (files, directories, DB tables, etc.)
-
-
 class StoredObjectTypeMetadata(UnicodeStringTypeMetadata):
     __doc__ = DynamicDocString()
     
@@ -383,6 +380,7 @@ class FileTypeMetadata(StoredObjectTypeMetadata):
                                                arcGISAssembly=arcGISAssembly,
                                                canBeArcGISInputParameter=canBeArcGISInputParameter,
                                                canBeArcGISOutputParameter=canBeArcGISOutputParameter)
+
         self._MayBeCompressed = mayBeCompressed
         self._DecompressedFileToUse = decompressedFileToUse
 
@@ -530,7 +528,4 @@ class DirectoryTypeMetadata(StoredObjectTypeMetadata):
 # instead.
 ###############################################################################
 
-__all__ = ['StoredObjectTypeMetadata',
-           'FileTypeMetadata',
-           'TextFileTypeMetadata',
-           'DirectoryTypeMetadata']
+__all__ = []

@@ -31,6 +31,26 @@ from ._StoredObject import StoredObjectTypeMetadata
 from ._StoredObject import FileTypeMetadata
 from ._StoredObject import TextFileTypeMetadata
 from ._StoredObject import DirectoryTypeMetadata
+from ._ArcGIS import ArcGISGeoDatasetTypeMetadata
+from ._ArcGIS import ArcGISRasterTypeMetadata
+from ._ArcGIS import ArcGISRasterLayerTypeMetadata
+from ._ArcGIS import ArcGISFeatureClassTypeMetadata
+from ._ArcGIS import ArcGISRasterCatalogTypeMetadata
+from ._ArcGIS import ArcGISFeatureLayerTypeMetadata
+from ._ArcGIS import ShapefileTypeMetadata
+from ._ArcGIS import ArcGISWorkspaceTypeMetadata
+from ._ArcGIS import ArcGISTableTypeMetadata
+from ._ArcGIS import ArcGISTableViewTypeMetadata
+from ._ArcGIS import ArcGISFieldTypeMetadata
+from ._ArcGIS import CoordinateSystemTypeMetadata
+from ._ArcGIS import EnvelopeTypeMetadata
+from ._ArcGIS import LinearUnitTypeMetadata
+from ._ArcGIS import MapAlgebraExpressionTypeMetadata
+from ._ArcGIS import PointTypeMetadata
+from ._ArcGIS import SpatialReferenceTypeMetadata
+from ._ArcGIS import SQLWhereClauseTypeMetadata
+from ._NumPy import NumPyArrayTypeMetadata
+from ._Datasets import TableFieldTypeMetadata
 
 
 ###############################################################################
@@ -76,24 +96,24 @@ __all__ = ['TypeMetadata',
            'FileTypeMetadata',
            'TextFileTypeMetadata',
            'DirectoryTypeMetadata',
-           # 'ArcGISGeoDatasetTypeMetadata',
-           # 'ArcGISRasterTypeMetadata',
-           # 'ArcGISRasterLayerTypeMetadata',
-           # 'ArcGISFeatureClassTypeMetadata',
-           # 'ArcGISRasterCatalogTypeMetadata',
-           # 'ArcGISFeatureLayerTypeMetadata',
-           # 'ShapefileTypeMetadata',
-           # 'ArcGISWorkspaceTypeMetadata',
-           # 'ArcGISTableTypeMetadata',
-           # 'ArcGISTableViewTypeMetadata',
-           # 'ArcGISFieldTypeMetadata',
-           # 'CoordinateSystemTypeMetadata',
-           # 'EnvelopeTypeMetadata',
-           # 'LinearUnitTypeMetadata',
-           # 'MapAlgebraExpressionTypeMetadata',
-           # 'PointTypeMetadata',
-           # 'SpatialReferenceTypeMetadata',
-           # 'SQLWhereClauseTypeMetadata',
-           # 'NumPyArrayTypeMetadata',
-           # 'TableFieldTypeMetadata'
-           ]
+           'ArcGISGeoDatasetTypeMetadata',
+           'ArcGISRasterTypeMetadata',
+           'ArcGISRasterLayerTypeMetadata',
+           'ArcGISFeatureClassTypeMetadata',
+           'ArcGISRasterCatalogTypeMetadata',
+           'ArcGISFeatureLayerTypeMetadata',
+           'ShapefileTypeMetadata',
+           'ArcGISWorkspaceTypeMetadata',
+           'ArcGISTableTypeMetadata',
+           'ArcGISTableViewTypeMetadata',
+           'ArcGISFieldTypeMetadata',
+           'CoordinateSystemTypeMetadata',
+           'EnvelopeTypeMetadata',
+           'LinearUnitTypeMetadata',
+           'MapAlgebraExpressionTypeMetadata',
+           'PointTypeMetadata',
+           'SpatialReferenceTypeMetadata',
+           'SQLWhereClauseTypeMetadata',
+           'NumPyArrayTypeMetadata',
+           'TableFieldTypeMetadata',
+          ]
