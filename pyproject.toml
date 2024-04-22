@@ -31,3 +31,6 @@ Homepage = "https://github.com/jjrob/MGET"
 
 [tool.setuptools_scm]
 version_file = "src/GeoEco/_version.py"
+
+[tool.setuptools.package-data]
+"GeoEco.Configuration" = ["Logging.ini"]

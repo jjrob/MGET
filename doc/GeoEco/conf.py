@@ -36,6 +36,7 @@ exclude_patterns = [
 ]
 
 root_doc = 'Index'
+show_warning_types = True
 
 # Options for HTML output
 
@@ -43,7 +44,7 @@ html_theme = 'sphinx_rtd_theme'
 html_static_path = ['static']
 html_style = os.path.join('css', 'custom.css')
 
-# autodoc, autosummary, and insersphinx configuration
+# autodoc, autosummary, and intersphinx configuration
 
 autoclass_content = 'both'                              # For autoclass directives, concatenate and insert both the class's and the __init__ method's docstrings.
 autodoc_default_options = {'show-inheritance': True}    # Display parent classes
@@ -55,3 +56,18 @@ intersphinx_mapping = {
     'python': ('https://docs.python.org/3', None),
     'numpy': ('https://numpy.org/doc/stable/', None),
 }
+
+# Define a custom 'arcpy' role for linking to the ArcGIS arcpy functions.
+
+import docutils
+import sphinx.util.nodes
+
+def arcpy_link_role(name, rawtext, text, lineno, inliner, options={}, content=[]):
+    has_explicit, title, target = sphinx.util.nodes.split_explicit_title(text)
+    ref = 'https://pro.arcgis.com/en/pro-app/latest/arcpy/functions/%s.htm' % target.lower()
+    link_node = docutils.nodes.reference(refuri=ref, **options)
+    link_node += docutils.nodes.literal(text=docutils.utils.unescape(title) + '()', classes=['xref', 'py', 'py-func'])
+    return [link_node], []
+
+def setup(app):
+    app.add_role('arcpy', arcpy_link_role)

@@ -1,0 +1,6 @@
+Python 2 to 3 issues to check for:
+==================================
+
+time.clock() is replaced by time.perf_counter()
+Integer division can now return a float
+file() was removed; use open() instead

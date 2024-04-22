@@ -61,7 +61,7 @@ static struct PyModuleDef _MetadataUtilsModule = {
 };
 
 
-PyMODINIT_FUNC PyInit_MetadataUtils(void)
+PyMODINIT_FUNC PyInit__MetadataUtils(void)
 {
     return PyModule_Create(&_MetadataUtilsModule);
 }

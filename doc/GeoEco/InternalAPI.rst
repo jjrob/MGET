@@ -20,3 +20,15 @@ metadata objects.
 
 	GeoEco.Metadata
    	GeoEco.Types
+
+Utilities 
+---------
+
+These utility modules are used across GeoEco's codebase.
+
+.. autosummary::
+	:toctree: _autodoc/GeoEco
+	:template: autosummary/module.rst
+	:recursive:
+
+   	GeoEco.Logging

@@ -26,6 +26,7 @@ class Metadata(object):
     def __init__(self, name, shortDescription=None, longDescription=None):
         assert isinstance(name, str), 'The Name property must be a string.'
         self._Name = name.strip()
+        self._ShortDescription = None
         self.ShortDescription = shortDescription
         self.LongDescription = longDescription
 
@@ -51,10 +52,7 @@ class Metadata(object):
     
     def _SetLongDescription(self, value):
         assert isinstance(value, (type(None), str)), 'The LongDescription property must be a string, or None.'
-        if value is not None:
-            self._LongDescription = value.strip()
-        else:
-            self._LongDescription = value
+        self._LongDescription = value   # Do not strip LongDescription; it might contain a code block
         
     LongDescription = property(_GetLongDescription, _SetLongDescription, doc=DynamicDocString())
 
@@ -499,8 +497,10 @@ class PropertyMetadata(Metadata):
 
         constraints = self.Type.GetConstraintDescriptionStrings()
         if len(constraints) > 0:
-            for c in constraints:
-                doc += ' ' + c.replace(':','\uA789')   # Replace ASCII colons with Unicode 0xA789. Unfortunately Sphinx or its extensions interpret colons as markup and it messes up the documentation.
+            for c in [c for i, c in enumerate(constraints) if c not in constraints[:i]]:    # Remove duplicates but preserve order
+                if not doc.endswith('\n'):
+                    doc += ' '
+                doc += c.replace(':','\uA789')   # Replace ASCII colons with Unicode 0xA789. Unfortunately Sphinx or its extensions interpret colons as markup and it messes up the documentation.
                 if not doc.endswith('.'):
                     doc += '.'
 
@@ -690,7 +690,7 @@ class MethodMetadata(Metadata):
             args = 'Args:\n'
             for i in range(1 - int(self.IsStaticMethod), len(self.Arguments)):
                 typeStr = '%s, optional' % self.Arguments[i].Type.SphinxMarkup if self.Arguments[i].HasDefault else self.Arguments[i].Type.SphinxMarkup
-                descr = self.Arguments[i].Description.strip().replace('\n','        \n') if self.Arguments[i].Description is not None else 'No description available.'
+                descr = self.Arguments[i].Description.replace('\n','\n        ').replace('\n        \n','\n\n') if self.Arguments[i].Description is not None else 'No description available.'
                 args += '    %s (%s): %s\n' % (self.Arguments[i].Name, typeStr, descr)
 
         results = None
@@ -700,11 +700,11 @@ class MethodMetadata(Metadata):
 
             results = 'Returns:\n'
             for i in range(len(self.Results)):
-                descr = self.Results[i].Description.strip().replace('\n','    \n') if self.Results[i].Description is not None else 'No description available.'
+                descr = self.Results[i].Description.replace('\n','\n    ').replace('\n    \n','\n\n') if self.Results[i].Description is not None else 'No description available.'
                 results += '    %s: %s\n' % (self.Results[i].Type.SphinxMarkup, descr)
 
         doc = '\n\n'.join(filter(None, [self.ShortDescription.strip() if self.ShortDescription is not None and self.Name != '__init__' else None,   # Omit ShortDescription for __init__, because it always says something uninformative, like "Construct a new XYZ instance"
-                                        self.LongDescription.strip() if self.LongDescription is not None else None,
+                                        self.LongDescription,    # Do not strip() LongDescription; it might end in a code block, which will get messed up when we append deps
                                         deps,
                                         args,
                                         results]))
@@ -795,19 +795,20 @@ class ArgumentMetadata(object):
         constraints = self.Type.GetConstraintDescriptionStrings()
         if len(constraints) > 0:
             for c in constraints:
-                doc += ' ' + c.replace(':','\uA789')   # Replace ASCII colons with Unicode 0xA789. Unfortunately Sphinx or its extensions interpret colons as markup and it messes up the documentation.
-                if not doc.endswith('.'):
-                    doc += '.'
+                c = c.replace(':','\uA789')   # Replace ASCII colons with Unicode 0xA789. Unfortunately Sphinx or its extensions interpret colons as markup and it messes up the documentation.
+                if c not in doc:
+                    if not doc.endswith('\n'):
+                        doc += ' '
+                    doc += c
+                    if not doc.endswith('.'):
+                        doc += '.'
 
         return doc
     
     def _SetDescription(self, value):
         assert isinstance(value, (type(None), str)), 'Description must be a string, or None.'
-        if value is not None:
-            self._Description = value.strip()
-        else:
-            self._Description = value
-        
+        self._Description = value   # Do not strip Description; it might contain a code block
+
     Description = property(_GetDescription, _SetDescription, doc=DynamicDocString())
 
     def _GetDirection(self):
@@ -993,10 +994,7 @@ class ResultMetadata(object):
     
     def _SetDescription(self, value):
         assert isinstance(value, (type(None), str)), 'Description must be a string, or None.'
-        if value is not None:
-            self._Description = value.strip()
-        else:
-            self._Description = value
+        self._Description = value   # Do not strip Description; it might contain a code block
         
     Description = property(_GetDescription, _SetDescription, doc=DynamicDocString())
 
@@ -1356,7 +1354,7 @@ def CopyArgumentMetadata(fromMethod, fromArgumentName, toMethod, toArgumentName,
     toMethod.__doc__.Obj.Arguments.append(ArgumentMetadata(str(toArgumentName),
                                                            toMethod.__doc__.Obj,
                                                            typeMetadata=copy.deepcopy(fromArgument.Type),
-                                                           description=fromArgument.Description,
+                                                           description=fromArgument._Description,
                                                            direction=fromArgument.Direction,
                                                            initializeToArcGISGeoprocessorVariable=fromArgument.InitializeToArcGISGeoprocessorVariable,
                                                            arcGISDisplayName=fromArgument.ArcGISDisplayName,
@@ -1403,7 +1401,7 @@ def CopyResultMetadata(fromMethod, fromResultName, toMethod, toResultName, fromC
     toMethod.__doc__.Obj.Results.append(ResultMetadata(str(toResultName),
                                                        toMethod.__doc__.Obj,
                                                        typeMetadata=copy.deepcopy(fromResult.Type),
-                                                       description=fromResult.Description,
+                                                       description=fromResult._Description,
                                                        arcGISDisplayName=fromResult.ArcGISDisplayName,
                                                        arcGISParameterDependencies=copy.deepcopy(fromResult.ArcGISParameterDependencies)))
 
