@@ -14,12 +14,13 @@ documentation in several formats, we tag many GeoEco modules and classes with
 metadata objects.
 
 .. autosummary::
-	:toctree: _autodoc/GeoEco
-	:template: autosummary/module.rst
-	:recursive:
+    :toctree: _autodoc/GeoEco
+    :template: autosummary/module.rst
+    :recursive:
 
-	GeoEco.Metadata
-   	GeoEco.Types
+    GeoEco.Dependencies
+    GeoEco.Metadata
+    GeoEco.Types
 
 Utilities 
 ---------
@@ -27,8 +28,9 @@ Utilities
 These utility modules are used across GeoEco's codebase.
 
 .. autosummary::
-	:toctree: _autodoc/GeoEco
-	:template: autosummary/module.rst
-	:recursive:
+    :toctree: _autodoc/GeoEco
+    :template: autosummary/module.rst
+    :recursive:
 
-   	GeoEco.Logging
+    GeoEco.Exceptions
+    GeoEco.Logging

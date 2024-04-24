@@ -683,7 +683,11 @@ class MethodMetadata(Metadata):
         return getattr(self.Class.Object, self.Name)
 
     def _GetDocString(self):
-        deps = None     # TODO: Dependencies
+        deps = [item for d in self.Dependencies for item in d.GetConstraintDescriptionStrings()]
+        if len(deps) > 0:
+            deps = 'Requires: ' + ', '.join([d for d in deps]) + '.'
+        else:
+            deps = None
 
         args = None
         if len(self.Arguments) > 1 or len(self.Arguments) == 1 and self.IsStaticMethod:
@@ -802,6 +806,10 @@ class ArgumentMetadata(object):
                     doc += c
                     if not doc.endswith('.'):
                         doc += '.'
+
+        deps = [item for d in self.Dependencies for item in d.GetConstraintDescriptionStrings()]
+        if len(deps) > 0:
+            doc += ' Requires: ' + ', '.join([d for d in deps]) + '.'
 
         return doc
     

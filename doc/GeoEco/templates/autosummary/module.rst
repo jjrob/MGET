@@ -46,6 +46,7 @@
 
    .. autosummary::
       :toctree: {{ name }}
+      :nosignatures:
    {% for item in exceptions %}
       {{ item }}
    {%- endfor %}

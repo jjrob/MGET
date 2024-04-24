@@ -828,7 +828,7 @@ except:
 from GeoEco.Metadata import *
 from GeoEco.Types import *
 
-AddModuleMetadata(shortDescription=_('Implements classes that the GeoEco library uses to report activity to the user.'))
+AddModuleMetadata(shortDescription=_('Classes and functions that the GeoEco library uses to report activity to the user.'))
 
 ###############################################################################
 # Metadata: Logger class
