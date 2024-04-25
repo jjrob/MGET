@@ -64,7 +64,7 @@ On success, the sdist (source distribution) and wheels will appear in the
 
 Typically, Windows users of MGET will also be ArcGIS Pro users, in which case
 they will want to use conda to install MGET from
-(conda-forge)[https://conda-forge.org/] into their ArcGIS-provided copy of
+[conda-forge](https://conda-forge.org/) into their ArcGIS-provided copy of
 Anaconda Python. For those users, you need to build MGET with conda rather thn
 setuptools.
 
@@ -77,14 +77,6 @@ will install using pip or a similar utility.
 ### Prerequisites
 
 Before proceeding, you should make sure you have the following installed:
-
-* A Git client that can access GitHub. [GitHub
-  Desktop](https://desktop.github.com/) is probably the easiest solution if
-  you don't mind working from a GUI. If you prefer the command line, we
-  recommend [Git for windows](https://git-scm.com/download/win) but it may be
-  more challenging to set up to access GitHub. You will likely need to install
-  [PuTTY](https://putty.org/) and configure it to access GitHub over SSH using
-  a public/private key pair.
 
 * [Git for Windows](https://git-scm.com/download/win). This is necessary
   because the build process needs to use git command line tools. [GitHub
@@ -205,6 +197,7 @@ Build:
 ```
 (.venv) C:\Users\Jason\Documents\dev\MGET>python -m build
 ...
+```
 
 ## Build warnings and errors you can safely ignore
 
@@ -341,6 +334,9 @@ build the HTML with Sphinx:
 ...
 ```
 
+Assuming no errors occur, the root page of the documentation will be
+`_build/html/Index.html`.
+
 ## Building the documentation on Windows 
 
 Continue with the virtual environment you [created
@@ -363,6 +359,7 @@ build the HTML with Sphinx:
 (.venv) C:\Users\Jason\Documents\dev\MGET\doc\GeoEco>rmdir /s/q _autodoc _build    # Optional: clean existing build of documentation
 (.venv) C:\Users\Jason\Documents\dev\MGET\doc\GeoEco>make html
 ...
+```
 
 Assuming no errors occur, the root page of the documentation will be
 `_build\html\Index.html`.
