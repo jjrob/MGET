@@ -9,3 +9,5 @@ MGET issues to check for:
 =========================
 
 Remove AggregatedModules
+Remove ArcGISProductDependency and use ArcGISDependency instead
+Remove GetResultCacheKey
