@@ -267,7 +267,7 @@ class Logger(object):
         if loggingConfigFile is None or callersFileWarning is not None:
             if sys.platform.lower() == 'win32':
                 if 'APPDATA' in os.environ:
-                    userDefaultFile = os.path.join(os.environ['APPDATA'][0], 'GeoEco', 'Logging.ini')
+                    userDefaultFile = os.path.join(os.environ['APPDATA'], 'GeoEco', 'Logging.ini')
             else:
                 userDefaultFile = os.path.join(os.getenv('XDG_CONFIG_HOME', os.path.expanduser('~/.config')), 'GeoEco', 'Logging.ini')
 
