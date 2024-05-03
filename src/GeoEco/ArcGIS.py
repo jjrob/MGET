@@ -68,7 +68,7 @@ class GeoprocessorManager(object):
         if geoprocessor is not None:
             try:
                 globals()['_Geoprocessor'] = geoprocessor
-                globals()['_WrappedGeoprocessor'] = _ArcGISObjectWrapper(geoprocessor, 'Geoprocessor')
+                globals()['_WrappedGeoprocessor'] = _ArcGISObjectWrapper(geoprocessor)
             except:
                 globals()['_WrappedGeoprocessor'] = None
                 globals()['_Geoprocessor'] = None
@@ -414,7 +414,7 @@ class ArcGISDependency(Dependency):
             if len(self.LicenseLevels) == 1:
                 s += ', with a license level of ' + self.LicenseLevels[0]
             else:
-                s += ', with a license level of %s or %s' (', '.join(self.LicenseLevels[0:-1]), self.LicenseLevels[-1])
+                s += ', with a license level of %s or %s' % (', '.join(self.LicenseLevels[0:-1]), self.LicenseLevels[-1])
         return [s]
 
 
@@ -484,8 +484,8 @@ def ValidateMethodMetadataForExposureAsArcGISTool(moduleName, className, methodN
         # Validate the metadata for the method's arguments.
 
         (args, varargs, varkw, defaults) = inspect.getargspec(getattr(cls, methodName))
-        assert varargs is None, '%s.%s cannot include a varargs argument because this method is designated for exposure as an ArcGIS tool (ArcGIS tools do not support varargs arguments). Please remove the *%s argument.' (className, methodName, varargs)
-        assert varkw is None, '%s.%s cannot include a varkw argument because this method is designated for exposure as an ArcGIS tool (ArcGIS tools do not support varkw arguments). Please remove the **%s argument.' (className, methodName, varkw)
+        assert varargs is None, '%s.%s cannot include a varargs argument because this method is designated for exposure as an ArcGIS tool (ArcGIS tools do not support varargs arguments). Please remove the *%s argument.' % (className, methodName, varargs)
+        assert varkw is None, '%s.%s cannot include a varkw argument because this method is designated for exposure as an ArcGIS tool (ArcGIS tools do not support varkw arguments). Please remove the **%s argument.' % (className, methodName, varkw)
         assert len(methodMetadata.Arguments) == len(args), '%s.%s.__doc__.Obj.Arguments must contain exactly one element for each argument to %s.%s. %s.%s.__doc__.Obj.Arguments contains %i elements, but %i elements were expected.' % (className, methodName, className, methodName, className, methodName, len(methodMetadata.Arguments), len(args))
         for i in range(1, len(args)):   # Skip the self or cls argument
             assert methodMetadata.Arguments[i].Name == args[i], '%s.%s.__doc__.Obj.Arguments[%i].Name must match the name of argument %i of %s.%s (where 0 is the first argument).' % (className, methodName, i, i, className, methodName)
@@ -516,7 +516,7 @@ def ValidateMethodMetadataForExposureAsArcGISTool(moduleName, className, methodN
 class _ArcGISObjectWrapper(object):
 
     def __init__(self, obj):
-        _ArcGISObjectWrapper._LogDebug('Wrapping %s', str(obj))     # Do not remove str() from here. For some reason, the message does not get logged without it.
+        _ArcGISObjectWrapper._LogDebug('Wrapping object %s', repr(obj))     # Do not remove repr() from here. For some reason, the message does not get logged without it.
         self._Object = obj
         self._WrappedMethods = {}
 
@@ -652,8 +652,24 @@ class _ArcGISObjectWrapper(object):
 
         self._LogDebug('Set %s.%s to %r', self._Object, name, value)
 
+    def __call__(self, *args, **kwargs):
+
+        # The caller has invoked the _ArcGISObjectWrapper instance as if it
+        # were a function. Check if the wrapped object is callable. If so,
+        # call it. The most common scenario of this type is when the wrapped
+        # object is a class, in which case calling it will construct an
+        # instance of it.
+
+        if callable(self._Object):
+            return self._CallWrappedFunction(self._Object, str(self._Object), args, kwargs)
+
+        # Otherwise, just try to call it anyway, allowing Python to raise an
+        # appropriate TypeError.
+
+        return self._Object(*args, **kwargs)
+
     def _BindInstanceMethod(self, func, name):
-        _ArcGISObjectWrapper._LogDebug('Wrapping %s', func)
+        _ArcGISObjectWrapper._LogDebug('Wrapping %r', func)
 
         # Define a wrapper for func that performs logging and conversion.
 
@@ -678,7 +694,7 @@ class _ArcGISObjectWrapper(object):
         object.__setattr__(self, name, boundMethod)     # Use object.__setattr__() so that our own override of __setattr__() is not called
 
     def _BindFunctionAsInstanceMethod(self, func, name):
-        _ArcGISObjectWrapper._LogDebug('Wrapping %s from %s', func, self._Object)
+        _ArcGISObjectWrapper._LogDebug('Wrapping %r from %r', func, self._Object)
 
         # Define a wrapper for func that performs logging and conversion.
 
@@ -882,7 +898,7 @@ class _ArcGISObjectWrapper(object):
                 geoprocessor = GeoprocessorManager.GetGeoprocessor()
                 if geoprocessor is not None:
                     try:
-                        while i < geoprocessor.MessageCount:
+                        while i < geoprocessor.GetMessageCount():
                             sev = geoprocessor.GetSeverity(i)
                             if sev == 0:
                                 self._LogInfo(geoprocessor.GetMessage(i))
