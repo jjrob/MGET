@@ -1451,7 +1451,7 @@ AddArgumentMetadata(Metadata.__init__, 'longDescription',
 
 AddResultMetadata(Metadata.__init__, 'metadata',
     typeMetadata=ClassInstanceTypeMetadata(cls=Metadata),
-    description=_('New %s instance.') % Metadata.__name__)
+    description=_('New :class:`%s` instance.') % Metadata.__name__)
 
 # Public properties
 
@@ -1679,7 +1679,7 @@ AddArgumentMetadata(ModuleMetadata.__init__, 'longDescription',
 
 AddResultMetadata(ModuleMetadata.__init__, 'metadata',
     typeMetadata=ClassInstanceTypeMetadata(cls=ModuleMetadata),
-    description=_('New %s instance.') % ModuleMetadata.__name__)
+    description=_('New :class:`%s` instance.') % ModuleMetadata.__name__)
 
 # Public properties
 
@@ -1731,7 +1731,7 @@ AddArgumentMetadata(ClassMetadata.__init__, 'longDescription',
 
 AddResultMetadata(ClassMetadata.__init__, 'metadata',
     typeMetadata=ClassInstanceTypeMetadata(cls=ClassMetadata),
-    description=_('New %s instance.') % ClassMetadata.__name__)
+    description=_('New :class:`%s` instance.') % ClassMetadata.__name__)
 
 # Public properties
 
@@ -1895,7 +1895,7 @@ AddArgumentMetadata(PropertyMetadata.__init__, 'isExposedToPythonCallers',
 
 AddResultMetadata(PropertyMetadata.__init__, 'metadata',
     typeMetadata=ClassInstanceTypeMetadata(cls=PropertyMetadata),
-    description=_('New %s instance.') % PropertyMetadata.__name__)
+    description=_('New :class:`%s` instance.') % PropertyMetadata.__name__)
 
 # Public properties
 
@@ -1971,7 +1971,7 @@ AddArgumentMetadata(MethodMetadata.__init__, 'dependencies',
 
 AddResultMetadata(MethodMetadata.__init__, 'metadata',
     typeMetadata=ClassInstanceTypeMetadata(cls=MethodMetadata),
-    description=_('New %s instance.') % MethodMetadata.__name__)
+    description=_('New :class:`%s` instance.') % MethodMetadata.__name__)
 
 # Public properties
 
@@ -2132,7 +2132,7 @@ AddArgumentMetadata(ArgumentMetadata.__init__, 'dependencies',
 
 AddResultMetadata(ArgumentMetadata.__init__, 'metadata',
     typeMetadata=ClassInstanceTypeMetadata(cls=ArgumentMetadata),
-    description=_('New %s instance.') % ArgumentMetadata.__name__)
+    description=_('New :class:`%s` instance.') % ArgumentMetadata.__name__)
 
 # Public properties
 
@@ -2258,7 +2258,7 @@ AddArgumentMetadata(ResultMetadata.__init__, 'arcGISParameterDependencies',
 
 AddResultMetadata(ResultMetadata.__init__, 'metadata',
     typeMetadata=ClassInstanceTypeMetadata(cls=ResultMetadata),
-    description=_('New %s instance.') % ResultMetadata.__name__)
+    description=_('New :class:`%s` instance.') % ResultMetadata.__name__)
 
 # Public properties
 

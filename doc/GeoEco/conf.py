@@ -4,6 +4,7 @@
 # https://www.sphinx-doc.org/en/master/usage/configuration.html
 
 import os
+import types
 
 # Hardcoded project information
 
@@ -57,17 +58,24 @@ intersphinx_mapping = {
     'numpy': ('https://numpy.org/doc/stable/', None),
 }
 
-# Define a custom 'arcpy' role for linking to the ArcGIS arcpy functions.
+# Define custom roles for linking to ArcGIS arcpy documentation.
 
 import docutils
 import sphinx.util.nodes
 
-def arcpy_link_role(name, rawtext, text, lineno, inliner, options={}, content=[]):
-    has_explicit, title, target = sphinx.util.nodes.split_explicit_title(text)
-    ref = 'https://pro.arcgis.com/en/pro-app/latest/arcpy/functions/%s.htm' % target.lower()
-    link_node = docutils.nodes.reference(refuri=ref, **options)
-    link_node += docutils.nodes.literal(text=docutils.utils.unescape(title) + '()', classes=['xref', 'py', 'py-func'])
-    return [link_node], []
+arcpy_url_formatters = {
+    'arcpy': 'https://pro.arcgis.com/en/pro-app/latest/arcpy/functions/%s.htm',
+    'arcpy_management': 'https://pro.arcgis.com/en/pro-app/latest/tool-reference/data-management/%s.htm',
+}
 
 def setup(app):
-    app.add_role('arcpy', arcpy_link_role)
+    for role_name, url_formatter in arcpy_url_formatters.items():
+        def arcpy_link_role(name, rawtext, text, lineno, inliner, options={}, content=[], formatter=url_formatter):
+            has_explicit, title, target = sphinx.util.nodes.split_explicit_title(text)
+            ref = formatter % target.lower()
+            link_node = docutils.nodes.reference(refuri=ref, **options)
+            link_node += docutils.nodes.literal(text=docutils.utils.unescape(title.replace('-','')) + '()', classes=['xref', 'py', 'py-func'])
+            return [link_node], []
+
+        role_for_url = types.FunctionType(arcpy_link_role.__code__, arcpy_link_role.__globals__, name=role_name + '_link_role', argdefs=({}, [], url_formatter))
+        app.add_role(role_name, role_for_url)

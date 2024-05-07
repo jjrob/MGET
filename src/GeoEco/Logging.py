@@ -845,15 +845,15 @@ This class logs all messages to the ``GeoEco`` logging channel. Parts of the
 GeoEco library log to other channels. To see what these are, consult the file
 ``GeoEco/Configuration/Logging.ini``.
 
-All methods of this class are defined as :py:func:`classmethod`. There is
-no benefit in instantiating the :class:`Logger` class. Instead, just call the
-methods through the class itself:
+Note:
+    Do not instantiate this class. It is a collection of classmethods intended
+    to be invoked on the class rather than an instance of it, like this:
 
-.. code-block:: python
+    .. code-block:: python
 
-    from GeoEco.Logging import Logger
+        from GeoEco.Logging import Logger
 
-    Logger.Info('Hello, world!')
+        Logger.Info('Hello, world!')
 """))
 
 # Public method: Debug
@@ -1493,7 +1493,7 @@ AddArgumentMetadata(ProgressReporter.__init__, 'arcGISProgressorLabel',
 
 AddResultMetadata(ProgressReporter.__init__, 'progressReporter',
     typeMetadata=ClassInstanceTypeMetadata(cls=ProgressReporter),
-    description=_('New %s instance.') % ProgressReporter.__name__)
+    description=_('New :class:`%s` instance.') % ProgressReporter.__name__)
 
 # Public method: Start
 

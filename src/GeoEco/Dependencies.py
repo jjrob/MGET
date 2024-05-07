@@ -437,19 +437,19 @@ AddClassMetadata(WindowsDependency,
 
 AddPropertyMetadata(WindowsDependency.MinimumMajorVersion,
     typeMetadata=IntegerTypeMetadata(minValue=5),
-    shortDescription=_('Windows major version number (the first number reported by the ``ver`` command executed from the Windows Command Prompt).'))
+    shortDescription=_('Minimum major version number (the first number reported by the ``ver`` command executed from the Windows Command Prompt) of Microsoft Windows that must be installed.'))
 
 AddPropertyMetadata(WindowsDependency.MinimumMinorVersion,
     typeMetadata=IntegerTypeMetadata(canBeNone=True, minValue=0),
-    shortDescription=_('Windows minor version number (the second number reported by the ``ver`` command executed from the Windows Command Prompt) or :py:data:`None` to indicate the minor version number should not be checked.'))
+    shortDescription=_('Minimum minor version number (the second number reported by the ``ver`` command executed from the Windows Command Prompt) of Microsoft Windows that must be installed, or :py:data:`None` to indicate the minor version number should not be checked.'))
 
 AddPropertyMetadata(WindowsDependency.MinimumServicePack,
     typeMetadata=IntegerTypeMetadata(canBeNone=True, minValue=0),
-    shortDescription=_('Windows service pack number, or :py:data:`None` to indicate the service pack number should not be checked.'))
+    shortDescription=_('Minimum Windows service pack number that must be installed, or :py:data:`None` to indicate the service pack number should not be checked.'))
 
 AddPropertyMetadata(WindowsDependency.MinimumBuild,
     typeMetadata=IntegerTypeMetadata(canBeNone=True, minValue=0),
-    shortDescription=_('Windows build number, or :py:data:`None` to indicate the build number should not be checked. Starting with Windows 10, the build number should always be given.'))
+    shortDescription=_('Minimum Windows build number that must be installed, or :py:data:`None` to indicate the build number should not be checked. Starting with Windows 10, the build number should always be given.'))
 
 # Constructor
 
@@ -478,7 +478,7 @@ AddArgumentMetadata(WindowsDependency.__init__, 'minimumBuild',
 
 AddResultMetadata(WindowsDependency.__init__, 'dependency',
     typeMetadata=ClassInstanceTypeMetadata(cls=WindowsDependency),
-    description=_('New %s instance.') % WindowsDependency.__name__)
+    description=_('New :class:`%s` instance.') % WindowsDependency.__name__)
 
 # Public method: SetVersion
 
@@ -569,15 +569,15 @@ AddClassMetadata(PythonDependency,
 
 AddPropertyMetadata(PythonDependency.MinimumMajorVersion,
     typeMetadata=IntegerTypeMetadata(minValue=3),
-    shortDescription=_('Python major version number.'))
+    shortDescription=_('Minimum major version number of Python that must be installed.'))
 
 AddPropertyMetadata(PythonDependency.MinimumMinorVersion,
     typeMetadata=IntegerTypeMetadata(canBeNone=True, minValue=0),
-    shortDescription=_('Python minor version number or :py:data:`None` to indicate the minor version number should not be checked.'))
+    shortDescription=_('Minimum minor version number of Python that must be installed, or :py:data:`None` to indicate the minor version number should not be checked.'))
 
 AddPropertyMetadata(PythonDependency.MinimumPatchVersion,
     typeMetadata=IntegerTypeMetadata(canBeNone=True, minValue=0),
-    shortDescription=_('Python patch version number or :py:data:`None` to indicate the patch version number should not be checked.'))
+    shortDescription=_('Minimum patch version number of Python that must be installed, or :py:data:`None` to indicate the patch version number should not be checked.'))
 
 # Constructor
 
@@ -602,7 +602,7 @@ AddArgumentMetadata(PythonDependency.__init__, 'minimumPatchVersion',
 
 AddResultMetadata(PythonDependency.__init__, 'dependency',
     typeMetadata=ClassInstanceTypeMetadata(cls=PythonDependency),
-    description=_('New %s instance.') % PythonDependency.__name__)
+    description=_('New :class:`%s` instance.') % PythonDependency.__name__)
 
 # Public method: SetVersion
 
@@ -690,7 +690,7 @@ AddArgumentMetadata(PythonModuleDependency.__init__, 'logStdout',
 
 AddResultMetadata(PythonModuleDependency.__init__, 'dependency',
     typeMetadata=ClassInstanceTypeMetadata(cls=PythonModuleDependency),
-    description=_('New %s instance.') % PythonModuleDependency.__name__)
+    description=_('New :class:`%s` instance.') % PythonModuleDependency.__name__)
 
 # Public method: Initialize
 

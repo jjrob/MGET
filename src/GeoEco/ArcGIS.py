@@ -174,19 +174,11 @@ class GeoprocessorManager(object):
         GeoprocessorManager._ProductName = installInfo['ProductName']
 
         # Extract the LicenseLevel, if available. This item was not available
-        # in ArcGIS Desktop 10.x. It is availble in ArcGIS Pro 3.2, but I'm
+        # in ArcGIS Desktop 10.x. It is available in ArcGIS Pro 3.2, but I'm
         # not sure about earlier versions.
 
         if 'LicenseLevel' in installInfo:
             GeoprocessorManager._ArcGISLicenseLevel = installInfo['LicenseLevel']
-
-    @classmethod
-    def RefreshCatalog(cls, directory):
-        cls.__doc__.Obj.ValidateMethodInvocation()
-        gp = cls.GetWrappedGeoprocessor()
-        if gp is not None:
-            gp.RefreshCatalog(directory)
-            Logger.Debug(_('Refreshed the ArcGIS catalog for directory %s'), directory)
 
     @classmethod
     def ArcGISObjectExists(cls, path, correctTypes, typeDisplayName):
@@ -384,7 +376,7 @@ class ArcGISDependency(Dependency):
                 Logger.Debug(_('ArcGIS Pro %i.%i.%i is installed with a license level of %s.'), major, minor, patch, licenseLevel if licenseLevel is not None else 'Unknown')
             elif productName == 'Server':
                 if major < 9:
-                    Logger.Debug(_('An ArcGIS Pro-compatible verison of ArcGIS Server is installed with an equivalent ArcGIS Pro version of %i.%i.%i and a license level of %s.'), major, minor, patch, licenseLevel if licenseLevel is not None else 'Unknown')
+                    Logger.Debug(_('An ArcGIS Pro-compatible version of ArcGIS Server is installed with an equivalent ArcGIS Pro version of %i.%i.%i and a license level of %s.'), major, minor, patch, licenseLevel if licenseLevel is not None else 'Unknown')
                 else:
                     Logger.Debug(_('ArcGIS Server %i.%i.%i is installed with a license level of %s.'), major, minor, patch, licenseLevel if licenseLevel is not None else 'Unknown')
             else:
@@ -466,51 +458,55 @@ class ArcGISExtensionDependency(Dependency):
 
 
 def ValidateMethodMetadataForExposureAsArcGISTool(moduleName, className, methodName):
+    """Validates that a method has proper metadata defined to allow it to be exposed as an ArcGIS geoprocessing tool.
 
-        # Validate the class and method metadata.
+    This function is used during the GeoEco build process, when building the
+    Marine Geospatial Ecology Tools ArcGIS toolbox."""
 
-        assert moduleName in sys.modules, 'Module %s must be imported before ValidateMethodMetadataForExposureAsArcGISTool is invoked on that module.' % moduleName
-        assert className in sys.modules[moduleName].__dict__ and issubclass(sys.modules[moduleName].__dict__[className], object), 'Module %s must contain a class named %s, and the class must derive from object.' % (moduleName, className)
-        cls = sys.modules[moduleName].__dict__[className]
-        assert isinstance(cls.__doc__, DynamicDocString) and isinstance(cls.__doc__.Obj, ClassMetadata), 'The __doc__ attribute of class %s must be an instance of DynamicDocString, and that Obj property of that instance must be an instance of ClassMetadata.' % className
-        assert hasattr(cls, methodName) and inspect.ismethod(getattr(cls, methodName)), 'Class %s must contain an instance method or classmethod named %s.' % (className, methodName)
-        assert isinstance(getattr(cls, methodName).__doc__, DynamicDocString) and isinstance(getattr(cls, methodName).__doc__.Obj, MethodMetadata), 'The __doc__ attribute of method %s of class %s must be an instance of DynamicDocString, and that Obj property of that instance must be an instance of MethodMetadata.' % (methodName, className)
-        methodMetadata = getattr(cls, methodName).__doc__.Obj
-        assert methodMetadata.IsInstanceMethod or methodMetadata.IsClassMethod, 'Method %s of class %s must be an instance method or a classmethod.' % (methodName, className)
-        assert methodMetadata.IsExposedAsArcGISTool, '%s.%s.__doc__.Obj.IsExposedAsArcGISTool must be true.' % (className, methodName)
-        assert isinstance(methodMetadata.ArcGISDisplayName, str), '%s.%s.__doc__.Obj.ArcGISDisplayName must be a unicode string.' % (className, methodName)
-        assert '_' not in className and '_' not in methodName, 'In order for method %s of class %s to be exposed as an ArcGIS tool, neither the method name nor the class name may contain an underscore.' % (methodName, className)
+    # Validate the class and method metadata.
 
-        # Validate the metadata for the method's arguments.
+    assert moduleName in sys.modules, 'Module %s must be imported before ValidateMethodMetadataForExposureAsArcGISTool is invoked on that module.' % moduleName
+    assert className in sys.modules[moduleName].__dict__ and issubclass(sys.modules[moduleName].__dict__[className], object), 'Module %s must contain a class named %s, and the class must derive from object.' % (moduleName, className)
+    cls = sys.modules[moduleName].__dict__[className]
+    assert isinstance(cls.__doc__, DynamicDocString) and isinstance(cls.__doc__.Obj, ClassMetadata), 'The __doc__ attribute of class %s must be an instance of DynamicDocString, and that Obj property of that instance must be an instance of ClassMetadata.' % className
+    assert hasattr(cls, methodName) and inspect.ismethod(getattr(cls, methodName)), 'Class %s must contain an instance method or classmethod named %s.' % (className, methodName)
+    assert isinstance(getattr(cls, methodName).__doc__, DynamicDocString) and isinstance(getattr(cls, methodName).__doc__.Obj, MethodMetadata), 'The __doc__ attribute of method %s of class %s must be an instance of DynamicDocString, and that Obj property of that instance must be an instance of MethodMetadata.' % (methodName, className)
+    methodMetadata = getattr(cls, methodName).__doc__.Obj
+    assert methodMetadata.IsInstanceMethod or methodMetadata.IsClassMethod, 'Method %s of class %s must be an instance method or a classmethod.' % (methodName, className)
+    assert methodMetadata.IsExposedAsArcGISTool, '%s.%s.__doc__.Obj.IsExposedAsArcGISTool must be true.' % (className, methodName)
+    assert isinstance(methodMetadata.ArcGISDisplayName, str), '%s.%s.__doc__.Obj.ArcGISDisplayName must be a unicode string.' % (className, methodName)
+    assert '_' not in className and '_' not in methodName, 'In order for method %s of class %s to be exposed as an ArcGIS tool, neither the method name nor the class name may contain an underscore.' % (methodName, className)
 
-        (args, varargs, varkw, defaults) = inspect.getargspec(getattr(cls, methodName))
-        assert varargs is None, '%s.%s cannot include a varargs argument because this method is designated for exposure as an ArcGIS tool (ArcGIS tools do not support varargs arguments). Please remove the *%s argument.' % (className, methodName, varargs)
-        assert varkw is None, '%s.%s cannot include a varkw argument because this method is designated for exposure as an ArcGIS tool (ArcGIS tools do not support varkw arguments). Please remove the **%s argument.' % (className, methodName, varkw)
-        assert len(methodMetadata.Arguments) == len(args), '%s.%s.__doc__.Obj.Arguments must contain exactly one element for each argument to %s.%s. %s.%s.__doc__.Obj.Arguments contains %i elements, but %i elements were expected.' % (className, methodName, className, methodName, className, methodName, len(methodMetadata.Arguments), len(args))
-        for i in range(1, len(args)):   # Skip the self or cls argument
-            assert methodMetadata.Arguments[i].Name == args[i], '%s.%s.__doc__.Obj.Arguments[%i].Name must match the name of argument %i of %s.%s (where 0 is the first argument).' % (className, methodName, i, i, className, methodName)
-            assert isinstance(methodMetadata.Arguments[i].Type, TypeMetadata), '%s.%s.__doc__.Obj.Arguments[%i].Type must be an instance of GeoEco.Metadata.TypeMetadata.' % (className, methodName, i)
-            if methodMetadata.Arguments[i].ArcGISDisplayName is not None:
-                assert isinstance(methodMetadata.Arguments[i].ArcGISDisplayName, str), '%s.%s.__doc__.Obj.Arguments[%i].ArcGISDisplayName must be a unicode string.' % (className, methodName, i)
-                assert methodMetadata.Arguments[i].Type.CanBeArcGISInputParameter, '%s.%s.__doc__.Obj.Arguments[%i].Type.CanBeArcGISInputParameter must be True' % (className, methodName, i)
-                assert methodMetadata.Arguments[i].InitializeToArcGISGeoprocessorVariable is None, 'Argument %i of %s.%s cannot have a value for ArcGISDisplayName when InitializeToArcGISGeoprocessorVariable is True. Either the argument can have an ArcGISDisplayName, in which case the argument is exposed as an ArcGIS parameter, or it can have InitializeToArcGISGeoprocessorVariable set to True, in which case the argument is not exposed in ArcGIS but is initialized to a geoprocessor variable.' % (i, className, methodName)
-                if methodMetadata.Arguments[i].ArcGISParameterDependencies is not None:
-                    for param in methodMetadata.Arguments[i].ArcGISParameterDependencies:
-                        assert param != methodMetadata.Arguments[i].Name, '%s.%s.__doc__.Obj.Arguments[%i].ArcGISParameterDependencies must not declare that this argument has a dependency on itself.' % (className, methodName, i)
-                        assert param in args, '%s.%s.__doc__.Obj.Arguments[%i].ArcGISParameterDependencies must declare dependencies on existing arguments. The argument \'%s\' does not exist.' % (className, methodName, i, param)
-            else:
-                assert methodMetadata.Arguments[i].HasDefault or methodMetadata.Arguments[i].InitializeToArcGISGeoprocessorVariable is not None, 'Argument %i of %s.%s must have a default value, or its metadata must specify that it should be initialized to an ArcGIS geoprocessor variable, because the method is designated for exposure as an ArcGIS tool but the argument itself is not (its ArcGISDisplayName is None).' % (i, className, methodName)
-                
-        # Validate the metadata for the method's results.        
+    # Validate the metadata for the method's arguments.
 
-        for i in range(len(methodMetadata.Results)):
-            assert isinstance(methodMetadata.Results[i].Type, TypeMetadata), '%s.%s.__doc__.Obj.Results[%i].Type must be an instance of GeoEco.Metadata.TypeMetadata.' % (className, methodName, i)
-            if methodMetadata.Results[i].ArcGISDisplayName is not None:
-                assert isinstance(methodMetadata.Results[i].ArcGISDisplayName, str), '%s.%s.__doc__.Obj.Results[%i].ArcGISDisplayName must be a unicode string.' % (className, methodName, i)
-                assert methodMetadata.Results[i].Type.CanBeArcGISOutputParameter, '%s.%s.__doc__.Obj.Results[%i].Type.CanBeArcGISOutputParameter must be True' % (className, methodName, i)
-                if methodMetadata.Results[i].ArcGISParameterDependencies is not None:
-                    for param in methodMetadata.Results[i].ArcGISParameterDependencies:
-                        assert param in args, '%s.%s.__doc__.Obj.Results[%i].ArcGISParameterDependencies must declare dependencies on existing arguments. The argument \'%s\' does not exist.' % (className, methodName, i, param)
+    (args, varargs, varkw, defaults) = inspect.getargspec(getattr(cls, methodName))
+    assert varargs is None, '%s.%s cannot include a varargs argument because this method is designated for exposure as an ArcGIS tool (ArcGIS tools do not support varargs arguments). Please remove the *%s argument.' % (className, methodName, varargs)
+    assert varkw is None, '%s.%s cannot include a varkw argument because this method is designated for exposure as an ArcGIS tool (ArcGIS tools do not support varkw arguments). Please remove the **%s argument.' % (className, methodName, varkw)
+    assert len(methodMetadata.Arguments) == len(args), '%s.%s.__doc__.Obj.Arguments must contain exactly one element for each argument to %s.%s. %s.%s.__doc__.Obj.Arguments contains %i elements, but %i elements were expected.' % (className, methodName, className, methodName, className, methodName, len(methodMetadata.Arguments), len(args))
+    for i in range(1, len(args)):   # Skip the self or cls argument
+        assert methodMetadata.Arguments[i].Name == args[i], '%s.%s.__doc__.Obj.Arguments[%i].Name must match the name of argument %i of %s.%s (where 0 is the first argument).' % (className, methodName, i, i, className, methodName)
+        assert isinstance(methodMetadata.Arguments[i].Type, TypeMetadata), '%s.%s.__doc__.Obj.Arguments[%i].Type must be an instance of GeoEco.Metadata.TypeMetadata.' % (className, methodName, i)
+        if methodMetadata.Arguments[i].ArcGISDisplayName is not None:
+            assert isinstance(methodMetadata.Arguments[i].ArcGISDisplayName, str), '%s.%s.__doc__.Obj.Arguments[%i].ArcGISDisplayName must be a unicode string.' % (className, methodName, i)
+            assert methodMetadata.Arguments[i].Type.CanBeArcGISInputParameter, '%s.%s.__doc__.Obj.Arguments[%i].Type.CanBeArcGISInputParameter must be True' % (className, methodName, i)
+            assert methodMetadata.Arguments[i].InitializeToArcGISGeoprocessorVariable is None, 'Argument %i of %s.%s cannot have a value for ArcGISDisplayName when InitializeToArcGISGeoprocessorVariable is True. Either the argument can have an ArcGISDisplayName, in which case the argument is exposed as an ArcGIS parameter, or it can have InitializeToArcGISGeoprocessorVariable set to True, in which case the argument is not exposed in ArcGIS but is initialized to a geoprocessor variable.' % (i, className, methodName)
+            if methodMetadata.Arguments[i].ArcGISParameterDependencies is not None:
+                for param in methodMetadata.Arguments[i].ArcGISParameterDependencies:
+                    assert param != methodMetadata.Arguments[i].Name, '%s.%s.__doc__.Obj.Arguments[%i].ArcGISParameterDependencies must not declare that this argument has a dependency on itself.' % (className, methodName, i)
+                    assert param in args, '%s.%s.__doc__.Obj.Arguments[%i].ArcGISParameterDependencies must declare dependencies on existing arguments. The argument \'%s\' does not exist.' % (className, methodName, i, param)
+        else:
+            assert methodMetadata.Arguments[i].HasDefault or methodMetadata.Arguments[i].InitializeToArcGISGeoprocessorVariable is not None, 'Argument %i of %s.%s must have a default value, or its metadata must specify that it should be initialized to an ArcGIS geoprocessor variable, because the method is designated for exposure as an ArcGIS tool but the argument itself is not (its ArcGISDisplayName is None).' % (i, className, methodName)
+            
+    # Validate the metadata for the method's results.        
+
+    for i in range(len(methodMetadata.Results)):
+        assert isinstance(methodMetadata.Results[i].Type, TypeMetadata), '%s.%s.__doc__.Obj.Results[%i].Type must be an instance of GeoEco.Metadata.TypeMetadata.' % (className, methodName, i)
+        if methodMetadata.Results[i].ArcGISDisplayName is not None:
+            assert isinstance(methodMetadata.Results[i].ArcGISDisplayName, str), '%s.%s.__doc__.Obj.Results[%i].ArcGISDisplayName must be a unicode string.' % (className, methodName, i)
+            assert methodMetadata.Results[i].Type.CanBeArcGISOutputParameter, '%s.%s.__doc__.Obj.Results[%i].Type.CanBeArcGISOutputParameter must be True' % (className, methodName, i)
+            if methodMetadata.Results[i].ArcGISParameterDependencies is not None:
+                for param in methodMetadata.Results[i].ArcGISParameterDependencies:
+                    assert param in args, '%s.%s.__doc__.Obj.Results[%i].ArcGISParameterDependencies must declare dependencies on existing arguments. The argument \'%s\' does not exist.' % (className, methodName, i, param)
 
 
 class _ArcGISObjectWrapper(object):
@@ -948,94 +944,45 @@ class _ArcGISObjectWrapper(object):
 from GeoEco.Metadata import *
 from GeoEco.Types import *
 
-AddModuleMetadata(shortDescription=_('Provides utility functions for interacting with the ESRI ArcGIS software package.'))
+AddModuleMetadata(shortDescription=_('Provides utility functions for interacting with ESRI ArcGIS software.'))
 
 ###############################################################################
 # Metadata: GeoprocessorManager class
 ###############################################################################
 
 AddClassMetadata(GeoprocessorManager,
-    shortDescription=_('Manages the instance of the ArcGIS geoprocessor object used whenever any GeoEco function needs to invoke ArcGIS tools.'))
+    shortDescription=_('Manages GeoEco\'s interface to ArcGIS\'s Python API, known historically as the "geoprocessor", and more recently as `arcpy <https://www.esri.com/en-us/arcgis/products/arcgis-python-libraries/libraries/arcpy>`_.'),
+    longDescription=_(
+"""Note:
 
-# Public properties
+    Do not instantiate this class. It is a collection of classmethods intended
+    to be invoked on the class rather than an instance of it, like this:
 
-# AddPropertyMetadata(GeoprocessorManager.Geoprocessor,
-#     typeMetadata=AnyObjectTypeMetadata(canBeNone=True),
-#     shortDescription=_('The ArcGIS geoprocessor object used whenever any GeoEco function needs to invoke ArcGIS tools.'),
-#     longDescription=_(
-# """This property is a singleton; all Python modules running in the same
-# instance of the Python interpreter share the same value for this property. This
-# property remains empty until it is explicitly set, or the InitializeGeoprocessor
-# method is explicitly invoked, or a GeoEco function that has a dependency on
-# ArcGIS is invoked (in which case it will invoke InitializeGeoprocessor).
+    .. code-block:: python
 
-# If you want to invoke GeoEco functions from your own ArcGIS geoprocessing script
-# and you have already obtained a geoprocessor object, you should set this
-# property to that object before invoking any other GeoEco functions. Failing to
-# do so will cause GeoEco to allocate its own geoprocessor object, which can yield
-# unpredictable results. (As far as I can tell, the ArcGIS tools still work
-# correctly, but log messages may not end up in the ArcGIS GUIs.)
+        from GeoEco.ArcGIS import GeoprocessorManager
 
-# If your geoprocessing script has not yet obtained the geoprocessor object, you
-# may allow the GeoEco functions to obtain one when they first need it and then
-# retrieve it by getting the value of this property.
+        GeoprocessorManager.InitializeGeoprocessor()
 
-# If you want to invoke GeoEco functions from something that is not a
-# "geoprocessing script" (a program that does not invoke any ArcGIS
-# geoprocessing tools directly), then you should ignore this property and
-# allow the GeoEco functions to obtain and use their own geoprocessor object.
-
-# See the documentation for InitializeGeoprocessor for more information about this
-# property.
-
-# *Note to GeoEco developers:* Generally, GeoEco functions should *not* use this
-# property; they should use WrappedGeoprocessor instead. That property implements
-# a wrapper around the geoprocessor that logs debug messages every time the
-# geoprocessor is invoked."""))
-
-# AddPropertyMetadata(GeoprocessorManager.WrappedGeoprocessor,
-#     typeMetadata=AnyObjectTypeMetadata(canBeNone=True),
-#     shortDescription=_('The Geoprocessor property, wrapped by a class that logs messages whenever the geoprocessor is accessed.'),
-#     longDescription=_(
-# """This property is a singleton; all Python modules running in the same
-# instance of the Python interpreter share the same value for this property. It is
-# initialized whenever the Geoprocessor property is initialized; see the
-# documentation for that property for more information.
-
-# This property is actually a wrapper class around the ArcGIS geoprocessor object.
-# The wrapper exports the same interface as the wrapped object but logs a debug
-# message every time a method is invoked or a property is accessed. By default,
-# these debug messages are discarded by the GeoEco logging infrastructure. You can
-# enable them by initializing the Logger class with a custom configuration file
-# or by editing the default configuration file. See the Logger class documentation
-# for more information.
-
-# All GeoEco functions use WrappedGeoprocessor to access the geoprocessor, rather
-# than the Geoprocessor property, so that debug messages are reported whenever any
-# function accesses the geoprocessor. External callers are welcome to use
-# WrappedGeoprocessor as well, but they should consider using Geoprocessor
-# instead, to completely eliminate the chance that a bug in the wrapper would
-# affect their code."""))
-
-# AddPropertyMetadata(GeoprocessorManager.ArcGISMajorVersion,
-#     typeMetadata=IntegerTypeMetadata(canBeNone=True),
-#     shortDescription=_('The major version number for ArcGIS, if it is installed on the machine.'),
-#     longDescription=_('This property is empty if ArcGIS is not installed on the machine.'))
-
-# AddPropertyMetadata(GeoprocessorManager.ArcGISMinorVersion,
-#     typeMetadata=IntegerTypeMetadata(canBeNone=True),
-#     shortDescription=_('The minor version number for ArcGIS, if it is installed on the machine.'),
-#     longDescription=_('This property is empty if ArcGIS is not installed on the machine.'))
-
-# AddPropertyMetadata(GeoprocessorManager.ArcGISPatchVersion,
-#     typeMetadata=IntegerTypeMetadata(canBeNone=True),
-#     shortDescription=_('The service pack number for ArcGIS, if it is installed on the machine.'),
-#     longDescription=_('This property is empty if ArcGIS is not installed on the machine.'))
+    See the documentation for :func:`InitializeGeoprocessor` for examples of
+    how to use :class:`~GeoEco.ArcGIS.GeoprocessorManager`.
+"""))
 
 # Public method: GeoprocessorManager.GetGeoprocessor
 
 AddMethodMetadata(GeoprocessorManager.GetGeoprocessor,
-    shortDescription=_('Returns the value of the Geoprocessor property.'))
+    shortDescription=_('Returns a :py:mod:`weakref` to the ArcGIS geoprocessor that the GeoEco library is using.'),
+    longDescription=_(
+"""This function will return None until :func:`InitializeGeoprocessor` or
+:func:`SetGeoprocessor` has been called. In general, GeoEco functions that
+need the geoprocessor should call :func:`GetWrappedGeoprocessor` rather than
+:func:`GetGeoprocessor`, because the wrapped geoprocessor provides logging
+that can be useful in debugging. See :func:`GetWrappedGeoprocessor` for more
+information.
+
+This function returns a :py:mod:`weakref` so that callers do not inadvertently
+maintain references to GeoEco's instance of the geoprocessor and prevent it
+from being released."""))
 
 AddArgumentMetadata(GeoprocessorManager.GetGeoprocessor, 'cls',
     typeMetadata=ClassOrClassInstanceTypeMetadata(cls=GeoprocessorManager),
@@ -1043,12 +990,23 @@ AddArgumentMetadata(GeoprocessorManager.GetGeoprocessor, 'cls',
 
 AddResultMetadata(GeoprocessorManager.GetGeoprocessor, 'geoprocessor',
     typeMetadata=AnyObjectTypeMetadata(canBeNone=True),
-    description=_('The value of the Geoprocessor property.'))
+    description=_('A :py:mod:`weakref` to the ArcGIS geoprocessor that the GeoEco library is using, or None if neither :func:`InitializeGeoprocessor` nor :func:`SetGeoprocessor` has been called yet.'))
 
 # Public method: GeoprocessorManager.SetGeoprocessor
 
 AddMethodMetadata(GeoprocessorManager.SetGeoprocessor,
-    shortDescription=_('Sets the value of the Geoprocessor property.'))
+    shortDescription=_('Instructs the GeoEco library to use the provided object as the ArcGIS geoprocessor.'),
+    longDescription=_(
+"""In general, :func:`SetGeoprocessor` should never be used and is provided
+for testing purposes or very unusual scenarios in which it is necessary to
+substitute something for the real geoprocessor. Instead of using this
+function, call :func:`InitializeGeoprocessor` instead, to allow the GeoEco
+library to instantiate the geoprocessor itself.
+
+If :func:`InitializeGeoprocessor` or :func:`SetGeoprocessor` has already been
+called and you call :func:`SetGeoprocessor` again, the
+:class:`~GeoEco.ArcGIS.GeoprocessorManager` will delete its existing 
+geoprocessor and utilize the new one you provide."""))
 
 AddArgumentMetadata(GeoprocessorManager.SetGeoprocessor, 'cls',
     typeMetadata=ClassOrClassInstanceTypeMetadata(cls=GeoprocessorManager),
@@ -1056,12 +1014,46 @@ AddArgumentMetadata(GeoprocessorManager.SetGeoprocessor, 'cls',
 
 AddArgumentMetadata(GeoprocessorManager.SetGeoprocessor, 'geoprocessor',
     typeMetadata=AnyObjectTypeMetadata(),
-    description=_('The ArcGIS geoprocessor object obtained the Python arcpy module. See the documentation for the Geoprocessor property for more information.'))
+    description=_('The instance to be used as the geoprocessor by the GeoEco library from now on.'))
 
 # Public method: GeoprocessorManager.GetWrappedGeoprocessor
 
 AddMethodMetadata(GeoprocessorManager.GetWrappedGeoprocessor,
-    shortDescription=_('Returns the value of the WrappedGeoprocessor property.'))
+    shortDescription=_('Returns a :py:mod:`weakref` to an object that wraps the ArcGIS geoprocessor and logs all calls to it.'),
+    longDescription=_(
+"""This function will return None until :func:`InitializeGeoprocessor` or
+:func:`SetGeoprocessor` has been called. This function returns a :py:mod:`weakref`
+so that callers do not inadvertently maintain references to GeoEco's instance
+of the geoprocessor and prevent it from being released.
+
+In general, all GeoEco functions that need to access the geoprocessor should
+obtain it by calling this function. If :func:`InitializeGeoprocessor`
+(recommended) or :func:`SetGeoprocessor` has not been called yet during the
+lifetime of the Python interpreter, it should be called first.
+
+The wrapper object returned by this function automatically performs two kinds
+of logging:
+
+1. All geoprocessing messages reported by ArcGIS geoprocessing tools are
+   logged as informational, warning, or error messages according to their
+   severity.
+
+2. All calls to geoprocessing tools and geoprocessor functions, all
+   instantiations of ArcGIS-provided classes, all gets and sets of attributes
+   of those instances, and all calls to their methods are logged as debug
+   messages that include argument values and return values.
+
+All messages are logged to the `GeoEco.ArcGIS` channel using
+:class:`GeoEco.Logging.Logger`. You can configure that channel to see how
+GeoEco is using ArcGIS functionality. By default, both debug and informational
+messages are filtered out, and only warning and error messages will be shown.
+You can configure logging to show informational messages to observe successful
+activity from geoprocessing tools that GeoEco uses. Only configure it to show
+debug messages when you're trying to diagnose a problem; the volume of debug
+messages is so large that performance can be markedly slower.
+
+Please see the :class:`GeoEco.Logging.Logger` documentation for more
+information about configuring logging."""))
 
 AddArgumentMetadata(GeoprocessorManager.GetWrappedGeoprocessor, 'cls',
     typeMetadata=ClassOrClassInstanceTypeMetadata(cls=GeoprocessorManager),
@@ -1069,143 +1061,200 @@ AddArgumentMetadata(GeoprocessorManager.GetWrappedGeoprocessor, 'cls',
 
 AddResultMetadata(GeoprocessorManager.GetWrappedGeoprocessor, 'geoprocessor',
     typeMetadata=AnyObjectTypeMetadata(canBeNone=True),
-    description=_('The value of the WrappedGeoprocessor property.'))
+    description=_('A :py:mod:`weakref` to the wrapped ArcGIS geoprocessor that the GeoEco library is using, or None if neither :func:`InitializeGeoprocessor` nor :func:`SetGeoprocessor` has been called yet.'))
+
+# Public method: GeoprocessorManager.GetArcGISVersion
+
+AddMethodMetadata(GeoprocessorManager.GetArcGISVersion,
+    shortDescription=_('Returns the major, minor, and patch version numbers of the installed copy of ArcGIS.'),
+    longDescription=_(
+"""The version numbers are extracted from the `Version` key of the dictionary
+returned by :arcpy:`GetInstallInfo`, unless a `ProVersion` key exists, which
+will happen if ArcGIS Server is installed, in which case `ProVersion` will be
+used. This means that if ArcGIS Server is installed, the version numbers will
+be based on the version of ArcGIS Pro that Server is compatible with, not on
+the version numbers of ArcGIS Server itself.
+
+Raises:
+    :exc:`SoftwareNotInstalledError`: ArcGIS does not appear to be installed."""))
+
+AddArgumentMetadata(GeoprocessorManager.GetArcGISVersion, 'cls',
+    typeMetadata=ClassOrClassInstanceTypeMetadata(cls=GeoprocessorManager),
+    description=_('%s class or an instance of it.') % GeoprocessorManager.__name__)
+
+AddResultMetadata(GeoprocessorManager.GetArcGISVersion, 'majorVersion',
+    typeMetadata=TupleTypeMetadata(elementType=IntegerTypeMetadata()),
+    description=_('A tuple containing the major, minor, and patch version numbers of the installed copy of ArcGIS.'))
 
 # Public method: GeoprocessorManager.GetArcGISMajorVersion
 
 AddMethodMetadata(GeoprocessorManager.GetArcGISMajorVersion,
-    shortDescription=_('Returns the value of the ArcGISMajorVersion property.'))
+    shortDescription=_('Returns the major version number of the installed copy of ArcGIS.'),
+    longDescription=_(
+"""The version number is extracted from the `Version` key of the dictionary
+returned by :arcpy:`GetInstallInfo`, unless a `ProVersion` key exists, which
+will happen if ArcGIS Server is installed, in which case `ProVersion` will be
+used. This means that if ArcGIS Server is installed, the version number will
+be based on the version of ArcGIS Pro that Server is compatible with, not on
+the version number of ArcGIS Server itself.
+
+Raises:
+    :exc:`SoftwareNotInstalledError`: ArcGIS does not appear to be installed."""))
 
 AddArgumentMetadata(GeoprocessorManager.GetArcGISMajorVersion, 'cls',
     typeMetadata=ClassOrClassInstanceTypeMetadata(cls=GeoprocessorManager),
     description=_('%s class or an instance of it.') % GeoprocessorManager.__name__)
 
 AddResultMetadata(GeoprocessorManager.GetArcGISMajorVersion, 'majorVersion',
-    typeMetadata=IntegerTypeMetadata(canBeNone=True),
-    description=_('The value of the ArcGISMajorVersion property.'))
+    typeMetadata=IntegerTypeMetadata(),
+    description=_('The major version number of the installed copy of ArcGIS.'))
 
 # Public method: GeoprocessorManager.GetArcGISMinorVersion
 
 AddMethodMetadata(GeoprocessorManager.GetArcGISMinorVersion,
-    shortDescription=_('Returns the value of the ArcGISMinorVersion property.'))
+    shortDescription=_('Returns the minor version number of the installed copy of ArcGIS.'),
+    longDescription=_(
+"""The version number is extracted from the `Version` key of the dictionary
+returned by :arcpy:`GetInstallInfo`, unless a `ProVersion` key exists, which
+will happen if ArcGIS Server is installed, in which case `ProVersion` will be
+used. This means that if ArcGIS Server is installed, the version number will
+be based on the version of ArcGIS Pro that Server is compatible with, not on
+the version number of ArcGIS Server itself.
+
+Raises:
+    :exc:`SoftwareNotInstalledError`: ArcGIS does not appear to be installed."""))
 
 AddArgumentMetadata(GeoprocessorManager.GetArcGISMinorVersion, 'cls',
     typeMetadata=ClassOrClassInstanceTypeMetadata(cls=GeoprocessorManager),
     description=_('%s class or an instance of it.') % GeoprocessorManager.__name__)
 
 AddResultMetadata(GeoprocessorManager.GetArcGISMinorVersion, 'minorVersion',
-    typeMetadata=IntegerTypeMetadata(canBeNone=True),
-    description=_('The value of the ArcGISMinorVersion property.'))
+    typeMetadata=IntegerTypeMetadata(),
+    description=_('The minor version number of the installed copy of ArcGIS.'))
 
 # Public method: GeoprocessorManager.GetArcGISPatchVersion
 
 AddMethodMetadata(GeoprocessorManager.GetArcGISPatchVersion,
-    shortDescription=_('Returns the value of the ArcGISPatchVersion property.'))
+    shortDescription=_('Returns the patch version number of the installed copy of ArcGIS.'),
+    longDescription=_(
+"""The version number is extracted from the `Version` key of the dictionary
+returned by :arcpy:`GetInstallInfo`, unless a `ProVersion` key exists, which
+will happen if ArcGIS Server is installed, in which case `ProVersion` will be
+used. This means that if ArcGIS Server is installed, the version number will
+be based on the version of ArcGIS Pro that Server is compatible with, not on
+the version number of ArcGIS Server itself.
+
+Raises:
+    :exc:`SoftwareNotInstalledError`: ArcGIS does not appear to be installed."""))
 
 AddArgumentMetadata(GeoprocessorManager.GetArcGISPatchVersion, 'cls',
     typeMetadata=ClassOrClassInstanceTypeMetadata(cls=GeoprocessorManager),
     description=_('%s class or an instance of it.') % GeoprocessorManager.__name__)
 
 AddResultMetadata(GeoprocessorManager.GetArcGISPatchVersion, 'servicePack',
-    typeMetadata=IntegerTypeMetadata(canBeNone=True),
-    description=_('The value of the ArcGISMinorVersion property.'))
+    typeMetadata=IntegerTypeMetadata(),
+    description=_('The patch version number of the installed copy of ArcGIS.'))
+
+# Public method: GeoprocessorManager.GetArcGISProductName
+
+AddMethodMetadata(GeoprocessorManager.GetArcGISProductName,
+    shortDescription=_('Returns the product name of the installed copy of ArcGIS.'),
+    longDescription=_(
+"""Raises:
+    :exc:`SoftwareNotInstalledError`: ArcGIS does not appear to be installed."""))
+
+AddArgumentMetadata(GeoprocessorManager.GetArcGISProductName, 'cls',
+    typeMetadata=ClassOrClassInstanceTypeMetadata(cls=GeoprocessorManager),
+    description=_('%s class or an instance of it.') % GeoprocessorManager.__name__)
+
+AddResultMetadata(GeoprocessorManager.GetArcGISProductName, 'productName',
+    typeMetadata=UnicodeStringTypeMetadata(),
+    description=_('The product name of the installed copy of ArcGIS, as returned by :arcpy:`GetInstallInfo`.'))
+
+# Public method: GeoprocessorManager.GetArcGISLicenseLevel
+
+AddMethodMetadata(GeoprocessorManager.GetArcGISLicenseLevel,
+    shortDescription=_('Returns the license level of the installed copy of ArcGIS.'),
+    longDescription=_(
+"""Raises:
+    :exc:`SoftwareNotInstalledError`: ArcGIS does not appear to be installed."""))
+
+AddArgumentMetadata(GeoprocessorManager.GetArcGISLicenseLevel, 'cls',
+    typeMetadata=ClassOrClassInstanceTypeMetadata(cls=GeoprocessorManager),
+    description=_('%s class or an instance of it.') % GeoprocessorManager.__name__)
+
+AddResultMetadata(GeoprocessorManager.GetArcGISLicenseLevel, 'licenseLevel',
+    typeMetadata=UnicodeStringTypeMetadata(canBeNone=True),
+    description=_('The license level of the installed copy of ArcGIS, as returned by :arcpy:`GetInstallInfo`, or None if no license level was returned by that function.'))
 
 # Public method: GeoprocessorManager.InitializeGeoprocessor
 
 AddMethodMetadata(GeoprocessorManager.InitializeGeoprocessor,
-    shortDescription=_('Initializes the Geoprocessor property with a new ArcGIS geoprocessor object.'),
+    shortDescription=_('Initializes the ArcGIS geoprocessor so that the GeoEco library can access ArcGIS functionality.'),
     longDescription=_(
-"""If you want to use GeoEco's GeoprocessorManager to instantiate the
-geoprocessor, you should either explicitly invoke this method or call
-a GeoEco function that requires ArcGIS; the GeoEco function will
-invoke this method on your behalf.
+"""It is usually not necessary for methods within GeoEco to call
+:func:`InitializeGeoprocessor` directly. The usual pattern for implementing
+a GeoEco method that needs to access ArcGIS is to define a 
+:mod:`~GeoEco.Metadata.MethodMetadata` for the method with the `dependencies`
+argument set to a :py:class:`list` containing an
+:class:`~GeoEco.ArcGIS.ArcGISDependency`. Then, as usual for methods that
+define a :mod:`~GeoEco.Metadata.MethodMetadata`, the method calls 
+:func:`~GeoEco.Metadata.ClassMetadata.ValidateMethodInvocation` as its first
+line of code, which initializes the :class:`~GeoEco.ArcGIS.ArcGISDependency`,
+which in turn calls :func:`InitializeGeoprocessor`. The method can then use
+:func:`GetWrappedGeoprocessor` to get the geoprocessor instance and access
+ArcGIS:
 
-If you do not want to use GeoEco's GeoprocessorManager to instantiate
-the geoprocessor, you should instantiate it yourself and call
-GeoprocessorManager.SetGeoprocessor. GeoEco will cache a reference to
-your geoprocessor and not allocate its own instance.
+.. code-block:: python
 
-If the Geoprocessor property has already been initialized with a
-geoprocessor object and forceCOMInstantiation and
-forcePythonInstantiation are both False, this method does nothing. If
-either forceCOMInstantiation or forcePythonInstantiation are True,
-this method will raise a RuntimeError if the geoprocessor was
-previously instantiated with the opposite method.
+    from GeoEco.ArcGIS import GeoprocessorManager
 
-You should only pass True for forceCOMInstantiation or
-forcePythonInstantiation if you plan to perform geoprocessing
-operations that truly require one type of geoprocessor or the other.
-If both are False, this method will automatically select the best
-technique, as follows:
+    class MyClass(object):
+        @classmethod
+        def MyMethodThatAccessesArcGIS(cls):
+            self.__doc__.Obj.ValidateMethodInvocation()
 
-* If ArcGIS 9.1 is installed, COM Automation will always be used.
+            # ValidateMethodInvocation() initialized the ArcGISDependency(),
+            # which called InitializeGeoprocessor() for us. We can now just call
+            # GetWrappedGeoprocessor().
 
-* If ArcGIS 9.2 is installed, arcgisscripting will be used if the
-  script is executing under Python 2.4. Otherwise COM Automation will
-  be used.
+            gp = GeoprocessorManager.GetWrappedGeoprocessor()
+            gp.XXXXX(...)       # Call some geoprocessor tool or function
 
-* If ArcGIS 9.3 is installed, arcgisscripting will be used if the
-  script is executing under Python 2.5. Otherwise COM Automation will
-  be used.
+When using the :class:`~GeoEco.ArcGIS.GeoprocessorManager` from a stand-alone
+script or other contexts that do not involve initializing a 
+:class:`~GeoEco.ArcGIS.ArcGISDependency`, it is necessary to call 
+:func:`InitializeGeoprocessor` explicitly:
 
-IMPORTANT NOTE: If arcgisscripting is used to instantiate the
-geoprocessor, the arcgisscripting.create function will always be
-called without any parameters, regardless of which version of ArcGIS
-is installed. This means that, even if ArcGIS 9.3 or later is
-installed, the instantiated geoprocessor will always use the inteface
-from ArcGIS 9.2."""))
+.. code-block:: python
+
+    from GeoEco.ArcGIS import GeoprocessorManager
+
+    def MyStandAloneScript():
+        GeoprocessorManager.InitializeGeoprocessor()
+        gp = GeoprocessorManager.GetWrappedGeoprocessor()
+        gp.XXXXX(...)       # Call some geoprocessor tool or function
+
+    if __name__ == '__main__':
+        MyStandAloneScript()
+
+If you do not want to use :func:`InitializeGeoprocessor` to instantiate the
+geoprocessor, you should create it yourself and call :func:`SetGeoprocessor`.
+:class:`~GeoEco.ArcGIS.GeoprocessorManager` will cache a reference to your
+geoprocessor and use it instead. :class:`~GeoEco.ArcGIS.GeoprocessorManager`
+maintains a single, interpreter-wide geoprocessor shared by all of its
+callers.
+
+There is no harm in calling :func:`InitializeGeoprocessor` after it or 
+:func:`SetGeoprocessor` has already been called. If 
+:class:`~GeoEco.ArcGIS.GeoprocessorManager` already has a geoprocessor,
+:func:`InitializeGeoprocessor` will do nothing. If you need to replace the
+geoprocessor that :class:`~GeoEco.ArcGIS.GeoprocessorManager` is using, you
+can call :func:`SetGeoprocessor`."""))
 
 AddArgumentMetadata(GeoprocessorManager.InitializeGeoprocessor, 'cls',
     typeMetadata=ClassOrClassInstanceTypeMetadata(cls=GeoprocessorManager),
     description=_('%s class or an instance of it.') % GeoprocessorManager.__name__)
-
-# Public method: GeoprocessorManager.RefreshCatalog
-
-AddMethodMetadata(GeoprocessorManager.RefreshCatalog,
-    shortDescription=_('Refreshes the ArcGIS catalog\'s cached view of the specified directory.'),
-    longDescription=_(
-"""The ArcGIS geoprocessing system interacts with the file system through the
-ArcGIS catalog, a cached view of the files and directories on the computer. It
-is important that the catalog be "refreshed" after any changes are made to files
-or directories. Otherwise the ArcGIS geoprocessor will not know about the
-changes and operate off an obsolete view of the file system, ultimately causing
-subsequent geoprocessing operations to fail.
-
-Most GeoEco methods automatically refresh the ArcGIS catalog when it is
-necessary to do so. Some methods allow you to explictly control whether the
-refresh occurs. In general, you should always allow the catalog to be refreshed.
-The main scenario in which it is appropriate to prevent it is when you are
-making many consecutive changes inside a directory and do not want to incur the
-performance hit of refreshing the catalog after each change. In that scenario,
-you can use this method to refresh the catalog's view of that directory when you
-are done.
-
-If the GeoprocessorManager class is not holding an instance of the ArcGIS
-geoprocessor, then this parameter is ignored. It will be holding one under the
-following circumstances:
-
-* Your code invokes a method of some class that has a dependency on ArcGIS and
-  internally uses the geoprocessor to do whatever work it needs to do. In this,
-  scenario, that method will cause GeoprocessorManager.InitializeGeoprocessor() to
-  be called. This is the most common scenario.
-  
-* Your code explicitly initializes the geoprocessor by calling
-  GeoprocessorManager.InitializeGeoprocessor().
-
-* Your code provides the GeoprocessorManager with a geoprocessor instance by
-  calling GeoprocessorManager.SetGeoprocessor()."""))
-
-AddArgumentMetadata(GeoprocessorManager.RefreshCatalog, 'cls',
-    typeMetadata=ClassOrClassInstanceTypeMetadata(cls=GeoprocessorManager),
-    description=_('%s class or an instance of it.') % GeoprocessorManager.__name__)
-
-AddArgumentMetadata(GeoprocessorManager.RefreshCatalog, 'directory',
-    typeMetadata=DirectoryTypeMetadata(mustExist=True),
-    description=_(
-"""Parent directory of the files or directories that have changed. For example,
-if you added three files to C:\\Data, you should pass C:\\Data as this
-parameter. If you just created C:\\Data, then you need to pass C:\\ for this
-parameter."""))
 
 # Public method: GeoprocessorManager.ArcGISObjectExists
 
@@ -1226,39 +1275,38 @@ AddArgumentMetadata(GeoprocessorManager.ArcGISObjectExists, 'path',
 AddArgumentMetadata(GeoprocessorManager.ArcGISObjectExists, 'correctTypes',
     typeMetadata=ListTypeMetadata(elementType=UnicodeStringTypeMetadata()),
     description=_(
-"""List of data types that the object is expected to be, chosen from
-the possible values of the DataType property of the object returned by
-the geoprocessor's Describe function. Please see the ArcGIS
-geoprocessing documentation for the possible data type strings."""))
+"""List of data types that the object is expected to be, chosen from the
+possible values of the `dataType` property of the object returned by
+:arcpy:`Describe`. Please see the documentation for that function for the
+possible values."""))
 
 AddArgumentMetadata(GeoprocessorManager.ArcGISObjectExists, 'typeDisplayName',
     typeMetadata=UnicodeStringTypeMetadata(),
     description=_(
 """Name of the expected data type of the object to display in logging
-messages. This is usually a more generic name than the entries that
-appear in correctTypes. For example, if the object is expected to be
-some kind of table, correctTypes may contain five or ten possible
-values, while typeDisplayName might simply be "table"."""))
+messages. This is usually a more generic name than the entries that appear in
+`correctTypes`. For example, if the object is expected to be some kind of
+table, `correctTypes` may contain five or ten possible values, while
+`typeDisplayName` might simply be "table"."""))
 
-AddResultMetadata(GeoprocessorManager.ArcGISObjectExists, 'exists',
-    typeMetadata=BooleanTypeMetadata(),
-    description=_('True if the geoprocessor\'s Exists function reports that the specified path exists.'))
-
-AddResultMetadata(GeoprocessorManager.ArcGISObjectExists, 'isCorrectType',
-    typeMetadata=BooleanTypeMetadata(),
-    description=_('True if the geoprocessor\'s Describe function reports that the specified path is one of the types of objects specified by correctTypes.'))
+AddResultMetadata(GeoprocessorManager.ArcGISObjectExists, 'result',
+    typeMetadata=TupleTypeMetadata(elementType=BooleanTypeMetadata(), minLength=2, maxLength=2),
+    description=_('A :py:class:`tuple` of two :py:class:`bool`, where the first is True if the geoprocessor\'s :arcpy:`Exists` function reports that the specified path exists, and the second True if the geoprocessor\'s :arcpy:`Describe` function reports that it is one of the types of objects specified by `correctTypes`.'))
 
 # Public method: GeoprocessorManager.DeleteArcGISObject
 
 AddMethodMetadata(GeoprocessorManager.DeleteArcGISObject,
     shortDescription=_('Deletes the specified ArcGIS object, if it exists.'),
     longDescription=_(
-"""If the object does not exist, no error will be raised. If the
-object exists but the geoprocessor's Describe function reports that it
-is not one of the types specified by the correctTypes parameter, a
-ValueError will be raised. If it exists and is one of the correct
-types, it will be deleted with the geoprocessor's Delete_management
-function."""))
+"""The object will be deleted with the :arcpy_management:`Delete`
+geoprocessing tool. If the object does not exist, :arcpy_management:`Delete`
+will not be called, and no error will be reported.
+
+Raises:
+    :exp:`ValueError`: The object exists but the geoprocessor's
+        :arcpy:`Describe` function reports that it is not one of the types
+        specified by `correctTypes`.
+"""))
 
 CopyArgumentMetadata(GeoprocessorManager.ArcGISObjectExists, 'cls', GeoprocessorManager.DeleteArcGISObject, 'cls')
 CopyArgumentMetadata(GeoprocessorManager.ArcGISObjectExists, 'path', GeoprocessorManager.DeleteArcGISObject, 'path')
@@ -1270,17 +1318,19 @@ CopyArgumentMetadata(GeoprocessorManager.ArcGISObjectExists, 'typeDisplayName', 
 AddMethodMetadata(GeoprocessorManager.CopyArcGISObject,
     shortDescription=_('Copies the specified ArcGIS object.'),
     longDescription=_(
-"""A ValueError will be raised if the source object does not exist or
-the geoprocessor's Describe function reports that it is not one of the
-types specified by the correctTypes parameter. A ValueError will also
-be raised if the destination object exists but overwriteExisting is
-False or if the object is not one of the correct types. If the
-destination object exists and is a correct type, it will be deleted
-with the geoprocessor's Delete_management function prior to making the
-copy. The source object will be copied with the geoprocessor's
-CopyFeatures_management (if the source object is a feature class,
-shapefile, or feature layer) or the Copy_management function (if the
-source object is some other type)."""))
+"""First, if `overwriteExisting` is True and `destination` exists, it will be
+deleted with the :arcpy_management:`Delete` geoprocessing tool. Then, if
+`source` is a feature class, shapefile, or feature layer, it will be copied
+with :arcpy_management:`Copy-Features`. If `source` is something else, it will
+be copied with :arcpy_management:`Copy`.
+
+Raises:
+    :exp:`ValueError`: The source object does not exist or the geoprocessor's
+        :arcpy:`Describe` function reports that it is not one of the types
+        specified by `correctTypes`, or the destination object exists but
+        either it is not one of the `correctTypes` or `overwriteExisting` is
+        False.
+"""))
 
 CopyArgumentMetadata(GeoprocessorManager.ArcGISObjectExists, 'cls', GeoprocessorManager.CopyArcGISObject, 'cls')
 
@@ -1294,7 +1344,7 @@ AddArgumentMetadata(GeoprocessorManager.CopyArcGISObject, 'destination',
 
 AddArgumentMetadata(GeoprocessorManager.CopyArcGISObject, 'overwriteExisting',
     typeMetadata=BooleanTypeMetadata(),
-    description=_('If True, the destination object will be overwritten.'))
+    description=_('If True, `destination` will be overwritten.'))
 
 CopyArgumentMetadata(GeoprocessorManager.ArcGISObjectExists, 'correctTypes', GeoprocessorManager.CopyArcGISObject, 'correctTypes')
 CopyArgumentMetadata(GeoprocessorManager.ArcGISObjectExists, 'typeDisplayName', GeoprocessorManager.CopyArcGISObject, 'typeDisplayName')
@@ -1302,20 +1352,22 @@ CopyArgumentMetadata(GeoprocessorManager.ArcGISObjectExists, 'typeDisplayName', 
 # Public method: GeoprocessorManager.MoveArcGISObject
 
 AddMethodMetadata(GeoprocessorManager.MoveArcGISObject,
-    shortDescription=_('Movies the specified ArcGIS object.'),
+    shortDescription=_('Moves the specified ArcGIS object.'),
     longDescription=_(
-"""A ValueError will be raised if the source object does not exist or
-the geoprocessor's Describe function reports that it is not one of the
-types specified by the correctTypes parameter. A ValueError will also
-be raised if the destination object exists but overwriteExisting is
-False or if the object is not one of the correct types. If the
-destination object exists and is a correct type, it will be deleted
-with the geoprocessor's Delete_management function prior to making the
-copy. The source object will be copied with the geoprocessor's
-CopyFeatures_management (if the source object is a feature class,
-shapefile, or feature layer) or the Copy_management function (if the
-source object is some other type), and then deleted with the
-Delete_management function."""))
+"""First, if `overwriteExisting` is True and `destination` exists, it will be
+deleted with the :arcpy_management:`Delete` geoprocessing tool. Then, if
+`source` is a feature class, shapefile, or feature layer, it will be copied
+with :arcpy_management:`Copy-Features`. If `source` is something else, it will
+be copied with :arcpy_management:`Copy`. Finally, `source` will be deleted
+with :arcpy_management:`Delete`.
+
+Raises:
+    :exp:`ValueError`: The source object does not exist or the geoprocessor's
+        :arcpy:`Describe` function reports that it is not one of the types
+        specified by `correctTypes`, or the destination object exists but
+        either it is not one of the `correctTypes` or `overwriteExisting` is
+        False.
+"""))
 
 CopyArgumentMetadata(GeoprocessorManager.ArcGISObjectExists, 'cls', GeoprocessorManager.MoveArcGISObject, 'cls')
 
@@ -1336,14 +1388,135 @@ CopyArgumentMetadata(GeoprocessorManager.ArcGISObjectExists, 'typeDisplayName', 
 AddMethodMetadata(GeoprocessorManager.GetUniqueLayerName,
     shortDescription=_('Returns a randomly generated string that may be used as the name of a new geoprocessing layer.'),
     longDescription=_(
-"""This function loops through random names until it finds one for
-which the geoprocessors Exists function returns False."""))
+"""This function loops through random names until it finds one for which the
+geoprocessor's :arcpy:`Exists` function returns False."""))
 
 CopyArgumentMetadata(GeoprocessorManager.ArcGISObjectExists, 'cls', GeoprocessorManager.GetUniqueLayerName, 'cls')
 
 AddResultMetadata(GeoprocessorManager.GetUniqueLayerName, 'name',
     typeMetadata=UnicodeStringTypeMetadata(),
     description=_('Randomly generated string that may be used as the name of a geoprocessing layer.'))
+
+###############################################################################
+# Metadata: ArcGISDependency class
+###############################################################################
+
+AddClassMetadata(ArcGISDependency,
+    shortDescription=_('A :class:`~GeoEco.Dependencies.Dependency` that checks that ArcGIS and its Python library is installed, and its version.'),
+    longDescription=_(
+"""When :func:`Initialize` is called and the version numbers are checked, they
+will be extracted from the `Version` key of the dictionary returned by
+:arcpy:`GetInstallInfo`, unless a `ProVersion` key exists, which will happen
+if ArcGIS Server is installed, in which case `ProVersion` will be used. This
+means that if ArcGIS Server is installed, :func:`Initialize` will check the
+version of ArcGIS Pro that Server is compatible with, not the version of ArcGIS
+Server itself."""))
+
+# Properties
+
+AddPropertyMetadata(ArcGISDependency.MinimumMajorVersion,
+    typeMetadata=IntegerTypeMetadata(minValue=1),
+    shortDescription=_('Minimum major version number of ArcGIS that must be installed.'))
+
+AddPropertyMetadata(ArcGISDependency.MinimumMinorVersion,
+    typeMetadata=IntegerTypeMetadata(minValue=0),
+    shortDescription=_('Minimum major version number of ArcGIS that must be installed.'))
+
+AddPropertyMetadata(ArcGISDependency.MinimumPatchVersion,
+    typeMetadata=IntegerTypeMetadata(minValue=0),
+    shortDescription=_('Minimum patch version number of ArcGIS that must be installed.'))
+
+AddPropertyMetadata(ArcGISDependency.ProductNames,
+    typeMetadata=ListTypeMetadata(elementType=UnicodeStringTypeMetadata(minLength=1), minLength=1),
+    shortDescription=_('List ArcGIS product names, at least one of which must be installed.'))
+
+AddPropertyMetadata(ArcGISDependency.LicenseLevels,
+    typeMetadata=ListTypeMetadata(elementType=UnicodeStringTypeMetadata(minLength=1), minLength=1, canBeNone=True),
+    shortDescription=_('List ArcGIS license levels, at least one of which must be installed. If None, then license levels will not be checked.'))
+    
+# Constructor
+
+AddMethodMetadata(ArcGISDependency.__init__,
+    shortDescription=_('Constructs a new %s instance.') % ArcGISDependency.__name__)
+
+AddArgumentMetadata(ArcGISDependency.__init__, 'self',
+    typeMetadata=ClassInstanceTypeMetadata(cls=ArcGISDependency),
+    description=_('%s instance.') % ArcGISDependency.__name__)
+
+AddArgumentMetadata(ArcGISDependency.__init__, 'minimumMajorVersion',
+    typeMetadata=ArcGISDependency.MinimumMajorVersion.__doc__.Obj.Type,
+    description=ArcGISDependency.MinimumMajorVersion.__doc__.Obj.ShortDescription)
+
+AddArgumentMetadata(ArcGISDependency.__init__, 'minimumMinorVersion',
+    typeMetadata=ArcGISDependency.MinimumMinorVersion.__doc__.Obj.Type,
+    description=ArcGISDependency.MinimumMinorVersion.__doc__.Obj.ShortDescription)
+
+AddArgumentMetadata(ArcGISDependency.__init__, 'minimumPatchVersion',
+    typeMetadata=ArcGISDependency.MinimumPatchVersion.__doc__.Obj.Type,
+    description=ArcGISDependency.MinimumPatchVersion.__doc__.Obj.ShortDescription)
+
+AddArgumentMetadata(ArcGISDependency.__init__, 'productNames',
+    typeMetadata=ArcGISDependency.ProductNames.__doc__.Obj.Type,
+    description=ArcGISDependency.ProductNames.__doc__.Obj.ShortDescription)
+
+AddArgumentMetadata(ArcGISDependency.__init__, 'licenseLevels',
+    typeMetadata=ArcGISDependency.LicenseLevels.__doc__.Obj.Type,
+    description=ArcGISDependency.LicenseLevels.__doc__.Obj.ShortDescription)
+
+AddResultMetadata(ArcGISDependency.__init__, 'dependency',
+    typeMetadata=ClassInstanceTypeMetadata(cls=ArcGISDependency),
+    description=_('New :class:`%s` instance.') % ArcGISDependency.__name__)
+
+# Public method: SetVersion
+
+AddMethodMetadata(ArcGISDependency.SetVersion,
+    shortDescription=_('Sets the minimum version number of ArcGIS that must be installed.'))
+
+AddArgumentMetadata(ArcGISDependency.SetVersion, 'self',
+    typeMetadata=ClassInstanceTypeMetadata(cls=ArcGISDependency),
+    description=_('%s instance.') % ArcGISDependency.__name__)
+
+AddArgumentMetadata(ArcGISDependency.SetVersion, 'minimumMajorVersion',
+    typeMetadata=ArcGISDependency.MinimumMajorVersion.__doc__.Obj.Type,
+    description=ArcGISDependency.MinimumMajorVersion.__doc__.Obj.ShortDescription)
+
+AddArgumentMetadata(ArcGISDependency.SetVersion, 'minimumMinorVersion',
+    typeMetadata=ArcGISDependency.MinimumMinorVersion.__doc__.Obj.Type,
+    description=ArcGISDependency.MinimumMinorVersion.__doc__.Obj.ShortDescription)
+
+AddArgumentMetadata(ArcGISDependency.SetVersion, 'minimumPatchVersion',
+    typeMetadata=ArcGISDependency.MinimumPatchVersion.__doc__.Obj.Type,
+    description=ArcGISDependency.MinimumPatchVersion.__doc__.Obj.ShortDescription)
+
+###############################################################################
+# Metadata: ArcGISExtensionDependency class
+###############################################################################
+
+AddClassMetadata(ArcGISExtensionDependency,
+    shortDescription=_('A :class:`~GeoEco.Dependencies.Dependency` that checks that an ArcGIS extension is installed.'))
+
+# Properties
+
+AddPropertyMetadata(ArcGISExtensionDependency.ExtensionCode,
+    typeMetadata=UnicodeStringTypeMetadata(minLength=1),
+    shortDescription=_('Product code of the extension that must be installed. Generally these are two characters, such as ``\'sa\'`` for Spatial Analyst and ``\'na\'`` for Network Analyst.'))
+    
+# Constructor
+
+AddMethodMetadata(ArcGISExtensionDependency.__init__,
+    shortDescription=_('Constructs a new %s instance.') % ArcGISExtensionDependency.__name__)
+
+AddArgumentMetadata(ArcGISExtensionDependency.__init__, 'self',
+    typeMetadata=ClassInstanceTypeMetadata(cls=ArcGISExtensionDependency),
+    description=_('%s instance.') % ArcGISExtensionDependency.__name__)
+
+AddArgumentMetadata(ArcGISExtensionDependency.__init__, 'extensionCode',
+    typeMetadata=ArcGISExtensionDependency.ExtensionCode.__doc__.Obj.Type,
+    description=ArcGISExtensionDependency.ExtensionCode.__doc__.Obj.ShortDescription)
+
+AddResultMetadata(ArcGISExtensionDependency.__init__, 'dependency',
+    typeMetadata=ClassInstanceTypeMetadata(cls=ArcGISExtensionDependency),
+    description=_('New :class:`%s` instance.') % ArcGISExtensionDependency.__name__)
 
 ###############################################################################
 # Names exported by this module
