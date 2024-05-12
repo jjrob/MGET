@@ -62,14 +62,14 @@ from ..Metadata import AddModuleMetadata
 
 AddModuleMetadata(shortDescription=_('Classes used to describe and validate property values, method arguments, and return values.'))
 
-# To avoid creating circular module imports that Python cannot handle, we have
-# we could not put the metadata for the classes above in the same file that
+# To avoid creating circular module imports that Python cannot handle, we
+# could not put the metadata for the classes above in the same file that
 # defined them. Instead, we created separate files just for the metadata.
 # import those now, so that metadata is created.
 
-from ._BaseMetadata import *
-from ._SequenceMetadata import *
-from ._StoredObjectMetadata import *
+from . import _BaseMetadata
+from . import _SequenceMetadata
+from . import _StoredObjectMetadata
 
 
 ###############################################################################

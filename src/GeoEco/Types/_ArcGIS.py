@@ -1,4 +1,4 @@
-# _ArcGIS.py - Provides classes derived from GeoEco.Metadata.TypeMetadata that
+# _ArcGIS.py - Provides classes derived from .Metadata.TypeMetadata that
 # represent ArcGIS data types, such as feature classes and rasters.
 #
 # Copyright (C) 2024 Jason J. Roberts
@@ -35,7 +35,7 @@ class ArcGISGeoDatasetTypeMetadata(StoredObjectTypeMetadata):
                  deleteIfParameterIsTrue=None,
                  createParentDirectories=False,
                  minLength=1,
-                 maxLength=255,
+                 maxLength=2147483647,
                  mustMatchRegEx=None,
                  canBeNone=False,
                  arcGISType='ESRI.ArcGIS.Geoprocessing.DEGeoDatasetTypeClass',
@@ -98,8 +98,8 @@ class ArcGISGeoDatasetTypeMetadata(StoredObjectTypeMetadata):
 
         # See if it exists.
         
-        from GeoEco.Logging import Logger
-        from GeoEco.ArcGIS import GeoprocessorManager
+        from ..Logging import Logger
+        from ..ArcGIS import GeoprocessorManager
         gp = GeoprocessorManager.GetWrappedGeoprocessor()
         if gp is None:
             Logger.RaiseException(RuntimeError(_('The ArcGIS geoprocessor must be initialized before this function may be called. Please call GeoprocessorManager.InitializeGeoprocessor or GeoprocessorManager.SetGeoprocessor before calling this function.')))
@@ -144,7 +144,7 @@ class ArcGISRasterTypeMetadata(StoredObjectTypeMetadata):
                  deleteIfParameterIsTrue=None,
                  createParentDirectories=False,
                  minLength=1,
-                 maxLength=255,
+                 maxLength=2147483647,
                  mustMatchRegEx=None,
                  canBeNone=False,
                  arcGISType='ESRI.ArcGIS.DataSourcesRaster.DERasterDatasetTypeClass',
@@ -211,7 +211,7 @@ class ArcGISRasterTypeMetadata(StoredObjectTypeMetadata):
             self.CreateParentDirectories = createParentDirectories
 
         if value is not None:
-            from GeoEco.ArcGIS import GeoprocessorManager
+            from ..ArcGIS import GeoprocessorManager
             gp = GeoprocessorManager.GetWrappedGeoprocessor()
 
             # If it is an output argument, validate the path and name
@@ -339,9 +339,8 @@ class ArcGISRasterTypeMetadata(StoredObjectTypeMetadata):
 
                                 else:
                                     os.mkdir(newPath)
-                                    from GeoEco.Logging import Logger
+                                    from ..Logging import Logger
                                     Logger.Debug(_('Created directory %s.'), newPath)
-                                    GeoprocessorManager.RefreshCatalog(path)
                             
                             # Proceed to the next deeper component of
                             # the path.
@@ -373,17 +372,17 @@ class ArcGISRasterTypeMetadata(StoredObjectTypeMetadata):
 
     @classmethod
     def Exists(cls, name, argMetadata=None, methodLocals=None):
-        from GeoEco.DataManagement.ArcGISRasters import ArcGISRaster
+        from ..DataManagement.ArcGISRasters import ArcGISRaster
         return ArcGISRaster.Exists(name)
 
     @classmethod
     def Delete(cls, name, argMetadata=None, methodLocals=None):
-        from GeoEco.DataManagement.ArcGISRasters import ArcGISRaster
+        from ..DataManagement.ArcGISRasters import ArcGISRaster
         ArcGISRaster.Delete(name)
 
     @classmethod
     def Copy(cls, source, dest, overwriteExisting=False, argMetadata=None, methodLocals=None):
-        from GeoEco.DataManagement.ArcGISRasters import ArcGISRaster
+        from ..DataManagement.ArcGISRasters import ArcGISRaster
         ArcGISRaster.Copy(source, dest, overwriteExisting=overwriteExisting)
 
 
@@ -400,7 +399,7 @@ class ArcGISRasterLayerTypeMetadata(ArcGISRasterTypeMetadata):
                  mustBeDifferentThanArguments=None,
                  mustExist=False,
                  minLength=1,
-                 maxLength=255,
+                 maxLength=2147483647,
                  mustMatchRegEx=None,
                  canBeNone=False,
                  arcGISType='ESRI.ArcGIS.Geoprocessing.GPRasterLayerTypeClass',
@@ -453,7 +452,7 @@ class ArcGISRasterLayerTypeMetadata(ArcGISRasterTypeMetadata):
 
     @classmethod
     def Exists(cls, name, argMetadata=None, methodLocals=None):
-        from GeoEco.ArcGIS import GeoprocessorManager
+        from ..ArcGIS import GeoprocessorManager
         return GeoprocessorManager.ArcGISObjectExists(name, ['rasterdataset', 'rasterlayer', 'rasterband'], _('ArcGIS raster, raster layer, or raster band'))
 
 
@@ -472,7 +471,7 @@ class ArcGISRasterCatalogTypeMetadata(StoredObjectTypeMetadata):
                  deleteIfParameterIsTrue=None,
                  createParentDirectories=False,
                  minLength=1,
-                 maxLength=255,
+                 maxLength=2147483647,
                  mustMatchRegEx=None,
                  canBeNone=False,
                  arcGISType='ESRI.ArcGIS.Geodatabase.DERasterCatalogTypeClass',
@@ -502,17 +501,17 @@ class ArcGISRasterCatalogTypeMetadata(StoredObjectTypeMetadata):
 
     @classmethod
     def Exists(cls, name, argMetadata=None, methodLocals=None):
-        from GeoEco.ArcGIS import GeoprocessorManager
+        from ..ArcGIS import GeoprocessorManager
         return GeoprocessorManager.ArcGISObjectExists(name, ['raster catalog'], _('ArcGIS raster catalog'))
 
     @classmethod
     def Delete(cls, name, argMetadata=None, methodLocals=None):
-        from GeoEco.ArcGIS import GeoprocessorManager
+        from ..ArcGIS import GeoprocessorManager
         GeoprocessorManager.DeleteArcGISObject(name, ['raster catalog'], _('ArcGIS raster catalog'))
 
     @classmethod
     def Copy(cls, source, dest, overwriteExisting=False, argMetadata=None, methodLocals=None):
-        from GeoEco.ArcGIS import GeoprocessorManager
+        from ..ArcGIS import GeoprocessorManager
         GeoprocessorManager.CopyArcGISObject(source, dest, overwriteExisting, ['raster catalog'], _('ArcGIS raster catalog'))
 
 
@@ -532,7 +531,7 @@ class ArcGISFeatureClassTypeMetadata(StoredObjectTypeMetadata):
                  deleteIfParameterIsTrue=None,
                  createParentDirectories=False,
                  minLength=1,
-                 maxLength=255,
+                 maxLength=2147483647,
                  mustMatchRegEx=None,
                  canBeNone=False,
                  arcGISType='ESRI.ArcGIS.Geodatabase.DEFeatureClassTypeClass',
@@ -586,7 +585,7 @@ class ArcGISFeatureClassTypeMetadata(StoredObjectTypeMetadata):
     def ValidateValue(self, value, variableName, methodLocals=None, argMetadata=None):
         (valueChanged, value) = super(ArcGISFeatureClassTypeMetadata, self).ValidateValue(value, variableName, methodLocals, argMetadata)
         if value is not None and self.AllowedShapeTypes is not None:
-            from GeoEco.ArcGIS import GeoprocessorManager
+            from ..ArcGIS import GeoprocessorManager
             gp = GeoprocessorManager.GetWrappedGeoprocessor()
             if gp.Exists(value) and gp.Describe(value).ShapeType.lower() not in self.AllowedShapeTypes:
                 if len(self.AllowedShapeTypes) == 1:
@@ -597,17 +596,17 @@ class ArcGISFeatureClassTypeMetadata(StoredObjectTypeMetadata):
 
     @classmethod
     def Exists(cls, name, argMetadata=None, methodLocals=None):
-        from GeoEco.ArcGIS import GeoprocessorManager
+        from ..ArcGIS import GeoprocessorManager
         return GeoprocessorManager.ArcGISObjectExists(name, ['featureclass', 'shapefile'], _('ArcGIS feature class'))
 
     @classmethod
     def Delete(cls, name, argMetadata=None, methodLocals=None):
-        from GeoEco.ArcGIS import GeoprocessorManager
+        from ..ArcGIS import GeoprocessorManager
         GeoprocessorManager.DeleteArcGISObject(name, ['featureclass', 'shapefile'], _('ArcGIS feature class'))
 
     @classmethod
     def Copy(cls, source, dest, overwriteExisting=False, argMetadata=None, methodLocals=None):
-        from GeoEco.ArcGIS import GeoprocessorManager
+        from ..ArcGIS import GeoprocessorManager
         GeoprocessorManager.CopyArcGISObject(source, dest, overwriteExisting, ['featureclass', 'shapefile'], _('ArcGIS feature class'))
 
 
@@ -624,7 +623,7 @@ class ArcGISFeatureLayerTypeMetadata(ArcGISFeatureClassTypeMetadata):
                  mustBeDifferentThanArguments=None,
                  mustExist=False,
                  minLength=1,
-                 maxLength=255,
+                 maxLength=2147483647,
                  mustMatchRegEx=None,
                  canBeNone=False,
                  arcGISType='ESRI.ArcGIS.Geoprocessing.GPFeatureLayerTypeClass',
@@ -677,7 +676,7 @@ class ArcGISFeatureLayerTypeMetadata(ArcGISFeatureClassTypeMetadata):
 
     @classmethod
     def Exists(cls, name, argMetadata=None, methodLocals=None):
-        from GeoEco.ArcGIS import GeoprocessorManager
+        from ..ArcGIS import GeoprocessorManager
         return GeoprocessorManager.ArcGISObjectExists(name, ['featureclass', 'shapefile', 'featurelayer'], _('ArcGIS feature class or layer'))
 
 
@@ -696,7 +695,7 @@ class ShapefileTypeMetadata(FileTypeMetadata):
                  deleteIfParameterIsTrue=None,
                  createParentDirectories=False,
                  minLength=1,
-                 maxLength=255,
+                 maxLength=2147483647,
                  mustMatchRegEx='.+\.[Ss][Hh][Pp]$',
                  canBeNone=False,
                  arcGISType='ESRI.ArcGIS.Catalog.DEShapeFileTypeClass',
@@ -725,17 +724,17 @@ class ShapefileTypeMetadata(FileTypeMetadata):
 
     @classmethod
     def Exists(cls, name, argMetadata=None, methodLocals=None):
-        from GeoEco.DataManagement.Shapefiles import Shapefile
+        from ..DataManagement.Shapefiles import Shapefile
         return Shapefile.Exists(name)
 
     @classmethod
     def Delete(cls, name, argMetadata=None, methodLocals=None):
-        from GeoEco.DataManagement.Shapefiles import Shapefile
+        from ..DataManagement.Shapefiles import Shapefile
         Shapefile.Delete(name)
 
     @classmethod
     def Copy(cls, source, dest, overwriteExisting=False, argMetadata=None, methodLocals=None):
-        from GeoEco.DataManagement.Shapefiles import Shapefile
+        from ..DataManagement.Shapefiles import Shapefile
         Shapefile.Copy(source, dest, overwriteExisting=overwriteExisting)
 
 
@@ -754,7 +753,7 @@ class ArcGISWorkspaceTypeMetadata(StoredObjectTypeMetadata):
                  deleteIfParameterIsTrue=None,
                  createParentDirectories=False,
                  minLength=1,
-                 maxLength=255,
+                 maxLength=2147483647,
                  mustMatchRegEx=None,
                  canBeNone=False,
                  arcGISType='ESRI.ArcGIS.Geodatabase.DEWorkspaceTypeClass',
@@ -784,17 +783,17 @@ class ArcGISWorkspaceTypeMetadata(StoredObjectTypeMetadata):
 
     @classmethod
     def Exists(cls, name, argMetadata=None, methodLocals=None):
-        from GeoEco.ArcGIS import GeoprocessorManager
+        from ..ArcGIS import GeoprocessorManager
         return GeoprocessorManager.ArcGISObjectExists(name, ['workspace', 'folder'], _('ArcGIS workspace'))
 
     @classmethod
     def Delete(cls, name, argMetadata=None, methodLocals=None):
-        from GeoEco.ArcGIS import GeoprocessorManager
+        from ..ArcGIS import GeoprocessorManager
         GeoprocessorManager.DeleteArcGISObject(name, ['workspace', 'folder'], _('ArcGIS workspace'))
 
     @classmethod
     def Copy(cls, source, dest, overwriteExisting=False, argMetadata=None, methodLocals=None):
-        from GeoEco.ArcGIS import GeoprocessorManager
+        from ..ArcGIS import GeoprocessorManager
         GeoprocessorManager.CopyArcGISObject(source, dest, overwriteExisting, ['workspace', 'folder'], _('ArcGIS workspace'))
 
 
@@ -813,7 +812,7 @@ class ArcGISTableTypeMetadata(StoredObjectTypeMetadata):
                  deleteIfParameterIsTrue=None,
                  createParentDirectories=False,
                  minLength=1,
-                 maxLength=255,
+                 maxLength=2147483647,
                  mustMatchRegEx=None,
                  canBeNone=False,
                  arcGISType='ESRI.ArcGIS.Geodatabase.DETableTypeClass',
@@ -843,17 +842,17 @@ class ArcGISTableTypeMetadata(StoredObjectTypeMetadata):
 
     @classmethod
     def Exists(cls, name, argMetadata=None, methodLocals=None):
-        from GeoEco.ArcGIS import GeoprocessorManager
+        from ..ArcGIS import GeoprocessorManager
         return GeoprocessorManager.ArcGISObjectExists(name, ['table', 'dbasetable', 'textfile', 'featureclass', 'shapefile', 'relationshipclass', 'rastercatalog', 'coveragefeatureclass', 'tableview', 'featurelayer', 'layer', 'arcinfotable'], _('ArcGIS table'))
 
     @classmethod
     def Delete(cls, name, argMetadata=None, methodLocals=None):
-        from GeoEco.ArcGIS import GeoprocessorManager
+        from ..ArcGIS import GeoprocessorManager
         GeoprocessorManager.DeleteArcGISObject(name, ['table', 'dbasetable', 'textfile', 'featureclass', 'shapefile', 'relationshipclass', 'rastercatalog', 'coveragefeatureclass', 'tableview', 'featurelayer', 'layer', 'arcinfotable'], _('ArcGIS table'))
 
     @classmethod
     def Copy(cls, source, dest, overwriteExisting=False, argMetadata=None, methodLocals=None):
-        from GeoEco.ArcGIS import GeoprocessorManager
+        from ..ArcGIS import GeoprocessorManager
         GeoprocessorManager.CopyArcGISObject(source, dest, overwriteExisting, ['table', 'dbasetable', 'textfile', 'shapefile', 'featureclass', 'relationshipclass', 'rastercatalog', 'coveragefeatureclass', 'tableview', 'featurelayer', 'layer', 'arcinfotable'], _('ArcGIS table'))
 
 
@@ -869,7 +868,7 @@ class ArcGISTableViewTypeMetadata(ArcGISTableTypeMetadata):
                  mustBeDifferentThanArguments=None,
                  mustExist=False,
                  minLength=1,
-                 maxLength=255,
+                 maxLength=2147483647,
                  mustMatchRegEx=None,
                  canBeNone=False,
                  arcGISType='ESRI.ArcGIS.Geoprocessing.GPTableViewTypeClass',
@@ -921,7 +920,7 @@ class ArcGISTableViewTypeMetadata(ArcGISTableTypeMetadata):
 
     @classmethod
     def Exists(cls, name, argMetadata=None, methodLocals=None):
-        from GeoEco.ArcGIS import GeoprocessorManager
+        from ..ArcGIS import GeoprocessorManager
         return GeoprocessorManager.ArcGISObjectExists(name, ['table', 'dbasetable', 'textfile', 'featureclass', 'shapefile', 'relationshipclass', 'rastercatalog', 'coveragefeatureclass', 'tableview', 'featurelayer', 'layer', 'arcinfotable'], _('ArcGIS table or table view'))
 
 
@@ -936,7 +935,7 @@ class ArcGISFieldTypeMetadata(StoredObjectTypeMetadata):
                  mustNotExist=False,
                  deleteIfParameterIsTrue=None,
                  minLength=1,
-                 maxLength=255,
+                 maxLength=2147483647,
                  mustMatchRegEx=None,
                  canBeNone=False,
                  arcGISType='ESRI.ArcGIS.Geodatabase.FieldTypeClass',
@@ -990,7 +989,7 @@ class ArcGISFieldTypeMetadata(StoredObjectTypeMetadata):
     def ValidateValue(self, value, variableName, methodLocals=None, argMetadata=None):
         (valueChanged, value) = super(ArcGISFieldTypeMetadata, self).ValidateValue(value, variableName, methodLocals, argMetadata)
         if value is not None and self.AllowedFieldTypes is not None and methodLocals is not None and argMetadata.ArcGISParameterDependencies is not None and len(argMetadata.ArcGISParameterDependencies) > 0 and methodLocals[argMetadata.ArcGISParameterDependencies[0]] is not None:
-            from GeoEco.DatabaseAccess.ArcGIS import ArcGIS91DatabaseConnection
+            from ..DatabaseAccess.ArcGIS import ArcGIS91DatabaseConnection
             conn = ArcGIS91DatabaseConnection()
             fieldDataType = conn.GetFieldDataType(methodLocals[argMetadata.ArcGISParameterDependencies[0]], value)
             if fieldDataType is not None and fieldDataType.lower() not in self.AllowedFieldTypes:
@@ -1003,7 +1002,7 @@ class ArcGISFieldTypeMetadata(StoredObjectTypeMetadata):
     @classmethod
     def Exists(cls, name, argMetadata=None, methodLocals=None):
         assert methodLocals is not None and argMetadata is not None and argMetadata.ArcGISParameterDependencies is not None and len(argMetadata.ArcGISParameterDependencies) == 1, 'ArcGISFieldTypeMetadata.Exists requires that methodLocals and argMetadata be provided, and that argMetadata.ArcGISParameterDependencies[0] be set to the parameter that specifies the field\'s table.'
-        from GeoEco.DatabaseAccess.ArcGIS import ArcGIS91DatabaseConnection
+        from ..DatabaseAccess.ArcGIS import ArcGIS91DatabaseConnection
         conn = ArcGIS91DatabaseConnection()
         exists = conn.FieldExists(methodLocals[argMetadata.ArcGISParameterDependencies[0]], name)
         return exists, exists
@@ -1011,7 +1010,7 @@ class ArcGISFieldTypeMetadata(StoredObjectTypeMetadata):
     @classmethod
     def Delete(cls, name, argMetadata=None, methodLocals=None):
         assert methodLocals is not None and argMetadata is not None and argMetadata.ArcGISParameterDependencies is not None and len(argMetadata.ArcGISParameterDependencies) == 1, 'ArcGISFieldTypeMetadata.Delete requires that methodLocals and argMetadata be provided, and that argMetadata.ArcGISParameterDependencies[0] be set to the parameter that specifies the field\'s table.'
-        from GeoEco.DatabaseAccess.ArcGIS import ArcGIS91DatabaseConnection
+        from ..DatabaseAccess.ArcGIS import ArcGIS91DatabaseConnection
         conn = ArcGIS91DatabaseConnection()
         conn.DeleteField(methodLocals[argMetadata.ArcGISParameterDependencies[0]], name)
 
@@ -1185,7 +1184,7 @@ class SpatialReferenceTypeMetadata(UnicodeStringTypeMetadata):
                                                            canBeArcGISOutputParameter=True)
 
     def ValidateValue(self, value, variableName, methodLocals=None, argMetadata=None):
-        from GeoEco.ArcGIS import _ArcGISObjectWrapper
+        from ..ArcGIS import _ArcGISObjectWrapper
         if isinstance(value, _ArcGISObjectWrapper):
             return False, value
 

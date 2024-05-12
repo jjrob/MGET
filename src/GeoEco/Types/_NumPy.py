@@ -1,4 +1,4 @@
-# _NumPy.py - Provides classes derived from GeoEco.Metadata.TypeMetadata that
+# _NumPy.py - Provides classes derived from ..Metadata.TypeMetadata that
 # represent numpy data types, principally a numpy array.
 #
 # Copyright (C) 2024 Jason J. Roberts
@@ -56,16 +56,6 @@ class NumPyArrayTypeMetadata(TypeMetadata):
         # this class to be constructed without failing when numpy is not
         # installed. But if numpy is installed, we initialize our pythonType to
         # the appropriate class.
-        #
-        # NOTE: Do not try to initialize numpy like this here:
-        #
-        #     from GeoEco.Dependencies import PythonAggregatedModuleDependency
-        #     d = PythonAggregatedModuleDependency('numpy')
-        #     d.Initialize()
-        #
-        # That will cause us to load our private copy of numpy during
-        # the GeoEco uninstall script, which will prevent the
-        # uninstaller from deleting the numpy .pyd files.
 
         try:
             import numpy
@@ -126,17 +116,15 @@ class NumPyArrayTypeMetadata(TypeMetadata):
 
     def ValidateValue(self, value, variableName, methodLocals=None, argMetadata=None):
 
-        # It is possible that self.PythonType is set to object, rather
-        # than numpy.ndarray. This will happen if the constructor was
-        # not able to import the numpy module. That will happen if the
-        # user has not installed their own copy of numpy. But in order
-        # to get to where we are now, the numpy module must have been
-        # imported. The only way for the constructor to not be able to
-        # import it but for it to be imported now is if
-        # PythonAggregatedModuleDependency('numpy').Initialize() was
-        # successful. In that case, we can import numpy now set
-        # pythonType to the proper value before calling the parent
-        # validate function.
+        # It is possible that self.PythonType is set to object, rather than
+        # numpy.ndarray. This will happen if the constructor was not able to
+        # import the numpy module. That will happen if the user has not
+        # installed their own copy of numpy. But in order to get to where we
+        # are now, the numpy module must have been imported. The only way for
+        # the constructor to not be able to import it but for it to be
+        # imported now is if PythonModuleDependency('numpy').Initialize() was
+        # successful. In that case, we can import numpy now set pythonType to
+        # the proper value before calling the parent validate function.
 
         if self._PythonType == object:
             import numpy

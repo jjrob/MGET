@@ -1435,7 +1435,7 @@ AddMethodMetadata(Metadata.__init__,
 
 AddArgumentMetadata(Metadata.__init__, 'self',
     typeMetadata=ClassInstanceTypeMetadata(cls=Metadata),
-    description=_('%s instance.') % Metadata.__name__)
+    description=_(':class:`%s` instance.') % Metadata.__name__)
 
 AddArgumentMetadata(Metadata.__init__, 'name',
     typeMetadata=UnicodeStringTypeMetadata(),
@@ -1509,7 +1509,7 @@ file. This file is input to various other build operations."""))
 
 AddArgumentMetadata(Metadata.AppendXMLNodes, 'self',
     typeMetadata=ClassInstanceTypeMetadata(cls=Metadata),
-    description=_('%s instance.') % Metadata.__name__)
+    description=_(':class:`%s` instance.') % Metadata.__name__)
 
 AddArgumentMetadata(Metadata.AppendXMLNodes, 'node',
     typeMetadata=ClassInstanceTypeMetadata(cls=xml.dom.Node),
@@ -1530,7 +1530,7 @@ also called from classes that do not derive from :class:`Metadata`."""))
 
 AddArgumentMetadata(Metadata.AppendPropertyXMLNode, 'cls',
     typeMetadata=ClassOrClassInstanceTypeMetadata(cls=Metadata),
-    description=_('%s class or an instance of it.') % Metadata.__name__)
+    description=_(':class:`%s` or an instance of it.') % Metadata.__name__)
 
 AddArgumentMetadata(Metadata.AppendPropertyXMLNode, 'instance',
     typeMetadata=ClassInstanceTypeMetadata(cls=object),
@@ -1559,7 +1559,7 @@ also called from classes that do not derive from :class:`Metadata`."""))
 
 AddArgumentMetadata(Metadata.AppendPropertyDocutilsXMLNodes, 'cls',
     typeMetadata=ClassOrClassInstanceTypeMetadata(cls=Metadata),
-    description=_('%s class or an instance of it.') % Metadata.__name__)
+    description=_(':class:`%s` or an instance of it.') % Metadata.__name__)
 
 AddArgumentMetadata(Metadata.AppendPropertyDocutilsXMLNodes, 'instance',
     typeMetadata=ClassInstanceTypeMetadata(cls=object),
@@ -1621,7 +1621,7 @@ concrete Python objects, they are merely part of function definitions."""))
 
 AddArgumentMetadata(Metadata._GetObject, 'self',
     typeMetadata=ClassInstanceTypeMetadata(cls=Metadata),
-    description=_('%s instance.') % Metadata.__name__)
+    description=_(':class:`%s` instance.') % Metadata.__name__)
 
 AddResultMetadata(Metadata._GetObject, 'obj',
     typeMetadata=ClassInstanceTypeMetadata(cls=object),
@@ -1644,7 +1644,7 @@ columns."""))
 
 AddArgumentMetadata(Metadata._GetDocString, 'self',
     typeMetadata=ClassInstanceTypeMetadata(cls=Metadata),
-    description=_('%s instance.') % Metadata.__name__)
+    description=_(':class:`%s` instance.') % Metadata.__name__)
 
 AddResultMetadata(Metadata._GetDocString, 's',
     typeMetadata=UnicodeStringTypeMetadata(),
@@ -1663,7 +1663,7 @@ AddMethodMetadata(ModuleMetadata.__init__,
 
 AddArgumentMetadata(ModuleMetadata.__init__, 'self',
     typeMetadata=ClassInstanceTypeMetadata(cls=ModuleMetadata),
-    description=_('%s instance.') % ModuleMetadata.__name__)
+    description=_(':class:`%s` instance.') % ModuleMetadata.__name__)
 
 AddArgumentMetadata(ModuleMetadata.__init__, 'name',
     typeMetadata=UnicodeStringTypeMetadata(canBeNone=True),
@@ -1711,7 +1711,7 @@ AddMethodMetadata(ClassMetadata.__init__,
 
 AddArgumentMetadata(ClassMetadata.__init__, 'self',
     typeMetadata=ClassInstanceTypeMetadata(cls=ClassMetadata),
-    description=_('%s instance.') % ClassMetadata.__name__)
+    description=_(':class:`%s` instance.') % ClassMetadata.__name__)
 
 AddArgumentMetadata(ClassMetadata.__init__, 'name',
     typeMetadata=UnicodeStringTypeMetadata(),
@@ -1788,7 +1788,7 @@ by the :class:`~GeoEco.Types.TypeMetadata`. For example::
 
 AddArgumentMetadata(ClassMetadata.ValidatePropertyAssignment, 'self',
     typeMetadata=ClassInstanceTypeMetadata(cls=ClassMetadata),
-    description=_('%s instance.') % ClassMetadata.__name__)
+    description=_(':class:`%s` instance.') % ClassMetadata.__name__)
 
 # Public method: ValidateMethodInvocation
 
@@ -1829,7 +1829,7 @@ by the :class:`~GeoEco.Types.TypeMetadata`. For example::
 
     GeoEco.Metadata.AddArgumentMetadata(MyClass.IncrementInteger, 'cls',
         typeMetadata=GeoEco.Types.PythonClassorClassInstance(cls=MyClass),
-        description=_('%s class or an instance of it.') % MyClass.__name__)
+        description=_(':class:`%s` or an instance of it.') % MyClass.__name__)
 
     GeoEco.Metadata.AddArgumentMetadata(MyClass.IncrementInteger, 'value',
         typeMetadata=GeoEco.Types.IntegerTypeMetadata(),
@@ -1852,7 +1852,7 @@ initialized. This behavior may be overridden for by subclasses of
 
 AddArgumentMetadata(ClassMetadata.ValidateMethodInvocation, 'self',
     typeMetadata=ClassInstanceTypeMetadata(cls=ClassMetadata),
-    description=_('%s instance.') % ClassMetadata.__name__)
+    description=_(':class:`%s` instance.') % ClassMetadata.__name__)
 
 ###############################################################################
 # Metadata: PropertyMetadata class
@@ -1867,7 +1867,7 @@ AddMethodMetadata(PropertyMetadata.__init__,
 
 AddArgumentMetadata(PropertyMetadata.__init__, 'self',
     typeMetadata=ClassInstanceTypeMetadata(cls=PropertyMetadata),
-    description=_('%s instance.') % PropertyMetadata.__name__)
+    description=_(':class:`%s` instance.') % PropertyMetadata.__name__)
 
 AddArgumentMetadata(PropertyMetadata.__init__, 'name',
     typeMetadata=UnicodeStringTypeMetadata(),
@@ -1931,7 +1931,7 @@ AddMethodMetadata(MethodMetadata.__init__,
 
 AddArgumentMetadata(MethodMetadata.__init__, 'self',
     typeMetadata=ClassInstanceTypeMetadata(cls=MethodMetadata),
-    description=_('%s instance.') % MethodMetadata.__name__)
+    description=_(':class:`%s` instance.') % MethodMetadata.__name__)
 
 AddArgumentMetadata(MethodMetadata.__init__, 'name',
     typeMetadata=UnicodeStringTypeMetadata(),
@@ -2045,7 +2045,7 @@ requested name, or if an :class:`ArgumentMetadata` has not been added to this
 
 AddArgumentMetadata(MethodMetadata.GetArgumentByName, 'self',
     typeMetadata=ClassInstanceTypeMetadata(cls=MethodMetadata),
-    description=_('%s instance.') % MethodMetadata.__name__)
+    description=_(':class:`%s` instance.') % MethodMetadata.__name__)
 
 AddArgumentMetadata(MethodMetadata.GetArgumentByName, 'name',
     typeMetadata=UnicodeStringTypeMetadata(),
@@ -2065,7 +2065,7 @@ not been added to this :class:`MethodMetadata` yet."""))
 
 AddArgumentMetadata(MethodMetadata.GetResultByName, 'self',
     typeMetadata=ClassInstanceTypeMetadata(cls=MethodMetadata),
-    description=_('%s instance.') % MethodMetadata.__name__)
+    description=_(':class:`%s` instance.') % MethodMetadata.__name__)
 
 AddArgumentMetadata(MethodMetadata.GetResultByName, 'name',
     typeMetadata=UnicodeStringTypeMetadata(),
@@ -2088,7 +2088,7 @@ AddMethodMetadata(ArgumentMetadata.__init__,
 
 AddArgumentMetadata(ArgumentMetadata.__init__, 'self',
     typeMetadata=ClassInstanceTypeMetadata(cls=ArgumentMetadata),
-    description=_('%s instance.') % ArgumentMetadata.__name__)
+    description=_(':class:`%s` instance.') % ArgumentMetadata.__name__)
 
 AddArgumentMetadata(ArgumentMetadata.__init__, 'name',
     typeMetadata=UnicodeStringTypeMetadata(),
@@ -2207,7 +2207,7 @@ file. This file is input to various other build operations."""))
 
 AddArgumentMetadata(ArgumentMetadata.AppendXMLNodes, 'self',
     typeMetadata=ClassInstanceTypeMetadata(cls=ArgumentMetadata),
-    description=_('%s instance.') % ArgumentMetadata.__name__)
+    description=_(':class:`%s` instance.') % ArgumentMetadata.__name__)
 
 AddArgumentMetadata(ArgumentMetadata.AppendXMLNodes, 'node',
     typeMetadata=ClassInstanceTypeMetadata(cls=xml.dom.Node),
@@ -2230,7 +2230,7 @@ AddMethodMetadata(ResultMetadata.__init__,
 
 AddArgumentMetadata(ResultMetadata.__init__, 'self',
     typeMetadata=ClassInstanceTypeMetadata(cls=ResultMetadata),
-    description=_('%s instance.') % ResultMetadata.__name__)
+    description=_(':class:`%s` instance.') % ResultMetadata.__name__)
 
 AddArgumentMetadata(ResultMetadata.__init__, 'name',
     typeMetadata=UnicodeStringTypeMetadata(),
@@ -2297,7 +2297,7 @@ file. This file is input to various other build operations."""))
 
 AddArgumentMetadata(ResultMetadata.AppendXMLNodes, 'self',
     typeMetadata=ClassInstanceTypeMetadata(cls=ResultMetadata),
-    description=_('%s instance.') % ResultMetadata.__name__)
+    description=_(':class:`%s` instance.') % ResultMetadata.__name__)
 
 AddArgumentMetadata(ResultMetadata.AppendXMLNodes, 'node',
     typeMetadata=ClassInstanceTypeMetadata(cls=xml.dom.Node),

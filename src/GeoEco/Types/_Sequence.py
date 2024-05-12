@@ -1,4 +1,4 @@
-# _Sequence.py - Provides classes derived from GeoEco.Metadata.TypeMetadata
+# _Sequence.py - Provides classes derived from ..Metadata.TypeMetadata
 # that represent Python sequence types such as lists and dicts.
 #
 # Copyright (C) 2024 Jason J. Roberts
@@ -156,7 +156,7 @@ class SequenceTypeMetadata(TypeMetadata):
         paramCharCount = 0
         failedBecauseArcGISForgotQuotes = False     # Sometimes ArcGIS seems to violate the rules described above in a way that makes the string unparsable. In this case we treat it as a single string and report a warning.
 
-        #from GeoEco.Logging import Logger
+        #from ..Logging import Logger
         try:
             while i < len(paramString):
                 #Logger.Debug('----------------------------')
@@ -221,7 +221,7 @@ class SequenceTypeMetadata(TypeMetadata):
                 
         except:
             if failedBecauseArcGISForgotQuotes:
-                from GeoEco.Logging import Logger
+                from ..Logging import Logger
                 Logger.Warning(_('The string provided for %(paramName)s parameter (parameter number %(paramIndex)i) included a space but the string itself was not enclosed in apostrophes. This is a known problem with how ArcGIS passes parameters to Python scripts. As a result, the string cannot be parsed into a list of items and will be treated as a single item. This may result in unintended effects. Please check your outputs carefully.') % {'paramName' : paramDisplayName, 'paramIndex' : paramIndex})
                 params.append(paramString)
             else:
@@ -307,7 +307,7 @@ class ListTypeMetadata(SequenceTypeMetadata):
         if value is not None:
             itemsToValidate = min(len(value), self.MaxItemsToValidate)
             if itemsToValidate != len(value):
-                from GeoEco.Logging import Logger
+                from ..Logging import Logger
                 Logger.Debug(_('The %(var)s contains %(count1)i items, but to minimize execution time, only the first %(count2)i items will be validated. If an invalid item is present, unexpected results may occur.') % {'var': variableName, 'count1': len(value), 'count2': self.MaxItemsToValidate})
             for i in range(itemsToValidate):
                 (elementValueChanged, newElementValue) = self.ElementType.ValidateValue(value[i], _('element %i of the %s (where 0 is the first element)') % (i, variableName), methodLocals, argMetadata)
@@ -355,7 +355,7 @@ class TupleTypeMetadata(SequenceTypeMetadata):
         if value is not None:
             itemsToValidate = min(len(value), self.MaxItemsToValidate)
             if itemsToValidate != len(value):
-                from GeoEco.Logging import Logger
+                from ..Logging import Logger
                 Logger.Debug(_('The %(var)s contains %(count1)i items, but to minimize execution time, only the first %(count2)i items will be validated. If an invalid item is present, unexpected results may occur.') % {'var': variableName, 'count1': len(value), 'count2': self.MaxItemsToValidate})
             for i in range(itemsToValidate):
                 (elementValueChanged, newElementValue) = self.ElementType.ValidateValue(value[i], _('element %i of the %s (where 0 is the first element)') % (i, variableName), methodLocals, argMetadata)

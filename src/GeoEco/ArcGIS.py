@@ -17,11 +17,11 @@ import sys
 import types
 import weakref
 
-from GeoEco.Dependencies import Dependency, SoftwareNotInstalledError
-from GeoEco.DynamicDocString import DynamicDocString
-from GeoEco.Logging import Logger
-from GeoEco.Internationalization import _
-from GeoEco.Metadata import ClassMetadata, MethodMetadata, TypeMetadata
+from .Dependencies import Dependency, SoftwareNotInstalledError
+from .DynamicDocString import DynamicDocString
+from .Logging import Logger
+from .Internationalization import _
+from .Metadata import ClassMetadata, MethodMetadata, TypeMetadata
 
 
 # Private variables global to this module. Initially, when originally
@@ -941,8 +941,8 @@ class _ArcGISObjectWrapper(object):
 # Metadata: module
 ###############################################################################
 
-from GeoEco.Metadata import *
-from GeoEco.Types import *
+from .Metadata import *
+from .Types import *
 
 AddModuleMetadata(shortDescription=_('Provides utility functions for interacting with ESRI ArcGIS software.'))
 
@@ -986,7 +986,7 @@ from being released."""))
 
 AddArgumentMetadata(GeoprocessorManager.GetGeoprocessor, 'cls',
     typeMetadata=ClassOrClassInstanceTypeMetadata(cls=GeoprocessorManager),
-    description=_('%s class or an instance of it.') % GeoprocessorManager.__name__)
+    description=_(':class:`%s` or an instance of it.') % GeoprocessorManager.__name__)
 
 AddResultMetadata(GeoprocessorManager.GetGeoprocessor, 'geoprocessor',
     typeMetadata=AnyObjectTypeMetadata(canBeNone=True),
@@ -1010,7 +1010,7 @@ geoprocessor and utilize the new one you provide."""))
 
 AddArgumentMetadata(GeoprocessorManager.SetGeoprocessor, 'cls',
     typeMetadata=ClassOrClassInstanceTypeMetadata(cls=GeoprocessorManager),
-    description=_('%s class or an instance of it.') % GeoprocessorManager.__name__)
+    description=_(':class:`%s` or an instance of it.') % GeoprocessorManager.__name__)
 
 AddArgumentMetadata(GeoprocessorManager.SetGeoprocessor, 'geoprocessor',
     typeMetadata=AnyObjectTypeMetadata(),
@@ -1057,7 +1057,7 @@ information about configuring logging."""))
 
 AddArgumentMetadata(GeoprocessorManager.GetWrappedGeoprocessor, 'cls',
     typeMetadata=ClassOrClassInstanceTypeMetadata(cls=GeoprocessorManager),
-    description=_('%s class or an instance of it.') % GeoprocessorManager.__name__)
+    description=_(':class:`%s` or an instance of it.') % GeoprocessorManager.__name__)
 
 AddResultMetadata(GeoprocessorManager.GetWrappedGeoprocessor, 'geoprocessor',
     typeMetadata=AnyObjectTypeMetadata(canBeNone=True),
@@ -1080,7 +1080,7 @@ Raises:
 
 AddArgumentMetadata(GeoprocessorManager.GetArcGISVersion, 'cls',
     typeMetadata=ClassOrClassInstanceTypeMetadata(cls=GeoprocessorManager),
-    description=_('%s class or an instance of it.') % GeoprocessorManager.__name__)
+    description=_(':class:`%s` or an instance of it.') % GeoprocessorManager.__name__)
 
 AddResultMetadata(GeoprocessorManager.GetArcGISVersion, 'majorVersion',
     typeMetadata=TupleTypeMetadata(elementType=IntegerTypeMetadata()),
@@ -1103,7 +1103,7 @@ Raises:
 
 AddArgumentMetadata(GeoprocessorManager.GetArcGISMajorVersion, 'cls',
     typeMetadata=ClassOrClassInstanceTypeMetadata(cls=GeoprocessorManager),
-    description=_('%s class or an instance of it.') % GeoprocessorManager.__name__)
+    description=_(':class:`%s` or an instance of it.') % GeoprocessorManager.__name__)
 
 AddResultMetadata(GeoprocessorManager.GetArcGISMajorVersion, 'majorVersion',
     typeMetadata=IntegerTypeMetadata(),
@@ -1126,7 +1126,7 @@ Raises:
 
 AddArgumentMetadata(GeoprocessorManager.GetArcGISMinorVersion, 'cls',
     typeMetadata=ClassOrClassInstanceTypeMetadata(cls=GeoprocessorManager),
-    description=_('%s class or an instance of it.') % GeoprocessorManager.__name__)
+    description=_(':class:`%s` or an instance of it.') % GeoprocessorManager.__name__)
 
 AddResultMetadata(GeoprocessorManager.GetArcGISMinorVersion, 'minorVersion',
     typeMetadata=IntegerTypeMetadata(),
@@ -1149,7 +1149,7 @@ Raises:
 
 AddArgumentMetadata(GeoprocessorManager.GetArcGISPatchVersion, 'cls',
     typeMetadata=ClassOrClassInstanceTypeMetadata(cls=GeoprocessorManager),
-    description=_('%s class or an instance of it.') % GeoprocessorManager.__name__)
+    description=_(':class:`%s` or an instance of it.') % GeoprocessorManager.__name__)
 
 AddResultMetadata(GeoprocessorManager.GetArcGISPatchVersion, 'servicePack',
     typeMetadata=IntegerTypeMetadata(),
@@ -1165,7 +1165,7 @@ AddMethodMetadata(GeoprocessorManager.GetArcGISProductName,
 
 AddArgumentMetadata(GeoprocessorManager.GetArcGISProductName, 'cls',
     typeMetadata=ClassOrClassInstanceTypeMetadata(cls=GeoprocessorManager),
-    description=_('%s class or an instance of it.') % GeoprocessorManager.__name__)
+    description=_(':class:`%s` or an instance of it.') % GeoprocessorManager.__name__)
 
 AddResultMetadata(GeoprocessorManager.GetArcGISProductName, 'productName',
     typeMetadata=UnicodeStringTypeMetadata(),
@@ -1181,7 +1181,7 @@ AddMethodMetadata(GeoprocessorManager.GetArcGISLicenseLevel,
 
 AddArgumentMetadata(GeoprocessorManager.GetArcGISLicenseLevel, 'cls',
     typeMetadata=ClassOrClassInstanceTypeMetadata(cls=GeoprocessorManager),
-    description=_('%s class or an instance of it.') % GeoprocessorManager.__name__)
+    description=_(':class:`%s` or an instance of it.') % GeoprocessorManager.__name__)
 
 AddResultMetadata(GeoprocessorManager.GetArcGISLicenseLevel, 'licenseLevel',
     typeMetadata=UnicodeStringTypeMetadata(canBeNone=True),
@@ -1254,7 +1254,7 @@ can call :func:`SetGeoprocessor`."""))
 
 AddArgumentMetadata(GeoprocessorManager.InitializeGeoprocessor, 'cls',
     typeMetadata=ClassOrClassInstanceTypeMetadata(cls=GeoprocessorManager),
-    description=_('%s class or an instance of it.') % GeoprocessorManager.__name__)
+    description=_(':class:`%s` or an instance of it.') % GeoprocessorManager.__name__)
 
 # Public method: GeoprocessorManager.ArcGISObjectExists
 
@@ -1266,7 +1266,7 @@ functions to check the existence and type of the object."""))
 
 AddArgumentMetadata(GeoprocessorManager.ArcGISObjectExists, 'cls',
     typeMetadata=ClassOrClassInstanceTypeMetadata(cls=GeoprocessorManager),
-    description=_('%s class or an instance of it.') % GeoprocessorManager.__name__)
+    description=_(':class:`%s` or an instance of it.') % GeoprocessorManager.__name__)
 
 AddArgumentMetadata(GeoprocessorManager.ArcGISObjectExists, 'path',
     typeMetadata=UnicodeStringTypeMetadata(),
@@ -1441,7 +1441,7 @@ AddMethodMetadata(ArcGISDependency.__init__,
 
 AddArgumentMetadata(ArcGISDependency.__init__, 'self',
     typeMetadata=ClassInstanceTypeMetadata(cls=ArcGISDependency),
-    description=_('%s instance.') % ArcGISDependency.__name__)
+    description=_(':class:`%s` instance.') % ArcGISDependency.__name__)
 
 AddArgumentMetadata(ArcGISDependency.__init__, 'minimumMajorVersion',
     typeMetadata=ArcGISDependency.MinimumMajorVersion.__doc__.Obj.Type,
@@ -1474,7 +1474,7 @@ AddMethodMetadata(ArcGISDependency.SetVersion,
 
 AddArgumentMetadata(ArcGISDependency.SetVersion, 'self',
     typeMetadata=ClassInstanceTypeMetadata(cls=ArcGISDependency),
-    description=_('%s instance.') % ArcGISDependency.__name__)
+    description=_(':class:`%s` instance.') % ArcGISDependency.__name__)
 
 AddArgumentMetadata(ArcGISDependency.SetVersion, 'minimumMajorVersion',
     typeMetadata=ArcGISDependency.MinimumMajorVersion.__doc__.Obj.Type,
@@ -1508,7 +1508,7 @@ AddMethodMetadata(ArcGISExtensionDependency.__init__,
 
 AddArgumentMetadata(ArcGISExtensionDependency.__init__, 'self',
     typeMetadata=ClassInstanceTypeMetadata(cls=ArcGISExtensionDependency),
-    description=_('%s instance.') % ArcGISExtensionDependency.__name__)
+    description=_(':class:`%s` instance.') % ArcGISExtensionDependency.__name__)
 
 AddArgumentMetadata(ArcGISExtensionDependency.__init__, 'extensionCode',
     typeMetadata=ArcGISExtensionDependency.ExtensionCode.__doc__.Obj.Type,

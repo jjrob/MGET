@@ -8,7 +8,12 @@ file() was removed; use open() instead
 MGET issues to check for:
 =========================
 
-Remove AggregatedModules
+Remove unnecessary absolute imports of GeoEco.Whatever
+Replace PythonAggregatedModuleDependency with PythonModuleDependency
+Search for aggregated and make sure it is ok
 Remove ArcGISProductDependency and use ArcGISDependency instead
 Remove GetResultCacheKey
 Remove RefreshCatalog
+Remove ImportGDALModule
+Change 0x%(id)08X to 0x%(id)016X
+Do not call Destroy on GDAL objects anymore; see https://gdal.org/api/python_gotchas.html#certain-objects-contain-a-destroy-method-but-you-should-never-use-it

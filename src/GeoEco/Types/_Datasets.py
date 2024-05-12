@@ -1,5 +1,5 @@
-# _Datasets.py - Provides classes derived from GeoEco.Metadata.TypeMetadata that
-# are related to the GeoEco.Datasets object model.
+# _Datasets.py - Provides classes derived from ..Metadata.TypeMetadata that
+# are related to the ..Datasets object model.
 #
 # Copyright (C) 2024 Jason J. Roberts
 #
@@ -32,7 +32,7 @@ class TableFieldTypeMetadata(StoredObjectTypeMetadata):
                  mustNotExist=False,
                  deleteIfParameterIsTrue=None,
                  minLength=1,
-                 maxLength=255,
+                 maxLength=2147483647,
                  mustMatchRegEx=None,
                  canBeNone=False,
                  canBeArcGISInputParameter=True,

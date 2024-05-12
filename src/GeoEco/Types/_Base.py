@@ -1,4 +1,4 @@
-# _Base.py - Provides classes derived from GeoEco.Metadata.TypeMetadata that
+# _Base.py - Provides classes derived from ..Metadata.TypeMetadata that
 # represent basic Python types such as integers, floats, and strings.
 #
 # Copyright (C) 2024 Jason J. Roberts
@@ -949,7 +949,7 @@ class UnicodeStringTypeMetadata(TypeMetadata):
             if self.MaxLength is not None and self.MaxLength < 2147483647:
                 constraints.append('Maximum length: ' + repr(self.MaxLength))
             if self.MustMatchRegEx is not None:
-                constraints.append('Must match exp: ' + repr(self.MustMatchRegEx))
+                constraints.append('Must match regular expression: ``' + str(self.MustMatchRegEx) + '``')
         elif not self.MakeLowercase and not self.MakeUppercase:
             constraints.append('Case sensitive')
         return constraints

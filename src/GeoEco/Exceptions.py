@@ -8,8 +8,8 @@
 # root of this project or https://opensource.org/license/bsd-3-clause for the
 # full license text.
 
-from GeoEco.DynamicDocString import DynamicDocString
-from GeoEco.Internationalization import _
+from .DynamicDocString import DynamicDocString
+from .Internationalization import _
 
 
 class GeoEcoError(Exception):
@@ -27,8 +27,8 @@ class GeoEcoError(Exception):
 # Metadata: module
 ###############################################################################
 
-from GeoEco.Metadata import *
-from GeoEco.Types import *
+from .Metadata import *
+from .Types import *
 
 AddModuleMetadata(shortDescription=_('Defines the base class for all exceptions defined by the GeoEco library.'))
 
@@ -46,7 +46,7 @@ AddMethodMetadata(GeoEcoError.__init__,
 
 AddArgumentMetadata(GeoEcoError.__init__, 'self',
     typeMetadata=ClassInstanceTypeMetadata(cls=GeoEcoError),
-    description=_('%s instance.') % GeoEcoError.__name__)
+    description=_(':class:`%s` instance.') % GeoEcoError.__name__)
 
 AddArgumentMetadata(GeoEcoError.__init__, 'message',
     typeMetadata=UnicodeStringTypeMetadata(),

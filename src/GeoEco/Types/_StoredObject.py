@@ -1,4 +1,4 @@
-# _StoredObject.py - Provides classes derived from GeoEco.Metadata.TypeMetadata
+# _StoredObject.py - Provides classes derived from ..Metadata.TypeMetadata
 # that represent stored objects such as files and directories.
 #
 # Copyright (C) 2024 Jason J. Roberts
@@ -35,7 +35,7 @@ class StoredObjectTypeMetadata(UnicodeStringTypeMetadata):
                  deleteIfParameterIsTrue=None,
                  createParentDirectories=False,
                  minLength=1,
-                 maxLength=255,
+                 maxLength=2147483647,
                  mustMatchRegEx=None,
                  canBeNone=False,
                  arcGISType='ESRI.ArcGIS.Geoprocessing.GPStringTypeClass',
@@ -205,7 +205,7 @@ class StoredObjectTypeMetadata(UnicodeStringTypeMetadata):
                     if same:
                         _RaiseException(ValueError(_('The %(param1)s and the %(param2)s parameter refer to the same %(type)s (%(value)s). You must not specify the same %(type)s.') % {'param1' : variableName, 'param2' : arg, 'type' : self.TypeDisplayName, 'value' : value}))
 
-            from GeoEco.Logging import Logger
+            from ..Logging import Logger
             oldLogInfoAsDebug = Logger.GetLogInfoAsDebug()
             Logger.SetLogInfoAsDebug(True)
             try:
@@ -234,7 +234,7 @@ class StoredObjectTypeMetadata(UnicodeStringTypeMetadata):
                                                                                                                                      os.path.dirname(os.path.dirname(value)).lower().endswith('.gdb') and os.path.isdir(os.path.dirname(os.path.dirname(value))) or
                                                                                                                                      os.path.dirname(value).lower().endswith('.sde') and os.path.isfile(os.path.dirname(value)) or
                                                                                                                                      os.path.dirname(os.path.dirname(value)).lower().endswith('.sde') and os.path.isdir(os.path.dirname(os.path.dirname(value)))):
-                    from GeoEco.DataManagement.Directories import Directory
+                    from ..DataManagement.Directories import Directory
                     Directory.Create(os.path.dirname(value))
 
             finally:
@@ -262,7 +262,7 @@ class StoredObjectTypeMetadata(UnicodeStringTypeMetadata):
                     madeAbsolute = True
 
             if not madeAbsolute and self.UseArcGISWorkspace:
-                from GeoEco.ArcGIS import GeoprocessorManager
+                from ..ArcGIS import GeoprocessorManager
                 gp = GeoprocessorManager.GetWrappedGeoprocessor()
                 if gp is not None and isinstance(gp.Workspace, str) and len(gp.Workspace) > 0:
                     value2 = os.path.join(gp.Workspace, value)
@@ -352,7 +352,7 @@ class FileTypeMetadata(StoredObjectTypeMetadata):
                  deleteIfParameterIsTrue=None,
                  createParentDirectories=False,
                  minLength=1,
-                 maxLength=255,
+                 maxLength=2147483647,
                  mustMatchRegEx=None,
                  canBeNone=False,
                  arcGISType='ESRI.ArcGIS.Catalog.DEFileTypeClass',
@@ -401,17 +401,17 @@ class FileTypeMetadata(StoredObjectTypeMetadata):
 
     @classmethod
     def Exists(cls, name, argMetadata=None, methodLocals=None):
-        from GeoEco.DataManagement.Files import File
+        from ..DataManagement.Files import File
         return File.Exists(name)
 
     @classmethod
     def Delete(cls, name, argMetadata=None, methodLocals=None):
-        from GeoEco.DataManagement.Files import File
+        from ..DataManagement.Files import File
         File.Delete(name)
 
     @classmethod
     def Copy(cls, source, dest, overwriteExisting=False, argMetadata=None, methodLocals=None):
-        from GeoEco.DataManagement.Files import File
+        from ..DataManagement.Files import File
         File.Copy(source, dest, overwriteExisting=overwriteExisting)
 
 
@@ -432,7 +432,7 @@ class TextFileTypeMetadata(FileTypeMetadata):
                  deleteIfParameterIsTrue=None,
                  createParentDirectories=False,
                  minLength=1,
-                 maxLength=255,
+                 maxLength=2147483647,
                  mustMatchRegEx=None,
                  canBeNone=False,
                  arcGISType='ESRI.ArcGIS.Catalog.DETextFileTypeClass',
@@ -477,7 +477,7 @@ class DirectoryTypeMetadata(StoredObjectTypeMetadata):
                  deleteIfParameterIsTrue=None,
                  createParentDirectories=False,
                  minLength=1,
-                 maxLength=255,
+                 maxLength=2147483647,
                  mustMatchRegEx=None,
                  canBeNone=False,
                  arcGISType='ESRI.ArcGIS.Catalog.DEFolderTypeClass',
@@ -507,17 +507,17 @@ class DirectoryTypeMetadata(StoredObjectTypeMetadata):
 
     @classmethod
     def Exists(cls, name, argMetadata=None, methodLocals=None):
-        from GeoEco.DataManagement.Directories import Directory
+        from ..DataManagement.Directories import Directory
         return Directory.Exists(name)
 
     @classmethod
     def Delete(cls, name, argMetadata=None, methodLocals=None):
-        from GeoEco.DataManagement.Directories import Directory
+        from ..DataManagement.Directories import Directory
         Directory.Delete(name, removeTree=True)
 
     @classmethod
     def Copy(cls, source, dest, overwriteExisting=False, argMetadata=None, methodLocals=None):
-        from GeoEco.DataManagement.Directories import Directory
+        from ..DataManagement.Directories import Directory
         Directory.Copy(source, dest, deleteExistingDestinationDirectory=overwriteExisting, overwriteExistingFiles=overwriteExisting)
 
 

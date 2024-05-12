@@ -17,8 +17,8 @@ import sys
 import time
 import traceback
 
-from GeoEco.DynamicDocString import DynamicDocString
-from GeoEco.Internationalization import _
+from .DynamicDocString import DynamicDocString
+from .Internationalization import _
 
 
 # Public classes exposed by this module
@@ -492,7 +492,7 @@ class ProgressReporter(object):
     ArcGISProgressorLabel = property(_GetArcGISProgressorLabel, None, doc=DynamicDocString())
 
     def _UseArcGISProgressor(self):
-        from GeoEco.ArcGIS import GeoprocessorManager
+        from .ArcGIS import GeoprocessorManager
         return self._TotalOperations is not None and self.ArcGISProgressorLabel is not None and GeoprocessorManager.GetGeoprocessor() is not None
 
     def _GetLoggingChannel(self):
@@ -516,7 +516,7 @@ class ProgressReporter(object):
             self._TotalOperations = None
 
         if self._UseArcGISProgressor():
-            from GeoEco.ArcGIS import GeoprocessorManager
+            from .ArcGIS import GeoprocessorManager
             gp = GeoprocessorManager.GetWrappedGeoprocessor()
             if self.HasStarted:
                 try:
@@ -643,7 +643,7 @@ class ProgressReporter(object):
                 self._ClockNextReportTime = clockNow + 60.0
 
         if self._UseArcGISProgressor() and (reinitializeArcGISProgressor or int(math.floor(float(self._OperationsCompleted) / float(self._TotalOperations) * 1000.)) > int(math.floor(float(self._OperationsCompleted - 1) / float(self._TotalOperations) * 1000.))):
-            from GeoEco.ArcGIS import GeoprocessorManager
+            from .ArcGIS import GeoprocessorManager
             gp = GeoprocessorManager.GetWrappedGeoprocessor()
             try:
                 if reinitializeArcGISProgressor:
@@ -670,7 +670,7 @@ class ProgressReporter(object):
             self._Log(self._FormatAbortedMessage(timeElapsed, self._OperationsCompleted, timePerOp, self._TotalOperations - self._OperationsCompleted))
 
         if self._UseArcGISProgressor():
-            from GeoEco.ArcGIS import GeoprocessorManager
+            from .ArcGIS import GeoprocessorManager
             gp = GeoprocessorManager.GetWrappedGeoprocessor()
             try:
                 gp.ResetProgressor()
@@ -726,7 +726,7 @@ class _ArcGISLoggingHandler(logging.Handler):
 
     def _Emit(self, record):
         try:
-            from GeoEco.ArcGIS import GeoprocessorManager
+            from .ArcGIS import GeoprocessorManager
             message = self.format(record)
             if record.levelno >= logging.ERROR:
                 GeoprocessorManager.GetGeoprocessor().AddError(message)
@@ -744,7 +744,7 @@ class _ArcGISLoggingHandler(logging.Handler):
     @classmethod
     def Activate(cls):
         if cls._PreactivationQueue is not None:
-            from GeoEco.ArcGIS import GeoprocessorManager
+            from .ArcGIS import GeoprocessorManager
             if GeoprocessorManager.GetGeoprocessor() is None:
                 GeoprocessorManager.InitializeGeoprocessor()
             while len(cls._PreactivationQueue) > 0:
@@ -825,8 +825,8 @@ except:
 # Metadata: module
 ###############################################################################
 
-from GeoEco.Metadata import *
-from GeoEco.Types import *
+from .Metadata import *
+from .Types import *
 
 AddModuleMetadata(shortDescription=_('Classes and functions that the GeoEco library uses to report activity to the user.'))
 
@@ -870,7 +870,7 @@ logging system causes debugging messages to be discarded."""))
 
 AddArgumentMetadata(Logger.Debug, 'cls',
     typeMetadata=ClassOrClassInstanceTypeMetadata(cls=Logger),
-    description=_('%s class or an instance of it.') % Logger.__name__)
+    description=_(':class:`%s` or an instance of it.') % Logger.__name__)
 
 AddArgumentMetadata(Logger.Debug, 'format',
     typeMetadata=UnicodeStringTypeMetadata(),
@@ -1465,7 +1465,7 @@ AddMethodMetadata(ProgressReporter.__init__,
 
 AddArgumentMetadata(ProgressReporter.__init__, 'self',
     typeMetadata=ClassInstanceTypeMetadata(cls=ProgressReporter),
-    description=_('%s instance.') % ProgressReporter.__name__)
+    description=_(':class:`%s` instance.') % ProgressReporter.__name__)
 
 AddArgumentMetadata(ProgressReporter.__init__, 'progressMessage1',
     typeMetadata=ProgressReporter.ProgressMessage1.__doc__.Obj.Type,

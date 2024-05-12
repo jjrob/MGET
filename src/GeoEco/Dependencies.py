@@ -14,9 +14,9 @@ import types
 import io
 import sys
 
-from GeoEco.DynamicDocString import DynamicDocString
-from GeoEco.Exceptions import GeoEcoError
-from GeoEco.Internationalization import _
+from .DynamicDocString import DynamicDocString
+from .Exceptions import GeoEcoError
+from .Internationalization import _
 
 
 # Exceptions raised when a dependency is checked and fails.
@@ -82,7 +82,7 @@ class WindowsDependency(Dependency):
     MinimumBuild = property(_GetMinimumBuild, doc=DynamicDocString())
 
     def Initialize(self):
-        from GeoEco.Logging import Logger
+        from .Logging import Logger
         Logger.Debug(_('Checking platform dependency: %s or later.') % self.GetProductNameFromVersionNumbers(self.MinimumMajorVersion, self.MinimumMinorVersion, self.MinimumServicePack, self.MinimumBuild))
         if sys.platform.lower() == 'win32':
             (major, minor, servicePack, build) = self.GetInstalledVersion()
@@ -116,7 +116,7 @@ class WindowsDependency(Dependency):
             except:
                 WindowsDependency._ServicePack = 0
 
-        from GeoEco.Logging import Logger
+        from .Logging import Logger
         Logger.Debug(_('%s is installed.') % cls.GetProductNameFromVersionNumbers(WindowsDependency._MajorVersion, WindowsDependency._MinorVersion, WindowsDependency._ServicePack, WindowsDependency._Build))
 
         return (WindowsDependency._MajorVersion, WindowsDependency._MinorVersion, WindowsDependency._ServicePack, WindowsDependency._Build)
@@ -252,7 +252,7 @@ class PythonDependency(Dependency):
     MinimumPatchVersion = property(_GetMinimumPatchVersion, doc=DynamicDocString())
 
     def Initialize(self):
-        from GeoEco.Logging import Logger
+        from .Logging import Logger
         Logger.Debug(_('Checking software dependency: Python version %i.%i.%i or later.') % (self.MinimumMajorVersion, self.MinimumMinorVersion, self.MinimumPatchVersion))
         (major, minor, patch) = self.GetInstalledVersion()
         if self.MinimumMajorVersion > major or self.MinimumMajorVersion == major and self.MinimumMinorVersion > minor or self.MinimumMajorVersion == major and self.MinimumMinorVersion == minor and self.MinimumPatchVersion > patch:
@@ -275,7 +275,7 @@ class PythonDependency(Dependency):
         PythonDependency._MinorVersion = cls._ParseVersionNumber(v[1])
         PythonDependency._PatchVersion = cls._ParseVersionNumber(v[2])
 
-        from GeoEco.Logging import Logger
+        from .Logging import Logger
         Logger.Debug(_('Python %i.%i.%i is running.') % (PythonDependency._MajorVersion, PythonDependency._MinorVersion, PythonDependency._PatchVersion))
 
         return (PythonDependency._MajorVersion, PythonDependency._MinorVersion, PythonDependency._PatchVersion)
@@ -307,7 +307,7 @@ class PythonModuleDependency(Dependency):
     _InstalledModules = {}        
 
     def Initialize(self):
-        from GeoEco.Logging import Logger
+        from .Logging import Logger
         Logger.Debug(_('Checking software dependency: Python module: %s') % self.ImportName)
 
         # If we already know that it is installed, return immediately.
@@ -374,8 +374,8 @@ class PythonModuleDependency(Dependency):
 # Metadata: module
 ###############################################################################
 
-from GeoEco.Metadata import *
-from GeoEco.Types import *
+from .Metadata import *
+from .Types import *
 
 AddModuleMetadata(shortDescription=_('Classes for declaring and checking dependencies on other software in :class:`~GeoEco.Metadata.MethodMetadata` and :class:`~GeoEco.Metadata.ArgumentMetadata`.'))
 
@@ -458,7 +458,7 @@ AddMethodMetadata(WindowsDependency.__init__,
 
 AddArgumentMetadata(WindowsDependency.__init__, 'self',
     typeMetadata=ClassInstanceTypeMetadata(cls=WindowsDependency),
-    description=_('%s instance.') % WindowsDependency.__name__)
+    description=_(':class:`%s` instance.') % WindowsDependency.__name__)
 
 AddArgumentMetadata(WindowsDependency.__init__, 'minimumMajorVersion',
     typeMetadata=WindowsDependency.MinimumMajorVersion.__doc__.Obj.Type,
@@ -487,7 +487,7 @@ AddMethodMetadata(WindowsDependency.SetVersion,
 
 AddArgumentMetadata(WindowsDependency.SetVersion, 'self',
     typeMetadata=ClassInstanceTypeMetadata(cls=WindowsDependency),
-    description=_('%s instance.') % WindowsDependency.__name__)
+    description=_(':class:`%s` instance.') % WindowsDependency.__name__)
 
 AddArgumentMetadata(WindowsDependency.SetVersion, 'minimumMajorVersion',
     typeMetadata=WindowsDependency.MinimumMajorVersion.__doc__.Obj.Type,
@@ -523,7 +523,7 @@ AddMethodMetadata(WindowsDependency.GetInstalledVersion,
 
 AddArgumentMetadata(WindowsDependency.GetInstalledVersion, 'cls',
     typeMetadata=ClassOrClassInstanceTypeMetadata(cls=WindowsDependency),
-    description=_('%s class or an instance of it.') % WindowsDependency.__name__)
+    description=_(':class:`%s` or an instance of it.') % WindowsDependency.__name__)
 
 AddResultMetadata(WindowsDependency.GetInstalledVersion, 'versionTuple',
     typeMetadata=TupleTypeMetadata(elementType=IntegerTypeMetadata(canBeNone=True), minLength=4, maxLength=4),
@@ -536,7 +536,7 @@ AddMethodMetadata(WindowsDependency.GetProductNameFromVersionNumbers,
 
 AddArgumentMetadata(WindowsDependency.GetProductNameFromVersionNumbers, 'cls',
     typeMetadata=ClassOrClassInstanceTypeMetadata(cls=WindowsDependency),
-    description=_('%s class or an instance of it.') % WindowsDependency.__name__)
+    description=_(':class:`%s` or an instance of it.') % WindowsDependency.__name__)
 
 AddArgumentMetadata(WindowsDependency.GetProductNameFromVersionNumbers, 'majorVersion',
     typeMetadata=IntegerTypeMetadata(minValue=5),
@@ -586,7 +586,7 @@ AddMethodMetadata(PythonDependency.__init__,
 
 AddArgumentMetadata(PythonDependency.__init__, 'self',
     typeMetadata=ClassInstanceTypeMetadata(cls=PythonDependency),
-    description=_('%s instance.') % PythonDependency.__name__)
+    description=_(':class:`%s` instance.') % PythonDependency.__name__)
 
 AddArgumentMetadata(PythonDependency.__init__, 'minimumMajorVersion',
     typeMetadata=PythonDependency.MinimumMajorVersion.__doc__.Obj.Type,
@@ -611,7 +611,7 @@ AddMethodMetadata(PythonDependency.SetVersion,
 
 AddArgumentMetadata(PythonDependency.SetVersion, 'self',
     typeMetadata=ClassInstanceTypeMetadata(cls=PythonDependency),
-    description=_('%s instance.') % PythonDependency.__name__)
+    description=_(':class:`%s` instance.') % PythonDependency.__name__)
 
 AddArgumentMetadata(PythonDependency.SetVersion, 'minimumMajorVersion',
     typeMetadata=PythonDependency.MinimumMajorVersion.__doc__.Obj.Type,
@@ -642,7 +642,7 @@ AddMethodMetadata(PythonDependency.GetInstalledVersion,
 
 AddArgumentMetadata(PythonDependency.GetInstalledVersion, 'cls',
     typeMetadata=ClassOrClassInstanceTypeMetadata(cls=PythonDependency),
-    description=_('%s class or an instance of it.') % PythonDependency.__name__)
+    description=_(':class:`%s` or an instance of it.') % PythonDependency.__name__)
 
 AddResultMetadata(PythonDependency.GetInstalledVersion, 'versionTuple',
     typeMetadata=TupleTypeMetadata(elementType=IntegerTypeMetadata(canBeNone=True), minLength=3, maxLength=3),
@@ -662,7 +662,7 @@ AddMethodMetadata(PythonModuleDependency.__init__,
 
 AddArgumentMetadata(PythonModuleDependency.__init__, 'self',
     typeMetadata=ClassInstanceTypeMetadata(cls=PythonModuleDependency),
-    description=_('%s instance.') % PythonModuleDependency.__name__)
+    description=_(':class:`%s` instance.') % PythonModuleDependency.__name__)
 
 AddArgumentMetadata(PythonModuleDependency.__init__, 'importName',
     typeMetadata=UnicodeStringTypeMetadata(minLength=1),
