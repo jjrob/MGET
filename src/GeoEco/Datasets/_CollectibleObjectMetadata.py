@@ -377,7 +377,7 @@ AddPropertyMetadata(QueryableAttribute.DataType,
 
 AddPropertyMetadata(QueryableAttribute.DerivedLazyDatasetProps,
     typeMetadata=DictionaryTypeMetadata(keyType=AnyObjectTypeMetadata(canBeNone=True), valueType=DictionaryTypeMetadata(keyType=UnicodeStringTypeMetadata(minLength=1, mustMatchRegEx='[a-zA-Z][a-zA-Z0-9_]+'), valueType=AnyObjectTypeMetadata(canBeNone=True)), canBeNone=True),
-    shortDescription=_('Dictionary mapping values of this queryable attribute to names and values of lazy properties to assign.'))  # TODO: add long description
+    shortDescription=_('Dictionary mapping values of this queryable attribute to names and values of lazy properties to assign.'))
 
 AddPropertyMetadata(QueryableAttribute.DerivedFromAttr,
     typeMetadata=UnicodeStringTypeMetadata(canBeNone=True, minLength=1, mustMatchRegEx='[a-zA-Z][a-zA-Z0-9_]+'),

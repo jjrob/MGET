@@ -44,7 +44,7 @@ class Dataset(CollectibleObject):
         if srType == 'arcgis':
             s = srRef.ExportToWkt()
             if len(s) > 0:
-                sr = self._osr().SpatialReference(s)        # TODO: Need to explicitly destroy temporary sr allocated here?
+                sr = self._osr().SpatialReference(s)
                 sr.MorphToESRI()
                 s = sr.ExportToWkt()
             return s

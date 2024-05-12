@@ -135,7 +135,7 @@ CopyArgumentMetadata(Database.TableExists, 'self', Database.ImportTable, 'self')
 CopyArgumentMetadata(Database.CreateTable, 'tableName', Database.ImportTable, 'destTableName')
 
 AddArgumentMetadata(Database.ImportTable, 'sourceTable',
-    typeMetadata=AnyObjectTypeMetadata(),    # TODO: Change this to ClassInstanceTypeMetadata(cls=Table) ONCE _Table.py HAS BEEN ADDED
+    typeMetadata=ClassInstanceTypeMetadata(cls=Table),
     description=_(':class:`Table` to copy.'))
 
 AddArgumentMetadata(Database.ImportTable, 'fields',
