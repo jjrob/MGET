@@ -12,6 +12,7 @@ from ..Metadata import *
 from ..Types import *
 
 from ._Table import Table, Field
+from ._Cursors import SelectCursor, UpdateCursor, InsertCursor
 
 
 ###############################################################################
@@ -406,7 +407,16 @@ CopyArgumentMetadata(Table.GetFieldByName, 'self', Table.Query, 'self')
 
 AddArgumentMetadata(Table.Query, 'fields',
     typeMetadata=ListTypeMetadata(elementType=UnicodeStringTypeMetadata(minLength=1), minLength=1),
-    description=_('List of fields to to include in the results. If :py:data:`None`, all fields will be included.'))
+    description=_(
+"""List of fields to include in the results. If :py:data:`None`, the default,
+all fields will be included. Do not provide "\*", as would be done in a SQL
+SELECT statement that wanted to retrieve all fields.
+
+This usual reason to not retrieve all of the fields is to minimize database
+and network load. If you do not have these concerns, there is no reason to
+provide a value for this parameter.
+
+"""))
 
 AddArgumentMetadata(Table.Query, 'where',
     typeMetadata=UnicodeStringTypeMetadata(minLength=1, canBeNone=True),
@@ -486,6 +496,92 @@ AddResultMetadata(Table.Query, 'results',
 :py:class:`list` of values. All lists are the same length. The values for the
 first row occur at index 0 of each list, the second occur at index 1, and so
 on. ``NULL`` values are represented by :py:data:`None`."""))
+
+# Public method: Table.OpenSelectCursor
+
+AddMethodMetadata(Table.OpenSelectCursor,
+    shortDescription=_('Opens and returns a :class:`SelectCursor` for reading rows from the table.'),
+    isExposedToPythonCallers=True)
+
+CopyArgumentMetadata(Table.GetFieldByName, 'self', Table.OpenSelectCursor, 'self')
+
+AddArgumentMetadata(Table.OpenSelectCursor, 'fields',
+    typeMetadata=ListTypeMetadata(elementType=UnicodeStringTypeMetadata(minLength=1), minLength=1),
+    description=_(
+"""List of fields to retrieve. If :py:data:`None`, the default, all fields
+will be retrieved. Do not provide ``'*'``, as would be done in a SQL SELECT
+statement that wanted to retrieve all fields.
+
+This usual reason to not retrieve all of the fields is to minimize database
+and network load. If you do not have these concerns, there is no reason to
+provide a value for this parameter.
+
+If you do provide a list of fields and the table has a geometry field and you
+want it to be able to access it (e.g. with :func:`GetGeometry`), be sure you
+include the geometry field in your list. The :attr:`GeometryFieldName`
+property gives the name of the geometry field.
+
+"""))
+
+CopyArgumentMetadata(Table.Query, 'where', Table.OpenSelectCursor, 'where')
+CopyArgumentMetadata(Table.Query, 'orderBy', Table.OpenSelectCursor, 'orderBy')
+CopyArgumentMetadata(Table.Query, 'rowCount', Table.OpenSelectCursor, 'rowCount')
+CopyArgumentMetadata(Table.Query, 'reportProgress', Table.OpenSelectCursor, 'reportProgress')
+CopyArgumentMetadata(Table.Query, 'rowDescriptionSingular', Table.OpenSelectCursor, 'rowDescriptionSingular')
+CopyArgumentMetadata(Table.Query, 'rowDescriptionPlural', Table.OpenSelectCursor, 'rowDescriptionPlural')
+
+AddResultMetadata(Table.OpenSelectCursor, 'cursor',
+    typeMetadata=ClassInstanceTypeMetadata(cls=SelectCursor),
+    description=_('Opened :class:`SelectCursor` positioned on the first row (if any rows were returned).'))
+
+# Public method: Table.OpenUpdateCursor
+
+AddMethodMetadata(Table.OpenUpdateCursor,
+    shortDescription=_('Opens and returns an :class:`UpdateCursor` for reading, updating, and deleting rows from the table.'),
+    isExposedToPythonCallers=True)
+
+CopyArgumentMetadata(Table.OpenSelectCursor, 'self', Table.OpenUpdateCursor, 'self')
+CopyArgumentMetadata(Table.OpenSelectCursor, 'fields', Table.OpenUpdateCursor, 'fields')
+CopyArgumentMetadata(Table.OpenSelectCursor, 'where', Table.OpenUpdateCursor, 'where')
+CopyArgumentMetadata(Table.OpenSelectCursor, 'orderBy', Table.OpenUpdateCursor, 'orderBy')
+CopyArgumentMetadata(Table.OpenSelectCursor, 'rowCount', Table.OpenUpdateCursor, 'rowCount')
+CopyArgumentMetadata(Table.OpenSelectCursor, 'reportProgress', Table.OpenUpdateCursor, 'reportProgress')
+CopyArgumentMetadata(Table.OpenSelectCursor, 'rowDescriptionSingular', Table.OpenUpdateCursor, 'rowDescriptionSingular')
+CopyArgumentMetadata(Table.OpenSelectCursor, 'rowDescriptionPlural', Table.OpenUpdateCursor, 'rowDescriptionPlural')
+
+AddResultMetadata(Table.OpenUpdateCursor, 'cursor',
+   typeMetadata=ClassInstanceTypeMetadata(cls=UpdateCursor),
+    description=_('Opened :class:`UpdateCursor` positioned on the first row (if any rows were returned).'))
+
+# Public method: Table.OpenInsertCursor
+
+AddMethodMetadata(Table.OpenInsertCursor,
+    shortDescription=_('Opens and returns an :class:`InsertCursor` for adding rows to the table.'),
+    isExposedToPythonCallers=True)
+
+CopyArgumentMetadata(Table.OpenSelectCursor, 'self', Table.OpenInsertCursor, 'self')
+
+AddArgumentMetadata(Table.OpenInsertCursor, 'rowCount',
+   typeMetadata=IntegerTypeMetadata(canBeNone=True, minValue=0),
+   description=_(
+"""Number of rows that will be inserted, if it is known ahead of time. If the
+number of rows is not known, omit this parameter.
+
+This parameter is only used in progress reporting and is ignored if
+`reportProgress` is False. If this parameter is provided, the progress reports
+will include the number of rows remaining and an estimated time of completion.
+If not provided, the progress reports will only include the number of rows
+accessed so far.
+
+"""))
+
+CopyArgumentMetadata(Table.OpenSelectCursor, 'reportProgress', Table.OpenInsertCursor, 'reportProgress')
+CopyArgumentMetadata(Table.OpenSelectCursor, 'rowDescriptionSingular', Table.OpenInsertCursor, 'rowDescriptionSingular')
+CopyArgumentMetadata(Table.OpenSelectCursor, 'rowDescriptionPlural', Table.OpenInsertCursor, 'rowDescriptionPlural')
+
+AddResultMetadata(Table.OpenInsertCursor, 'cursor',
+   typeMetadata=ClassInstanceTypeMetadata(cls=UpdateCursor),
+    description=_('Opened :class:`InsertCursor` positioned on the first row (if any rows were returned).'))
 
 
 ###############################################################################

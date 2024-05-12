@@ -13,6 +13,7 @@ from ..Metadata import *
 from ..Types import *
 
 from ._Database import Database
+from ._Table import Table
 
 
 ###############################################################################
@@ -85,7 +86,7 @@ AddArgumentMetadata(Database.CreateTable, 'options',
     description=_('Additional options specific to the underlying storage format.'))
 
 AddResultMetadata(Database.CreateTable, 'table',
-    typeMetadata=AnyObjectTypeMetadata(),    # TODO: Change this to ClassInstanceTypeMetadata(cls=Table) ONCE _Table.py HAS BEEN ADDED
+    typeMetadata=ClassInstanceTypeMetadata(cls=Table),
     description=_(':class:`Table` representing the new table.'))
 
 # Public method: Database.CreateTableFromTemplate
@@ -104,7 +105,7 @@ CopyArgumentMetadata(Database.TableExists, 'self', Database.CreateTableFromTempl
 CopyArgumentMetadata(Database.CreateTable, 'tableName', Database.CreateTableFromTemplate, 'tableName')
 
 AddArgumentMetadata(Database.CreateTableFromTemplate, 'templateTable',
-    typeMetadata=AnyObjectTypeMetadata(),    # TODO: Change this to ClassInstanceTypeMetadata(cls=Table) ONCE _Table.py HAS BEEN ADDED
+    typeMetadata=ClassInstanceTypeMetadata(cls=Table),
     description=_(':class:`Table` representing the template.'))
 
 AddArgumentMetadata(Database.CreateTableFromTemplate, 'fields',

@@ -300,16 +300,14 @@ class Table(Dataset):
 
         return result
 
-    def OpenSelectCursor(self, fields=None, where=None, orderBy=None, rowCount=None, reportProgress=True, rowDescriptionSingular=None, rowDescriptionPlural=None):      #TODO: Add spatial filter
+    def OpenSelectCursor(self, fields=None, where=None, orderBy=None, rowCount=None, reportProgress=True, rowDescriptionSingular=None, rowDescriptionPlural=None):
         self.__doc__.Obj.ValidateMethodInvocation()
         self._RequireCapability('SelectCursor')
-        #TODO: self._RequireCapability('OrderBy')
         return self._OpenSelectCursor(fields, where, orderBy, rowCount, reportProgress, rowDescriptionSingular, rowDescriptionPlural)
 
-    def OpenUpdateCursor(self, fields=None, where=None, orderBy=None, rowCount=None, reportProgress=True, rowDescriptionSingular=None, rowDescriptionPlural=None):      #TODO: Add spatial filter
+    def OpenUpdateCursor(self, fields=None, where=None, orderBy=None, rowCount=None, reportProgress=True, rowDescriptionSingular=None, rowDescriptionPlural=None):
         self.__doc__.Obj.ValidateMethodInvocation()
         self._RequireCapability('UpdateCursor')
-        #TODO: self._RequireCapability('OrderBy')
         return self._OpenUpdateCursor(fields, where, orderBy, rowCount, reportProgress, rowDescriptionSingular, rowDescriptionPlural)
 
     def OpenInsertCursor(self, rowCount=None, reportProgress=True, rowDescriptionSingular=None, rowDescriptionPlural=None):
