@@ -22,6 +22,7 @@ from ._Table import Field
 from ._Cursors import SelectCursor
 from ._Cursors import UpdateCursor
 from ._Cursors import InsertCursor
+from ._Grid import Grid
 
 
 ###############################################################################
@@ -39,6 +40,7 @@ from . import _DatasetCollectionMetadata
 from . import _DatabaseMetadata
 from . import _TableMetadata
 from . import _CursorsMetadata
+from . import _GridMetadata
 
 
 ###############################################################################
@@ -50,6 +52,7 @@ __all__ = ['CollectibleObject',
            'Dataset',
            'DatasetCollection',
            'Field',
+           'Grid',
            'InsertCursor',
            'QueryableAttribute',
            'SelectCursor',

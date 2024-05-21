@@ -108,15 +108,15 @@ class Dataset(CollectibleObject):
             srObj = cls._osr().SpatialReference(sr.ExportToWkt())
 
         elif srType == 'wkt':
-            srObj = cls._osr().SpatialReference(cls._sr)
+            srObj = cls._osr().SpatialReference(sr)
 
         elif srType == 'proj4':
             srObj = cls._osr().SpatialReference()
-            srObj.ImportFromProj4(cls._sr)
+            srObj.ImportFromProj4(sr)
 
         elif srType == 'arcgis':
             sr = re.sub("\\[\\'[^\\']*\\'", Dataset._FixESRIQuotes, sr)        # Convert ArcGIS's single quotes around WKT <name> tokens to double quotes, to conform to proper WKT syntax
-            srObj = cls._osr().SpatialReference(cls._sr)
+            srObj = cls._osr().SpatialReference(sr)
             srObj.MorphFromESRI()
 
         else:

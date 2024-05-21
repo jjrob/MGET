@@ -158,21 +158,21 @@ class TypeMetadata(object):
     def ValidateValue(self, value, variableName, methodLocals=None, argMetadata=None):
         if value is None:
             if not self.CanBeNone:
-                from .Logging import Logger
+                from ..Logging import Logger
                 Logger.RaiseException(TypeError(_('The %s is required. Please provide a value.') % variableName))
         else:
             if not isinstance(value, self.PythonType):
-                from .Logging import Logger
+                from ..Logging import Logger
                 Logger.RaiseException(TypeError(_('The value provided for the %(variable)s is an invalid type ("%(badType)s" in Python). Please provide a value having the Python type "%(goodType)s".') % {'variable' : variableName, 'badType' : type(value).__name__, 'goodType' : self.PythonType.__name__}))
             if self.AllowedValues is not None:
                 if issubclass(self.PythonType, str):
                     allowedValues = list(map(str.lower, self.AllowedValues))
                     if value.lower() not in allowedValues:
-                        from .Logging import Logger
+                        from ..Logging import Logger
                         Logger.RaiseException(ValueError(_('The value provided for the %(variable)s is not an allowed value. Please provide one of the following: %(values)s. (These values are not case-sensitive.)') % {'variable' : variableName, 'values' : ', '.join(map(str, allowedValues))}))
                 else:
                     if value not in self.AllowedValues:
-                        from .Logging import Logger
+                        from ..Logging import Logger
                         Logger.RaiseException(ValueError(_('The value provided for the %(variable)s is not an allowed value. Please provide one of the following: %(values)s.') % {'variable' : variableName, 'values' : ', '.join(map(str, self.AllowedValues))}))
         return (False, value)
 
