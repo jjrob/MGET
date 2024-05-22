@@ -545,8 +545,8 @@ particular kind of :class:`Table` you are working with."""),
 CopyArgumentMetadata(InsertCursor.SetValue, 'self', InsertCursor.InsertRow, 'self')
 
 
-###############################################################################
-# This module is not meant to be imported directly. Import Datasets.py instead.
-###############################################################################
+###################################################################################
+# This module is not meant to be imported directly. Import GeoEco.Datasets instead.
+###################################################################################
 
 __all__ = []

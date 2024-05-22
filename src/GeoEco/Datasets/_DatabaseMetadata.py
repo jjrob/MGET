@@ -254,8 +254,8 @@ AddArgumentMetadata(Database.DeleteTable, 'failIfNotExists',
     description=_('If True, :exc:`RuntimeError` will be raised if the table does not exist. If False, the default, this method will silently succeed if the table does not exist.'))
 
 
-###############################################################################
-# This module is not meant to be imported directly. Import Datasets.py instead.
-###############################################################################
+###################################################################################
+# This module is not meant to be imported directly. Import GeoEco.Datasets instead.
+###################################################################################
 
 __all__ = []

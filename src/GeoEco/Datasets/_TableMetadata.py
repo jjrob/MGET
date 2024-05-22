@@ -21,7 +21,11 @@ from ._Cursors import SelectCursor, UpdateCursor, InsertCursor
 
 AddClassMetadata(Table,
     module=__package__,
-    shortDescription=_('Base class for classes representing tabular :class:`Dataset`\\ s, such as ArcGIS feature classes and database tables.'))
+    shortDescription=_('Base class for classes representing tabular :class:`Dataset`\\ s, such as ArcGIS feature classes and database tables.'),
+    longDescription=_(
+""":class:`Table` is a base class that should not be instantiated directly;
+instead, users should instantiate one of the many derived classes representing
+the type of tabular dataset they're interested in."""))
 
 # Public properties
 
@@ -656,8 +660,8 @@ AddResultMetadata(Field.__init__, 'obj',
     description=_(':class:`%s` instance.') % Field.__name__)
 
 
-###############################################################################
-# This module is not meant to be imported directly. Import Datasets.py instead.
-###############################################################################
+###################################################################################
+# This module is not meant to be imported directly. Import GeoEco.Datasets instead.
+###################################################################################
 
 __all__ = []

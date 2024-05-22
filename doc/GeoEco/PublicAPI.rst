@@ -14,3 +14,4 @@ TODO: Write introduction
     :recursive:
 
     GeoEco.Datasets
+    GeoEco.Datasets.Collections

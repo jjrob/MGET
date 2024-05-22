@@ -228,8 +228,8 @@ class Database(object):
         raise RuntimeError(_('Programming error in this tool: The %(cls)s class does not define the Database._DeleteTable method. Please contact the author of this tool for assistance.') % {'cls': self.__class__.__name__})
 
 
-###############################################################################
-# This module is not meant to be imported directly. Import Datasets.py instead.
-###############################################################################
+###################################################################################
+# This module is not meant to be imported directly. Import GeoEco.Datasets instead.
+###################################################################################
 
 __all__ = []

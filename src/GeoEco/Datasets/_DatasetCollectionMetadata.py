@@ -220,8 +220,8 @@ AddResultMetadata(DatasetCollection.__init__, 'obj',
     description=_(':class:`%s` instance.') % DatasetCollection.__name__)
 
 
-###############################################################################
-# This module is not meant to be imported directly. Import Datasets.py instead.
-###############################################################################
+###################################################################################
+# This module is not meant to be imported directly. Import GeoEco.Datasets instead.
+###################################################################################
 
 __all__ = []

@@ -1095,3 +1095,10 @@ class _ContainerEmulator(object):      # Private helper class for Grid
         if self._SetMethod is None:
             raise TypeError('This property does not support item assignment')
         return getattr(self._Grid(), self._SetMethod)(key, value)
+
+
+###################################################################################
+# This module is not meant to be imported directly. Import GeoEco.Datasets instead.
+###################################################################################
+
+__all__ = []

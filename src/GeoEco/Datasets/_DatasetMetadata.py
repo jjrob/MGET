@@ -22,10 +22,9 @@ AddClassMetadata(Dataset,
 	module=__package__,
     shortDescription=_('Base class for objects representing tabular and gridded datasets, principally :class:`Table` and :class:`Grid`.'),
     longDescription=_(
-"""This class is not intended to be instantiated directly. Its primary purpose
-is to provide functionality that is common to both the :class:`Table` and
-:class:`Grid` classes, such as methods relating to georeferencing, to
-facilitate easy reuse of that functionality by both classes."""))
+""":class:`Dataset` is a base class that should not be instantiated directly;
+instead, users should instantiate one of the many derived classes representing
+the type of dataset they're interested in."""))
 
 # Public method: Dataset.ConvertSpatialReference
 
@@ -197,8 +196,8 @@ AddArgumentMetadata(Dataset.SetSpatialReference, 'sr',
     description=_('Spatial reference for the dataset.'))
 
 
-###############################################################################
-# This module is not meant to be imported directly. Import Datasets.py instead.
-###############################################################################
+###################################################################################
+# This module is not meant to be imported directly. Import GeoEco.Datasets instead.
+###################################################################################
 
 __all__ = []

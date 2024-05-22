@@ -908,8 +908,8 @@ class InsertCursor(_Cursor):
         raise NotImplementedError(_('The _InsertRow method of class %s has not been implemented.') % self.__class__.__name__)
 
 
-###############################################################################
-# This module is not meant to be imported directly. Import Datasets.py instead.
-###############################################################################
+###################################################################################
+# This module is not meant to be imported directly. Import GeoEco.Datasets instead.
+###################################################################################
 
 __all__ = []

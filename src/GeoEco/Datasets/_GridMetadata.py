@@ -26,14 +26,18 @@ AddClassMetadata(Grid,
     longDescription=_(
 """:class:`Grid` provides a generic wrapper around gridded and array data,
 allowing GeoEco components to access them through a common interface that
-returns and accepts :class:`numpy.ndarray`. :class:`Grid` was developed in the
-2000s for GeoEco's internal use and predates more recent projects such as
-`Xarray <https://xarray.dev/>`_ that may provide similar functionality with
-additional features or a more polished interface. When GeoEco was ported to
-Python 3, we decided to expose :class:`Grid` and other classes in
-:mod:`GeoEco.Datasets` in case they were useful, but we encourage Python
-users needing to access multidimensional arrays to consider Xarray and similar
-projects that have greater adoption and better developer support.
+returns and accepts :class:`numpy.ndarray`. class:`Grid` is a base class that
+should not be instantiated directly; instead, users should instantiate one of
+the many derived classes representing the type of grid they're interested in.
+
+:class:`Grid` was developed in the 2000s for GeoEco's internal use and
+predates more recent projects such as `Xarray <https://xarray.dev/>`_ that may
+provide similar functionality with additional features or a more polished
+interface. When GeoEco was ported to Python 3, we decided to expose
+:class:`Grid` and other classes in :mod:`GeoEco.Datasets` in case they were
+useful, but we encourage Python users needing to access multidimensional
+arrays to consider Xarray and similar projects that have greater adoption and
+better developer support.
 
 **Dimensions**
 
@@ -271,3 +275,10 @@ AddPropertyMetadata(Grid.MinCoords,
 AddPropertyMetadata(Grid.MaxCoords,
     typeMetadata=AnyObjectTypeMetadata(),
     shortDescription=_("Maximum coordinate value for each cell (i.e., the coordinates of the cells' right edges), indexed using the 1-character dimension of interest and optionally a :py:class:`range` to retrieve a :class:`numpy.ndarray` of coordinates (e.g. ``MaxCoords['x', 0:4]``) or an integer to retrieve a :py:class:`float` for a single coordinate (e.g. ``MaxCoords['x', 10]``)."))
+
+
+###################################################################################
+# This module is not meant to be imported directly. Import GeoEco.Datasets instead.
+###################################################################################
+
+__all__ = []
