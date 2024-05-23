@@ -39,8 +39,7 @@ AddArgumentMetadata(Dataset.ConvertSpatialReference, 'cls',
 AddArgumentMetadata(Dataset.ConvertSpatialReference, 'srType',
     typeMetadata=UnicodeStringTypeMetadata(allowedValues=['WKT', 'ArcGIS', 'Proj4', 'Obj'], makeLowercase=True),
     description=_(
-"""The kind of the spatial reference to convert, i.e. the type of
-object you are providing for the `sr` parameter:
+"""The type of spatial reference you are providing for `sr`:
 
 * WKT - a WKT string in standard OGC format.
 
@@ -60,15 +59,14 @@ object you are providing for the `sr` parameter:
 AddArgumentMetadata(Dataset.ConvertSpatialReference, 'sr',
     typeMetadata=AnyObjectTypeMetadata(canBeNone=True),
     description=_(
-"""Spatial reference to convert. This may be :py:data:`None`, representing an
-"undefined" spatial reference, but see the documentation for
-`outputSRType`."""))
+"""Spatial reference of the type specified by `srType`, or :py:data:`None`
+for an "undefined" spatial reference."""))
 
 AddArgumentMetadata(Dataset.ConvertSpatialReference, 'outputSRType',
     typeMetadata=UnicodeStringTypeMetadata(allowedValues=['WKT', 'ArcGIS', 'Proj4', 'Obj'], makeLowercase=True),
     description=_(
-"""The kind of the spatial reference to return. The allowed values are the
-same as for `srType`.
+"""The type of spatial reference to return. The allowed values are the same as
+for `srType`.
 
 If `srType` and `outputSRType` are the same, a copy of the input spatial
 reference will be returned. If they are ``'Obj'``, a deep copy of the input

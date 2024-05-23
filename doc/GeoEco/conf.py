@@ -56,6 +56,7 @@ autosummary_ignore_module_all = False   # Turn this off so that if a module defi
 intersphinx_mapping = {
     'python': ('https://docs.python.org/3', None),
     'numpy': ('https://numpy.org/doc/stable/', None),
+    'gdal': ('https://gdal.org/', None),
 }
 
 # Define custom roles for linking to ArcGIS arcpy documentation.

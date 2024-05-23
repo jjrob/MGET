@@ -15,3 +15,4 @@ TODO: Write introduction
 
     GeoEco.Datasets
     GeoEco.Datasets.Collections
+    GeoEco.Datasets.GDAL
