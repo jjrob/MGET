@@ -13,10 +13,11 @@ import os
 from ...DynamicDocString import DynamicDocString
 from ...Internationalization import _
 from ...Logging import Logger
+from ...Types import IntegerTypeMetadata
 
 from .. import Dataset, Grid, QueryableAttribute
 from ..Collections import DirectoryTree, FileDatasetCollection
-
+from ._GDALRasterBand import GDALRasterBand
 
 class GDALDataset(FileDatasetCollection):
     __doc__ = DynamicDocString()
