@@ -11,9 +11,9 @@
 # To keep file sizes managable, we split the names defined by this package
 # across several files.
 
-from ._OGRTabularLayer import OGRTabularLayer
-# from ._GDALDataset import GDALDataset
-# from ._GDALRasterBand import GDALRasterBand
+# from ._OGRTabularLayer import OGRTabularLayer     # OGRTabularLayer is not fully implemented yet
+from ._GDALDataset import GDALDataset
+from ._GDALRasterBand import GDALRasterBand
 
 
 ###############################################################################
@@ -25,15 +25,14 @@ from ...Metadata import AddModuleMetadata
 
 AddModuleMetadata(shortDescription=_(':class:`Dataset`\\ s and :class:`DatasetCollection`\\ s that wrap the `Geospatial Data Abstraction Library (GDAL) <https://gdal.org>`_.'))
 
-from . import _OGRTabularLayer
-# from . import _GDALDataset
-# from . import _GDALRasterBand
+# from . import _OGRTabularLayerMetadata            # OGRTabularLayer is not fully implemented yet
+from . import _GDALDatasetMetadata
+from . import _GDALRasterBandMetadata
 
 
 ###############################################################################
 # Names exported by this module
 ###############################################################################
 
-__all__ = ['OGRTabularLayer']
-#           'GDALDataset',
-#           'GDALRasterBand']
+__all__ = ['GDALDataset',
+           'GDALRasterBand']

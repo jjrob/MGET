@@ -37,7 +37,7 @@ AddClassMetadata(_Cursor,
 
 AddPropertyMetadata(_Cursor.Table,
     typeMetadata=ClassInstanceTypeMetadata(cls=Table),
-    shortDescription=_(':class:`Table` the cursor is accessing.'))
+    shortDescription=_(':class:`~GeoEco.Datasets.Table` the cursor is accessing.'))
 
 AddPropertyMetadata(_Cursor.RowDescriptionSingular,
     typeMetadata=UnicodeStringTypeMetadata(),
@@ -212,7 +212,7 @@ AddMethodMetadata(SelectCursor.GetGeometry,
     longDescription=_(
 """This method will fail if the table does not have geometry. To determine if
 it has geometry, check the :attr:`~Table.GeometryType` of the cursor's
-:class:`Table`."""),
+:class:`~GeoEco.Datasets.Table`."""),
     isExposedToPythonCallers=True)
 
 CopyArgumentMetadata(SelectCursor.NextRow, 'self', SelectCursor.GetGeometry, 'self')
@@ -232,7 +232,7 @@ AddMethodMetadata(SelectCursor.GetOID,
     longDescription=_(
 """This method will fail if the table does not have an ArcGIS object ID. To
 determine if it does, check the :attr:`~Table.HasOID` property of the cursor's
-:class:`Table`."""),
+:class:`~GeoEco.Datasets.Table`."""),
     isExposedToPythonCallers=True)
 
 CopyArgumentMetadata(SelectCursor.NextRow, 'self', SelectCursor.GetOID, 'self')
@@ -320,7 +320,7 @@ AddArgumentMetadata(UpdateCursor.SetValue, 'field',
 If you specified a list of fields to retrieve when you opened the cursor, you
 will only be able to set the values of those fields. If you did not specify
 such a list, then you will be able to set all of the fields of the
-:class:`Table`.
+:class:`~GeoEco.Datasets.Table`.
 
 This function cannot be used to set the geometry of the row, even if the
 underlying data format stores the geometry in a named field. Use 
@@ -334,9 +334,10 @@ The underlying data store or programming library may expose other read-only
 fields. For example, some versions of ArcGIS maintain fields called
 ``Shape_Length`` and ``Shape_Area`` in feature classes of ArcGIS geodatabases.
 These may not be set either. To determine if a field may be set, call
-:func:`~Table.GetFieldByName` on the :class:`Table` and examine the
-:attr:`~Field.IsSettable` property of the returned :class:`Field`
-instance."""))
+:func:`~GeoEco.Datasets.Table.GetFieldByName` on the
+:class:`~GeoEco.Datasets.Table` and examine the 
+:attr:`~GeoEco.Datasets.Field.IsSettable` property of the returned
+:class:`~GeoEco.Datasets.Field` instance."""))
 
 AddArgumentMetadata(UpdateCursor.SetValue, 'value',
     typeMetadata=AnyObjectTypeMetadata(canBeNone=True),
@@ -357,25 +358,29 @@ int16, int32       :py:class:`int`
 string             :py:class:`str`
 =================  =============================
 
-To determine the data type of a field, call :func:`~Table.GetFieldByName` on the
-:class:`Table` and examine the :attr:`~Field.DataType` property of the returned
-:class:`Field` instance."""))
+To determine the data type of a field, call 
+:func:`~GeoEco.Datasets.Table.GetFieldByName` on the
+:class:`~GeoEco.Datasets.Table` and examine the 
+:attr:`~GeoEco.Datasets.Field.DataType`
+property of the returned :class:`~GeoEco.Datasets.Field` instance."""))
 
 # Public method: UpdateCursor.SetGeometry
 
 AddMethodMetadata(UpdateCursor.SetGeometry,
     shortDescription=_('Sets the geometry of the current row.'),
     longDescription=_(
-"""This method will fail if the cursor's :class:`Table` does not have
-geometry. To determine if it has geometry, check the
-:attr:`~Table.GeometryType` property of the :class:`Table` instance.
+"""This method will fail if the cursor's :class:`~GeoEco.Datasets.Table` does
+not have geometry. To determine if it has geometry, check the
+:attr:`~GeoEco.Datasets.Table.GeometryType` property of the 
+:class:`~GeoEco.Datasets.Table` instance.
 
 Note:
     Changes to the row are not actually submitted through the underlying
-    programming library to the underlying data store until :func:`UpdateRow`
-    is called. If you call :func:`SetGeometry` but then neglect to call
-    :func:`UpdateRow` before calling :func:`NextRow`, your changes will be
-    lost.
+    programming library to the underlying data store until 
+    :func:`~GeoEco.Datasets.UpdateCursor.UpdateRow` is called. If you call
+    :func:`~GeoEco.Datasets.UpdateCursor.SetGeometry` but then neglect to call
+    :func:`~GeoEco.Datasets.UpdateCursor.UpdateRow` before calling 
+    :func:`~GeoEco.Datasets.UpdateCursor.NextRow`, your changes will be lost.
 """),
     isExposedToPythonCallers=True)
 
@@ -400,7 +405,7 @@ AddMethodMetadata(UpdateCursor.UpdateRow,
 Certain storage formats may implement a transactional updating scheme in which
 the change will not be committed to the underlying data store until the cursor
 has been closed. For more information, please see the documentation for the
-particular kind of :class:`Table` you are working with."""),
+particular kind of :class:`~GeoEco.Datasets.Table` you are working with."""),
     isExposedToPythonCallers=True)
 
 CopyArgumentMetadata(UpdateCursor.SetValue, 'self', UpdateCursor.UpdateRow, 'self')
@@ -417,7 +422,7 @@ AddMethodMetadata(UpdateCursor.DeleteRow,
 Certain storage formats may implement a transactional updating scheme in which
 the delete will not be committed to the underlying data store until the cursor
 has been closed. For more information, please see the documentation for the
-particular kind of :class:`Table` you are working with."""),
+particular kind of :class:`~GeoEco.Datasets.Table` you are working with."""),
     isExposedToPythonCallers=True)
 
 CopyArgumentMetadata(UpdateCursor.SetValue, 'self', UpdateCursor.DeleteRow, 'self')
@@ -479,7 +484,7 @@ AddMethodMetadata(InsertCursor.SetValue,
 
 AddArgumentMetadata(InsertCursor.SetValue, 'self',
     typeMetadata=ClassInstanceTypeMetadata(cls=InsertCursor),
-    description=_('%s instance.') % InsertCursor.__name__)
+    description=_(':class:`%s` instance.') % InsertCursor.__name__)
 
 AddArgumentMetadata(InsertCursor.SetValue, 'field',
     typeMetadata=UnicodeStringTypeMetadata(),
@@ -498,9 +503,10 @@ The underlying data store or programming library may expose other read-only
 fields. For example, some versions of ArcGIS maintain fields called
 ``Shape_Length`` and ``Shape_Area`` in feature classes of ArcGIS geodatabases.
 These may not be set either. To determine if a field may be set, call
-:func:`~Table.GetFieldByName` on the :class:`Table` and examine the
-:attr:`~Field.IsSettable` property of the returned :class:`Field`
-instance."""))
+:func:`~GeoEco.Datasets.Table.GetFieldByName` on the 
+:class:`~GeoEco.Datasets.Table` and examine the
+:attr:`~GeoEco.Datasets.Field.IsSettable` property of the returned 
+:class:`~GeoEco.Datasets.Field` instance."""))
 
 CopyArgumentMetadata(UpdateCursor.SetValue, 'value', InsertCursor.SetValue, 'value')
 
@@ -509,15 +515,18 @@ CopyArgumentMetadata(UpdateCursor.SetValue, 'value', InsertCursor.SetValue, 'val
 AddMethodMetadata(InsertCursor.SetGeometry,
     shortDescription=_('Sets the geometry of the new row.'),
     longDescription=_(
-"""This method will fail if the cursor's :class:`Table` does not have
-geometry. To determine if it has geometry, check the
-:attr:`~Table.GeometryType` property of the :class:`Table` instance.
+"""This method will fail if the cursor's :class:`~GeoEco.Datasets.Table` does
+not have geometry. To determine if it has geometry, check the
+:attr:`~GeoEco.Datasets.Table.GeometryType` property of the
+:class:`~GeoEco.Datasets.Table` instance.
 
 Note:
     The new row is not actually submitted through the underlying programming
-    library to the underlying data store until :func:`InsertRow` is called. If
-    you call :func:`SetGeometry` but then neglect to call :func:`InsertRow`
-    before closing the cursor, your row will not be inserted.
+    library to the underlying data store until 
+    :func:`~GeoEco.Datasets.InsertCursor.InsertRow` is called. If you call 
+    :func:`~GeoEco.Datasets.InsertCursor.SetGeometry` but then neglect to call
+    :func:`~GeoEco.Datasets.InsertCursor.InsertRow` before closing the cursor,
+    your row will not be inserted.
 """),
     isExposedToPythonCallers=True)
 
@@ -530,16 +539,20 @@ AddMethodMetadata(InsertCursor.InsertRow,
     shortDescription=_('Submits the new row to the underlying data store.'),
     longDescription=_(
 """If you do not explicitly set values of all of the new row's fields by calling
-:func:`SetValue` prior to calling :func:`InsertRow`, those fields will be set to
+:func:`~GeoEco.Datasets.InsertCursor.SetValue` prior to calling 
+:func:`~GeoEco.Datasets.InsertCursor.InsertRow`, those fields will be set to
 database NULL (if they are not read-only). If a field that has not been set is
-not nullable, :func:`InsertRow` will report an error. To determine if a field is
-nullable, call :func:`~Table.GetFieldByName` on the :class:`Table` and examine the
-:attr:`~Field.IsNullable` property of the returned :class:`Field` instance.
+not nullable, :func:`~GeoEco.Datasets.InsertCursor.InsertRow` will report an
+error. To determine if a field is nullable, call 
+:func:`~GeoEco.Datasets.Table.GetFieldByName` on the 
+:class:`~GeoEco.Datasets.Table` and examine the
+:attr:`~GeoEco.Datasets.Field.IsNullable` property of the returned 
+:class:`~GeoEco.Datasets.Field` instance.
 
 Certain storage formats may implement a transactional updating scheme in which
 changes will not be committed to the underlying data store until the cursor
 has been closed. For more information, please see the documentation for the
-particular kind of :class:`Table` you are working with."""),
+particular kind of :class:`~GeoEco.Datasets.Table` you are working with."""),
     isExposedToPythonCallers=True)
 
 CopyArgumentMetadata(InsertCursor.SetValue, 'self', InsertCursor.InsertRow, 'self')

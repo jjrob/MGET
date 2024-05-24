@@ -1,5 +1,5 @@
 # _OGRTabularLayer.py - Defines OGRTabularLayer, a DatasetCollectionTree
-# representing a directory on an FTP server.
+# representing a tabular dataset accessed through GDAL's osgeo.ogr.Layer class
 #
 # Copyright (C) 2024 Jason J. Roberts
 #
@@ -10,10 +10,13 @@
 
 from ...DynamicDocString import DynamicDocString
 from ...Internationalization import _
+from ...Logging import Logger
 
 from .._Dataset import Dataset
 from .._Table import Table, Field
 
+
+# WARNING: This class is not fully implemented yet and should not be used at this time.
 
 class OGRTabularLayer(Table):
     __doc__ = DynamicDocString()
@@ -62,7 +65,7 @@ class OGRTabularLayer(Table):
             try:
                 dataSource.CreateLayer(layerName, srObj, geometryType, options)
             except Exception as e:
-                Logger.RaiseException(RuntimeError(_('Failed to create layer "%(layer)s" in OGR %(driver)s data source "%(ds)s" with geometry type = %(gt)s, spatial reference WKT = %(wkt)s, options = %(opt)s. OGR reported %(e): %(msg)s') % {'layer': layerName, 'driver': driverName, 'ds': dataSourceName, 'gt': geometryType, 'wkt': wkt, 'opt': repr(options), 'e': e.__class__.__name__, 'msg': e}))
+                Logger.RaiseException(RuntimeError(_('Failed to create layer "%(layer)s" in OGR %(driver)s data source "%(ds)s" with geometry type = %(gt)s, spatial reference WKT = %(wkt)s, options = %(opt)s. OGR reported  %(msg)s') % {'layer': layerName, 'driver': driverName, 'ds': dataSourceName, 'gt': geometryType, 'wkt': wkt, 'opt': repr(options), 'e': e.__class__.__name__, 'msg': e}))
         
         # Close the data source.
         
@@ -112,7 +115,7 @@ class OGRTabularLayer(Table):
             try:
                 dataSource.DeleteLayer(i)
             except Exception as e:
-                Logger.RaiseException(RuntimeError(_('Failed to delete layer "%(layer)s" from OGR %(driver)s data source "%(ds)s". OGR reported %(e): %(msg)s') % {'layer': layerName, 'driver': driverName, 'ds': dataSourceName, 'e': e.__class__.__name__, 'msg': e}))
+                Logger.RaiseException(RuntimeError(_('Failed to delete layer "%(layer)s" from OGR %(driver)s data source "%(ds)s". OGR reported %(e)s: %(msg)s') % {'layer': layerName, 'driver': driverName, 'ds': dataSourceName, 'e': e.__class__.__name__, 'msg': e}))
         
         # Close the data source.
         
@@ -251,7 +254,7 @@ class OGRTabularLayer(Table):
             if driverName is not None:
                 self._DriverName = driverName
             else:
-                self._DriverName = dataSource.GetDriver().GetName()
+                self._DriverName = self._DataSource.GetDriver().GetName()
             self._IsUpdatable = update
 
             if self._IsUpdatable:
@@ -265,7 +268,7 @@ class OGRTabularLayer(Table):
             self._CanAddField = self._IsUpdatable and layer.TestCapability(self._ogr().OLCCreateField)
 
             oidFieldName = layer.GetFIDColumn()
-            if not isinstance(oidFieldName, basestring) or len(oidFieldName) <= 0:
+            if not isinstance(oidFieldName, str) or len(oidFieldName) <= 0:
                 oidFieldName = None
 
             featDefn = layer.GetLayerDefn()
@@ -287,7 +290,7 @@ class OGRTabularLayer(Table):
                     geometryType = 'MultiPolygon25D'
 
             geometryFieldName = layer.GetGeometryColumn()
-            if not isinstance(geometryFieldName, basestring) or len(geometryFieldName) <= 0:
+            if not isinstance(geometryFieldName, str) or len(geometryFieldName) <= 0:
                 geometryFieldName = None
 
             if geometryType is not None:
@@ -303,7 +306,7 @@ class OGRTabularLayer(Table):
                 maxStringLength = None
 
             fields = []
-            for i in range(len(featDefn.GetFieldCount())):
+            for i in range(featDefn.GetFieldCount()):
                 f = featDefn.GetFieldDefn(i)
                 name = f.GetName()
                 if name == oidFieldName:
@@ -331,6 +334,8 @@ class OGRTabularLayer(Table):
                 isNullable = self._DriverName.lower() != 'esri shapefile'       # OGR is not aware of nullability and assumes all fields are nullable. See http://lists.osgeo.org/pipermail/gdal-dev/2010-February/023583.html. We override this for shapefiles and conform to ESRI's spec (no shapefile fields are nullable).
                 isSettable = dataType != 'oid'
                 fields.append(Field(name, dataType, length, precision, isNullable, isSettable))
+
+            super(ArcGISTable, self).__init__(parentCollection=parentCollection, queryableAttributeValues=queryableAttributeValues, lazyPropertyValues=lazyPropertyValues)
 
             super(OGRTabularLayer, self).__init__(hasOID=True,
                                                   oidFieldName=oidFieldName,
@@ -380,8 +385,8 @@ class OGRTabularLayer(Table):
                 dataSource = cls._ogr().GetDriverByName(str(driverName)).Open(dataSourceName, update)
             except Exception as e:
                 if update:
-                    Logger.RaiseException(RuntimeError(_('Failed to open "%(ds)s" as an updatable OGR %(driver)s data source. OGR reported %(e): %(msg)s') % {'ds': dataSourceName, 'driver': driverName, 'e': e.__class__.__name__, 'msg': e}))
-                Logger.RaiseException(RuntimeError(_('Failed to open "%(ds)s" as an OGR %(driver)s data source. OGR reported %(e): %(msg)s') % {'ds': dataSourceName, 'driver': driverName, 'e': e.__class__.__name__, 'msg': e}))
+                    Logger.RaiseException(RuntimeError(_('Failed to open "%(ds)s" as an updatable OGR %(driver)s data source. OGR reported %(e)s: %(msg)s') % {'ds': dataSourceName, 'driver': driverName, 'e': e.__class__.__name__, 'msg': e}))
+                Logger.RaiseException(RuntimeError(_('Failed to open "%(ds)s" as an OGR %(driver)s data source. OGR reported %(e)s: %(msg)s') % {'ds': dataSourceName, 'driver': driverName, 'e': e.__class__.__name__, 'msg': e}))
         else:
             if isinstance(cls, OGRTabularLayer):
                 cls._LogDebug(_('%(class)s 0x%(id)08X: Opening OGR data source "%(ds)" with update=%(upd)s; OGR will select the driver.'), {'class': cls.__class__.__name__, 'id': id(cls), 'ds': dataSourceName, 'upd': update})
@@ -391,17 +396,20 @@ class OGRTabularLayer(Table):
                 dataSource = cls._ogr().Open(dataSourceName, update)
             except Exception as e:
                 if update:
-                    Logger.RaiseException(RuntimeError(_('Failed to open "%(ds)s" as an updatable OGR data source. OGR reported %(e): %(msg)s') % {'ds': dataSourceName, 'e': e.__class__.__name__, 'msg': e}))
-                Logger.RaiseException(RuntimeError(_('Failed to open "%(ds)s" as an OGR data source. OGR reported %(e): %(msg)s') % {'ds': dataSourceName, 'e': e.__class__.__name__, 'msg': e}))
+                    Logger.RaiseException(RuntimeError(_('Failed to open "%(ds)s" as an updatable OGR data source. OGR reported %(e)s: %(msg)s') % {'ds': dataSourceName, 'e': e.__class__.__name__, 'msg': e}))
+                Logger.RaiseException(RuntimeError(_('Failed to open "%(ds)s" as an OGR data source. OGR reported %(e)s: %(msg)s') % {'ds': dataSourceName, 'e': e.__class__.__name__, 'msg': e}))
         return dataSource
 
     def _GetLayerByName(self):
         try:
-            return self._DataSource.GetLayerByName(self._LayerName)
+            layer = self._DataSource.GetLayerByName(self._LayerName)
         except Exception as e:
             if self._IsUpdatable:
-                Logger.RaiseException(RuntimeError(_('Failed to open "%(layer)s" as OGR layer of updatable %(driver)s data source "%(ds)s". OGR reported %(e): %(msg)s') % {'layer': self._LayerName, 'driver': self._DriverName, 'ds': self._DataSourceName, 'e': e.__class__.__name__, 'msg': e}))
-            Logger.RaiseException(RuntimeError(_('Failed to open "%(layer)s" as an OGR layer of %(driver)s data source "%(ds)s". OGR reported %(e): %(msg)s') % {'layer': self._LayerName, 'driver': self._DriverName, 'ds': self._DataSourceName, 'e': e.__class__.__name__, 'msg': e}))
+                Logger.RaiseException(RuntimeError(_('Failed to open "%(layer)s" as an OGR layer of updatable %(driver)s data source "%(ds)s". OGR reported %(e)s: %(msg)s') % {'layer': self._LayerName, 'driver': self._DriverName, 'ds': self._DataSourceName, 'e': e.__class__.__name__, 'msg': e}))
+            Logger.RaiseException(RuntimeError(_('Failed to open "%(layer)s" as an an OGR layer of %(driver)s data source "%(ds)s". OGR reported %(e)s: %(msg)s') % {'layer': self._LayerName, 'driver': self._DriverName, 'ds': self._DataSourceName, 'e': e.__class__.__name__, 'msg': e}))
+        if layer is None:
+            Logger.RaiseException(ValueError(_('Failed to open "%(layer)s" as an an OGR layer of %(driver)s data source "%(ds)s". OGR\'s Dataset.GetLayerByName() function returned NULL, which usually indicates that the layer does not exist.') % {'layer': self._LayerName, 'driver': self._DriverName, 'ds': self._DataSourceName}))
+        return layer
 
 
 ########################################################################################

@@ -38,9 +38,10 @@ AddPropertyMetadata(FileDatasetCollection.Path,
 will be opened as stand-alone collection.
 
 If there is a parent collection, this path is relative to it. For example, if
-the parent collection is a :class:`DirectoryTree`, this path is relative to a
-leaf directory of the :class:`DirectoryTree`. Often, the leaf directory will
-be the one containing the file, in which case the path provided here will
+the parent collection is a :class:`~GeoEco.Datasets.Collections.DirectoryTree`,
+this path is relative to a leaf directory of the
+:class:`~GeoEco.Datasets.Collections.DirectoryTree`. Often, the leaf directory
+will be the one containing the file, in which case the path provided here will
 simply be the name of the file.
 
 If the path points to compressed file, it will be decompressed automatically.
@@ -96,7 +97,7 @@ directory.
 
 AddResultMetadata(FileDatasetCollection.__init__, 'collection',
     typeMetadata=ClassInstanceTypeMetadata(cls=FileDatasetCollection),
-    description=_('%s instance.') % FileDatasetCollection.__name__)
+    description=_(':class:`%s` instance.') % FileDatasetCollection.__name__)
 
 
 ###############################################################################################

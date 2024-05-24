@@ -97,7 +97,7 @@ AddPropertyMetadata(CollectibleObject.DisplayName,
 
 AddPropertyMetadata(CollectibleObject.ParentCollection,
     typeMetadata=ClassInstanceTypeMetadata(cls=DatasetCollection, canBeNone=True),
-    shortDescription=_('Parent :class:`DatasetCollection` that this object is part of (if any).'),
+    shortDescription=_('Parent :class:`~GeoEco.Datasets.DatasetCollection` that this object is part of (if any).'),
     isExposedToPythonCallers=True)
 
 # Public method: CollectibleObject.GetQueryableAttribute

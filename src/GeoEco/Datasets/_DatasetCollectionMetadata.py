@@ -57,7 +57,7 @@ but the organizational structure is not documented."""))
 # Public method: DatasetCollection.QueryDatasets
 
 AddMethodMetadata(DatasetCollection.QueryDatasets,
-    shortDescription=_('Queries the collection and returns a :py:class:`list` of :class:`Dataset`\\ s that match a search expression.'),
+    shortDescription=_('Queries the collection and returns a :py:class:`list` of :class:`~GeoEco.Datasets.Dataset`\\ s that match a search expression.'),
     isExposedToPythonCallers=True,
     dependencies=[PythonModuleDependency('pyparsing', cheeseShopName='pyparsing')])
 
@@ -120,12 +120,12 @@ AddArgumentMetadata(DatasetCollection.QueryDatasets, 'options',
 
 AddResultMetadata(DatasetCollection.QueryDatasets, 'datasets',
     typeMetadata=ListTypeMetadata(elementType=ClassInstanceTypeMetadata(cls=Dataset)),
-    description=_(':py:class:`list` of :class:`Dataset`\\ s that match the search expression.'))
+    description=_(':py:class:`list` of :class:`~GeoEco.Datasets.Dataset`\\ s that match the search expression.'))
 
 # Public method: DatasetCollection.GetOldestDataset
 
 AddMethodMetadata(DatasetCollection.GetOldestDataset,
-    shortDescription=_('Queries the collection and returns the oldest :class:`Dataset` that matches the search expression.'),
+    shortDescription=_('Queries the collection and returns the oldest :class:`~GeoEco.Datasets.Dataset` that matches the search expression.'),
     isExposedToPythonCallers=True,
     dependencies=[PythonModuleDependency('pyparsing', cheeseShopName='pyparsing')])
 
@@ -135,12 +135,12 @@ CopyArgumentMetadata(DatasetCollection.QueryDatasets, 'options', DatasetCollecti
 
 AddResultMetadata(DatasetCollection.GetOldestDataset, 'dataset',
     typeMetadata=ClassInstanceTypeMetadata(cls=Dataset, canBeNone=True),
-    description=_('The oldest :class:`Dataset` that matches the search expression, or :py:data:`None` if nothing matches or the collection is empty.'))
+    description=_('The oldest :class:`~GeoEco.Datasets.Dataset` that matches the search expression, or :py:data:`None` if nothing matches or the collection is empty.'))
 
 # Public method: DatasetCollection.GetNewestDataset
 
 AddMethodMetadata(DatasetCollection.GetNewestDataset,
-    shortDescription=_('Queries the collection and returns the newest :class:`Dataset` that matches the search expression.'),
+    shortDescription=_('Queries the collection and returns the newest :class:`~GeoEco.Datasets.Dataset` that matches the search expression.'),
     isExposedToPythonCallers=True,
     dependencies=[PythonModuleDependency('pyparsing', cheeseShopName='pyparsing')])
 
@@ -150,19 +150,19 @@ CopyArgumentMetadata(DatasetCollection.QueryDatasets, 'options', DatasetCollecti
 
 AddResultMetadata(DatasetCollection.GetNewestDataset, 'dataset',
     typeMetadata=ClassInstanceTypeMetadata(cls=Dataset, canBeNone=True),
-    description=_('The newest :class:`Dataset` that matches the search expression, or :py:data:`None` if nothing matches or the collection is empty.'))
+    description=_('The newest :class:`~GeoEco.Datasets.Dataset` that matches the search expression, or :py:data:`None` if nothing matches or the collection is empty.'))
 
 # Public method: DatasetCollection.ImportDatasets
 
 AddMethodMetadata(DatasetCollection.ImportDatasets,
-    shortDescription=_('Copies each :class:`Dataset` in a :py:class:`list` into this :class:`DatasetCollection`.'),
+    shortDescription=_('Copies each :class:`~GeoEco.Datasets.Dataset` in a :py:class:`list` into this :class:`~GeoEco.Datasets.DatasetCollection`.'),
     isExposedToPythonCallers=True)
 
 CopyArgumentMetadata(DatasetCollection.QueryDatasets, 'self', DatasetCollection.ImportDatasets, 'self')
 
 AddArgumentMetadata(DatasetCollection.ImportDatasets, 'datasets',
     typeMetadata=ListTypeMetadata(elementType=ClassInstanceTypeMetadata(cls=Dataset)),
-    description=_(':py:class:`list` of :class:`Dataset`\\ s to import.'))
+    description=_(':py:class:`list` of :class:`~GeoEco.Datasets.Dataset`\\ s to import.'))
 
 AddArgumentMetadata(DatasetCollection.ImportDatasets, 'mode',
     typeMetadata=UnicodeStringTypeMetadata(allowedValues=['Add', 'Replace'], makeLowercase=True),

@@ -12,6 +12,7 @@ from ..Internationalization import _
 from ..Metadata import *
 from ..Types import *
 
+from . import Dataset
 from ._Grid import Grid
 from ._CollectibleObject import CollectibleObject
 
@@ -275,6 +276,24 @@ AddPropertyMetadata(Grid.MinCoords,
 AddPropertyMetadata(Grid.MaxCoords,
     typeMetadata=AnyObjectTypeMetadata(),
     shortDescription=_("Maximum coordinate value for each cell (i.e., the coordinates of the cells' right edges), indexed using the 1-character dimension of interest and optionally a :py:class:`range` to retrieve a :class:`numpy.ndarray` of coordinates (e.g. ``MaxCoords['x', 0:4]``) or an integer to retrieve a :py:class:`float` for a single coordinate (e.g. ``MaxCoords['x', 10]``)."))
+
+# Private constructor: Grid.__init__
+
+AddMethodMetadata(Grid.__init__,
+    shortDescription=_('Grid constructor.'))
+
+AddArgumentMetadata(Grid.__init__, 'self',
+    typeMetadata=ClassInstanceTypeMetadata(cls=Grid),
+    description=_(':class:`%s` instance.') % Grid.__name__)
+
+CopyArgumentMetadata(Dataset.__init__, 'parentCollection', Grid.__init__, 'parentCollection')
+CopyArgumentMetadata(Dataset.__init__, 'queryableAttributes', Grid.__init__, 'queryableAttributes')
+CopyArgumentMetadata(Dataset.__init__, 'queryableAttributeValues', Grid.__init__, 'queryableAttributeValues')
+CopyArgumentMetadata(Dataset.__init__, 'lazyPropertyValues', Grid.__init__, 'lazyPropertyValues')
+
+AddResultMetadata(Grid.__init__, 'obj',
+    typeMetadata=ClassInstanceTypeMetadata(cls=Grid),
+    description=_(':class:`%s` instance.') % Grid.__name__)
 
 
 ###################################################################################

@@ -87,7 +87,7 @@ AddArgumentMetadata(Database.CreateTable, 'options',
 
 AddResultMetadata(Database.CreateTable, 'table',
     typeMetadata=ClassInstanceTypeMetadata(cls=Table),
-    description=_(':class:`Table` representing the new table.'))
+    description=_(':class:`~GeoEco.Datasets.Table` representing the new table.'))
 
 # Public method: Database.CreateTableFromTemplate
 
@@ -106,7 +106,7 @@ CopyArgumentMetadata(Database.CreateTable, 'tableName', Database.CreateTableFrom
 
 AddArgumentMetadata(Database.CreateTableFromTemplate, 'templateTable',
     typeMetadata=ClassInstanceTypeMetadata(cls=Table),
-    description=_(':class:`Table` representing the template.'))
+    description=_(':class:`~GeoEco.Datasets.Table` representing the template.'))
 
 AddArgumentMetadata(Database.CreateTableFromTemplate, 'fields',
     typeMetadata=ListTypeMetadata(elementType=UnicodeStringTypeMetadata(minLength=1), canBeNone=True),
@@ -136,7 +136,7 @@ CopyArgumentMetadata(Database.CreateTable, 'tableName', Database.ImportTable, 'd
 
 AddArgumentMetadata(Database.ImportTable, 'sourceTable',
     typeMetadata=ClassInstanceTypeMetadata(cls=Table),
-    description=_(':class:`Table` to copy.'))
+    description=_(':class:`~GeoEco.Datasets.Table` to copy.'))
 
 AddArgumentMetadata(Database.ImportTable, 'fields',
     typeMetadata=ListTypeMetadata(elementType=UnicodeStringTypeMetadata(minLength=1), canBeNone=True),

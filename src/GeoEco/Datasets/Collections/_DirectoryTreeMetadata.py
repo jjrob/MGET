@@ -33,7 +33,7 @@ AddPropertyMetadata(DirectoryTree.Path,
 
 AddPropertyMetadata(DirectoryTree.DatasetType,
     typeMetadata=ClassTypeMetadata(cls=CollectibleObject),
-    shortDescription=_('The type of :class:`CollectibleObject`\\ s contained by this :class:`DirectoryTree`.'),
+    shortDescription=_('The type of :class:`~GeoEco.Datasets.CollectibleObject`\\ s contained by this :class:`~GeoEco.Datasets.Collections.DirectoryTree`.'),
     longDescription=_(
 """If this type is a :class:`~GeoEco.Datasets.Dataset`, instances of it will
 be constructed and returned when :func:`QueryDatasets` is called. If it is a

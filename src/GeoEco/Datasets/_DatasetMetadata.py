@@ -156,12 +156,14 @@ AddMethodMetadata(Dataset.SetSpatialReference,
 """This method is similar in operation to the ArcGIS
 :arcpy_management:`Define-Projection` geoprocessing tool; it changes the
 spatial reference of the dataset without changing any of the data itself. The
-change is not just made to the in-memory :class:`Dataset` instance; it is also
-made to the underlying physical dataset itself. This method is used mainly to
-fix datasets for which the spatial reference is missing or mis-defined.
+change is not just made to the in-memory :class:`~GeoEco.Datasets.Dataset`
+instance; it is also made to the underlying physical dataset itself. This
+method is used mainly to fix datasets for which the spatial reference is
+missing or mis-defined.
 
 Not all datasets support setting the spatial reference. To determine if the
-spatial reference can be set, use :func:`TestCapability` to test for the
+spatial reference can be set, 
+use :func:`~GeoEco.Datasets.CollectibleObject.TestCapability` to test for the
 ``'SetSpatialReference'`` capability."""),
     isExposedToPythonCallers=True)
 

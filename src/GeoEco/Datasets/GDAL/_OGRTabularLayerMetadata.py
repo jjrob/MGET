@@ -1,5 +1,5 @@
 # _OGRTabularLayerMetadata.py - Metadata for classes defined in
-# OGRTabularLayer.py.
+# _OGRTabularLayer.py.
 #
 # Copyright (C) 2024 Jason J. Roberts
 #
@@ -12,7 +12,7 @@ from ...Internationalization import _
 from ...Metadata import *
 from ...Types import *
 
-from .._Dataset import Dataset
+from .. import Dataset
 from ._OGRTabularLayer import OGRTabularLayer
 
 
@@ -22,7 +22,12 @@ from ._OGRTabularLayer import OGRTabularLayer
 
 AddClassMetadata(OGRTabularLayer,
     module=__package__,
-    shortDescription=_('A :class:`Table` representing a tabular dataset accessed through GDAL\'s :py:class:`osgeo.ogr.Layer` class.'))
+    shortDescription=_('A :class:`Table` representing a tabular dataset accessed through GDAL\'s :py:class:`osgeo.ogr.Layer` class.'),
+    longDescription=_(
+"""
+Warning:
+    This class is not fully implemented yet and should not be used at this time.
+"""))
 
 # Public properties
 

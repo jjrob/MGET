@@ -64,12 +64,12 @@ AddPropertyMetadata(Table.MaxStringLength,
 
 AddPropertyMetadata(Table.Fields,
     typeMetadata=ListTypeMetadata(elementType=ClassInstanceTypeMetadata(cls=Field), canBeNone=True),
-    shortDescription=_(':py:class:`list` of :class:`Field`\\ s representing the fields of the table. :py:data:`None` or an empty list if the table has no fields (this is unusual).'))
+    shortDescription=_(':py:class:`list` of :class:`~GeoEco.Datasets.Field`\\ s representing the fields of the table. :py:data:`None` or an empty list if the table has no fields (this is unusual).'))
 
 # Public method: Table.GetFieldByName
 
 AddMethodMetadata(Table.GetFieldByName,
-    shortDescription=_('Returns the :class:`Field` for the specified field name, or :py:data:`None` if no field exists with that name.'),
+    shortDescription=_('Returns the :class:`~GeoEco.Datasets.Field` for the specified field name, or :py:data:`None` if no field exists with that name.'),
     isExposedToPythonCallers=True)
 
 AddArgumentMetadata(Table.GetFieldByName, 'self',
@@ -82,7 +82,7 @@ AddArgumentMetadata(Table.GetFieldByName, 'name',
 
 AddResultMetadata(Table.GetFieldByName, 'field',
     typeMetadata=ClassInstanceTypeMetadata(cls=Field, canBeNone=True),
-    description=_(':class:`Field` for `name`, or :py:data:`None` if no field exists with that name.'))
+    description=_(':class:`~GeoEco.Datasets.Field` for `name`, or :py:data:`None` if no field exists with that name.'))
 
 # Public method: Table.AddField
 
@@ -504,7 +504,7 @@ on. ``NULL`` values are represented by :py:data:`None`."""))
 # Public method: Table.OpenSelectCursor
 
 AddMethodMetadata(Table.OpenSelectCursor,
-    shortDescription=_('Opens and returns a :class:`SelectCursor` for reading rows from the table.'),
+    shortDescription=_('Opens and returns a :class:`~GeoEco.Datasets.SelectCursor` for reading rows from the table.'),
     isExposedToPythonCallers=True)
 
 CopyArgumentMetadata(Table.GetFieldByName, 'self', Table.OpenSelectCursor, 'self')
@@ -536,12 +536,12 @@ CopyArgumentMetadata(Table.Query, 'rowDescriptionPlural', Table.OpenSelectCursor
 
 AddResultMetadata(Table.OpenSelectCursor, 'cursor',
     typeMetadata=ClassInstanceTypeMetadata(cls=SelectCursor),
-    description=_('Opened :class:`SelectCursor` positioned on the first row (if any rows were returned).'))
+    description=_('Opened :class:`~GeoEco.Datasets.SelectCursor` positioned on the first row (if any rows were returned).'))
 
 # Public method: Table.OpenUpdateCursor
 
 AddMethodMetadata(Table.OpenUpdateCursor,
-    shortDescription=_('Opens and returns an :class:`UpdateCursor` for reading, updating, and deleting rows from the table.'),
+    shortDescription=_('Opens and returns an :class:`~GeoEco.Datasets.UpdateCursor` for reading, updating, and deleting rows from the table.'),
     isExposedToPythonCallers=True)
 
 CopyArgumentMetadata(Table.OpenSelectCursor, 'self', Table.OpenUpdateCursor, 'self')
@@ -555,12 +555,12 @@ CopyArgumentMetadata(Table.OpenSelectCursor, 'rowDescriptionPlural', Table.OpenU
 
 AddResultMetadata(Table.OpenUpdateCursor, 'cursor',
    typeMetadata=ClassInstanceTypeMetadata(cls=UpdateCursor),
-    description=_('Opened :class:`UpdateCursor` positioned on the first row (if any rows were returned).'))
+    description=_('Opened :class:`~GeoEco.Datasets.UpdateCursor` positioned on the first row (if any rows were returned).'))
 
 # Public method: Table.OpenInsertCursor
 
 AddMethodMetadata(Table.OpenInsertCursor,
-    shortDescription=_('Opens and returns an :class:`InsertCursor` for adding rows to the table.'),
+    shortDescription=_('Opens and returns an :class:`~GeoEco.Datasets.InsertCursor` for adding rows to the table.'),
     isExposedToPythonCallers=True)
 
 CopyArgumentMetadata(Table.OpenSelectCursor, 'self', Table.OpenInsertCursor, 'self')
@@ -585,7 +585,7 @@ CopyArgumentMetadata(Table.OpenSelectCursor, 'rowDescriptionPlural', Table.OpenI
 
 AddResultMetadata(Table.OpenInsertCursor, 'cursor',
    typeMetadata=ClassInstanceTypeMetadata(cls=UpdateCursor),
-    description=_('Opened :class:`InsertCursor` positioned on the first row (if any rows were returned).'))
+    description=_('Opened :class:`~GeoEco.Datasets.InsertCursor` positioned on the first row (if any rows were returned).'))
 
 
 ###############################################################################

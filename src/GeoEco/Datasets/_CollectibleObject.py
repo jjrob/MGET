@@ -229,7 +229,7 @@ class CollectibleObject(object):
 
     def __del__(self):
         self.Close()
-        super(CollectibleObject, self).__del__()
+        # super(CollectibleObject, self).__del__()    # Because object apparently does not have a __del__, this call results in AttributeError: 'super' object has no attribute '__del__'
 
     # Private methods that the derived class may override
 
@@ -293,10 +293,8 @@ class CollectibleObject(object):
     @classmethod
     def _ogr(cls):
         if not hasattr(CollectibleObject, '_OGRModule'):
-            d = PythonModuleDependency(importName='osgeo', displayName='Python bindings for the Geospatial Data Abstraction Library (GDAL)', cheeseShopName='GDAL')
-            d.Initialize()
+            cls._gdal()    # Calling this so that osgeo.gdal will be imported first and osgeo.gdal.UseExceptions() will be invoked
             from osgeo import ogr
-            ogr.UseExceptions()
             setattr(CollectibleObject, '_OGRModule', ogr)
             
             setattr(CollectibleObject, '_GeometryTypeForOGRGeometry', {ogr.wkbNone: None,
@@ -335,10 +333,8 @@ class CollectibleObject(object):
     @classmethod
     def _osr(cls):
         if not hasattr(CollectibleObject, '_OSRModule'):
-            d = PythonModuleDependency(importName='osgeo', displayName='Python bindings for the Geospatial Data Abstraction Library (GDAL)', cheeseShopName='GDAL')
-            d.Initialize()
+            cls._gdal()    # Calling this so that osgeo.gdal will be imported first and osgeo.gdal.UseExceptions() will be invoked
             from osgeo import osr
-            osr.UseExceptions()
             setattr(CollectibleObject, '_OSRModule', osr)
         return CollectibleObject._OSRModule
 
@@ -355,8 +351,7 @@ class CollectibleObject(object):
     @classmethod
     def _gdalconst(cls):
         if not hasattr(CollectibleObject, '_GDALConstModule'):
-            d = PythonModuleDependency(importName='osgeo', displayName='Python bindings for the Geospatial Data Abstraction Library (GDAL)', cheeseShopName='GDAL')
-            d.Initialize()
+            cls._gdal()    # Calling this so that osgeo.gdal will be imported first and osgeo.gdal.UseExceptions() will be invoked
             from osgeo import gdalconst
             setattr(CollectibleObject, '_GDALConstModule', gdalconst)
         return CollectibleObject._GDALConstModule
