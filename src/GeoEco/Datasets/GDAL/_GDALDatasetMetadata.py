@@ -22,7 +22,7 @@ from ._GDALDataset import GDALDataset
 
 AddClassMetadata(GDALDataset,
     module=__package__,
-    shortDescription=_('A :class:`~GeoEco.Datasets.Collections.FileDatasetCollection` of :class:`GDALRasterBand`\\ s representing a 2D GDAL raster dataset.'),
+    shortDescription=_('A 2D raster dataset represented as a :class:`~GeoEco.Datasets.Collections.FileDatasetCollection` of :class:`GDALRasterBand`\\ s.'),
     longDescription=_(
 """The `Geospatial Data Abstraction Library (GDAL) <https://www.gdal.org>`_ is
 a free open-source library for accessing geospatial data in a variety of

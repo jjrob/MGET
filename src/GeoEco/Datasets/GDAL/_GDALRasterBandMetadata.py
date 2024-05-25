@@ -28,7 +28,7 @@ AddClassMetadata(GDALRasterBand,
 # Public properties
 
 AddPropertyMetadata(GDALRasterBand.Band,
-    typeMetadata=IntegerTypeMetadata(minValue=0),
+    typeMetadata=IntegerTypeMetadata(minValue=1),
     shortDescription=_('The band number.'))
 
 # Public constructor: GDALRasterBand.__init__

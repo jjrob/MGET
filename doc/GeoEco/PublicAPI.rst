@@ -14,5 +14,6 @@ TODO: Write introduction
     :recursive:
 
     GeoEco.Datasets
+    GeoEco.Datasets.ArcGIS
     GeoEco.Datasets.Collections
     GeoEco.Datasets.GDAL

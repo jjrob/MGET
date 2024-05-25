@@ -264,8 +264,8 @@ class StoredObjectTypeMetadata(UnicodeStringTypeMetadata):
             if not madeAbsolute and self.UseArcGISWorkspace:
                 from ..ArcGIS import GeoprocessorManager
                 gp = GeoprocessorManager.GetWrappedGeoprocessor()
-                if gp is not None and isinstance(gp.Workspace, str) and len(gp.Workspace) > 0:
-                    value2 = os.path.join(gp.Workspace, value)
+                if gp is not None and isinstance(gp.env.workspace, str) and len(gp.env.workspace) > 0:
+                    value2 = os.path.join(gp.env.workspace, value)
                     if value != value2:
                         value = value2
                         valueChanged = True
@@ -296,9 +296,9 @@ class StoredObjectTypeMetadata(UnicodeStringTypeMetadata):
     def GetConstraintDescriptionStrings(self):
         constraints = super(StoredObjectTypeMetadata, self).GetConstraintDescriptionStrings()
         if self.MustExist:
-            constraints.append('Must exist:     True')
+            constraints.append('Must exist.')
         if self.MustNotExist:
-            constraints.append('Must not exist: True')
+            constraints.append('Must not exist.')
         if self.MustBeDifferentThanArguments is not None and len(self.MustBeDifferentThanArguments) > 0:
             if len(self.MustBeDifferentThanArguments) == 1:
                 constraints.append('Must not equal the value of %s' % self.MustBeDifferentThanArguments[0])

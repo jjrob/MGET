@@ -16,4 +16,11 @@ Remove GetResultCacheKey
 Remove RefreshCatalog
 Remove ImportGDALModule
 Change 0x%(id)08X to 0x%(id)016X
-Do not call Destroy on GDAL objects anymore; see https://gdal.org/api/python_gotchas.html#certain-objects-contain-a-destroy-method-but-you-should-never-use-it
+Do not call Destroy on GDAL objects anymore
+
+ArcPro vs. Desktop issues to check for:
+=======================================
+
+gp.workspace changed to arcpy.env.workspace (lowercase workspace)
+gp.List* functions now return lists rather than ArcGIS enumerator object
+gp.Describe().Extent now returns an object with properties rather than a string

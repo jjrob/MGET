@@ -1,4 +1,5 @@
-# Datasets/Collections.py - Various DatasetCollections.
+# Datasets/ArcGIS.py - Datasets and DatasetCollections that wrap the ArcGIS
+# tabular and raster datasets accessible with the Python arcpy library.
 #
 # Copyright (C) 2024 Jason J. Roberts
 #
@@ -10,11 +11,9 @@
 # To keep file sizes managable, we split the names defined by this package
 # across several files.
 
-from ._DatasetCollectionTree import DatasetCollectionTree
-from ._DirectoryTree import DirectoryTree
-from ._FileDatasetCollection import FileDatasetCollection
-from ._FTPDirectoryTree import FTPDirectoryTree
-
+from ._ArcGISWorkspace import ArcGISWorkspace
+from ._ArcGISRaster import ArcGISRaster
+from ._ArcGISRasterBand import ArcGISRasterBand
 
 ###############################################################################
 # Metadata: module
@@ -23,19 +22,17 @@ from ._FTPDirectoryTree import FTPDirectoryTree
 from ...Internationalization import _
 from ...Metadata import AddModuleMetadata
 
-AddModuleMetadata(shortDescription=_('General purpose :class:`~GeoEco.Datasets.DatasetCollection`\\ s.'))
+AddModuleMetadata(shortDescription=_(':class:`~GeoEco.Datasets.Table` and :class:`~GeoEco.Datasets.Grid` wrappers around tabular, vector, and raster datasets accessible through the ArcGIS `arcpy <https://www.esri.com/en-us/arcgis/products/arcgis-python-libraries/libraries/arcpy>`_ library.'))
 
-from . import _DatasetCollectionTreeMetadata
-from . import _DirectoryTreeMetadata
-from . import _FileDatasetCollectionMetadata
-from . import _FTPDirectoryTreeMetadata
+from . import _ArcGISWorkspaceMetadata
+from . import _ArcGISRasterMetadata
+from . import _ArcGISRasterBandMetadata
 
 
 ###############################################################################
 # Names exported by this module
 ###############################################################################
 
-__all__ = ['DatasetCollectionTree',
-           'DirectoryTree',
-           'FileDatasetCollection',
-           'FTPDirectoryTree']
+__all__ = ['ArcGISRaster',
+           'ArcGISRasterBand',
+           'ArcGISWorkspace']

@@ -23,7 +23,7 @@ from ._GDALRasterBand import GDALRasterBand
 from ...Internationalization import _
 from ...Metadata import AddModuleMetadata
 
-AddModuleMetadata(shortDescription=_(':class:`Dataset`\\ s and :class:`DatasetCollection`\\ s that wrap the `Geospatial Data Abstraction Library (GDAL) <https://gdal.org>`_.'))
+AddModuleMetadata(shortDescription=_('A :class:`~GeoEco.Datasets.DatasetCollection` and :class:`~GeoEco.Datasets.Grid` for accessing rasters and raster bands through the `Geospatial Data Abstraction Library (GDAL) <https://gdal.org>`_.'))
 
 # from . import _OGRTabularLayerMetadata            # OGRTabularLayer is not fully implemented yet
 from . import _GDALDatasetMetadata
