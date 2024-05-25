@@ -142,7 +142,7 @@ class GeoprocessorManager(object):
         # arcpy.GetInstallInfo() returns everything we need.
 
         cls.InitializeGeoprocessor()
-        gp = GetWrappedGeoprocessor()
+        gp = cls.GetWrappedGeoprocessor()
         installInfo = gp.GetInstallInfo()
 
         # Parse the version numbers. For ArcGIS Pro, the 'Version' item
@@ -171,7 +171,7 @@ class GeoprocessorManager(object):
         if 'ProductName' not in installInfo:
             Logger.RaiseException(RuntimeError(_('Cannot retrieve ArcGIS installation information. The dictionary returned by arcpy.GetInstallInfo() does not have \'ProductName\' in it.')))
 
-        GeoprocessorManager._ProductName = installInfo['ProductName']
+        GeoprocessorManager._ArcGISProductName = installInfo['ProductName']
 
         # Extract the LicenseLevel, if available. This item was not available
         # in ArcGIS Desktop 10.x. It is available in ArcGIS Pro 3.2, but I'm
@@ -301,13 +301,13 @@ class GeoprocessorManager(object):
 class ArcGISDependency(Dependency):
     __doc__ = DynamicDocString()
 
-    def __init__(self, minimumMajorVersion, minimumMinorVersion=None, minimumPatchVersion=None, productNames=['ArcGISPro', 'Server'], licenseLevels=None):
+    def __init__(self, minimumMajorVersion=3, minimumMinorVersion=2, minimumPatchVersion=None, productNames=['ArcGISPro', 'Server'], licenseLevels=None):
         self.SetVersion(minimumMajorVersion, minimumMinorVersion, minimumPatchVersion)
         self.ProductNames = productNames
         self.LicenseLevels = licenseLevels
 
     def SetVersion(self, minimumMajorVersion, minimumMinorVersion=None, minimumPatchVersion=None):
-        cls.__doc__.Obj.ValidateMethodInvocation()
+        self.__doc__.Obj.ValidateMethodInvocation()
 
         if minimumMinorVersion is None:
             minimumMinorVersion = 0
@@ -557,7 +557,7 @@ class _ArcGISObjectWrapper(object):
         # exception.
         
         except Exception as e:
-            self._LogError(_('Failed to get the value of the %(name)s attribute of %(obs)s. This may result from a problem with your inputs or it may indicate a programming mistake in this tool or ArcGIS itself. Please check your inputs and try again. Also review any preceding error messages and the detailed error information that appears at the end of this message. If you suspect a programming mistake in this tool or ArcGIS, please contact the author of this tool for assistance. Detailed error information: The following exception was raised when the attribute was retrieved: %(error)s: %(msg)s') % {'name': name, 'obj': self._Object, 'error': e.__class__.__name__, 'msg': e})
+            self._LogError(_('Failed to get the value of the %(name)s attribute of %(obj)s. This may result from a problem with your inputs or it may indicate a programming mistake in this tool or ArcGIS itself. Please check your inputs and try again. Also review any preceding error messages and the detailed error information that appears at the end of this message. If you suspect a programming mistake in this tool or ArcGIS, please contact the author of this tool for assistance. Detailed error information: The following exception was raised when the attribute was retrieved: %(error)s: %(msg)s') % {'name': name, 'obj': self._Object, 'error': e.__class__.__name__, 'msg': e})
             raise
 
         # If the caller asked for a method or function, create a wrapper, add
@@ -1419,11 +1419,11 @@ AddPropertyMetadata(ArcGISDependency.MinimumMajorVersion,
     shortDescription=_('Minimum major version number of ArcGIS that must be installed.'))
 
 AddPropertyMetadata(ArcGISDependency.MinimumMinorVersion,
-    typeMetadata=IntegerTypeMetadata(minValue=0),
+    typeMetadata=IntegerTypeMetadata(minValue=0, canBeNone=True),
     shortDescription=_('Minimum major version number of ArcGIS that must be installed.'))
 
 AddPropertyMetadata(ArcGISDependency.MinimumPatchVersion,
-    typeMetadata=IntegerTypeMetadata(minValue=0),
+    typeMetadata=IntegerTypeMetadata(minValue=0, canBeNone=True),
     shortDescription=_('Minimum patch version number of ArcGIS that must be installed.'))
 
 AddPropertyMetadata(ArcGISDependency.ProductNames,

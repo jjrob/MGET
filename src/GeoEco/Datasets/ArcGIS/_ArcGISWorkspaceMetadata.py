@@ -8,6 +8,7 @@
 # root of this project or https://opensource.org/license/bsd-3-clause for the
 # full license text.
 
+from ...ArcGIS import ArcGISDependency
 from ...Internationalization import _
 from ...Metadata import *
 from ...Types import *
@@ -41,7 +42,8 @@ AddPropertyMetadata(ArcGISWorkspace.CacheTree,
 # Public constructor: ArcGISWorkspace.__init__
 
 AddMethodMetadata(ArcGISWorkspace.__init__,
-    shortDescription=_('ArcGISWorkspace constructor.'))
+    shortDescription=_('ArcGISWorkspace constructor.'),
+    dependencies=[ArcGISDependency()])
 
 AddArgumentMetadata(ArcGISWorkspace.__init__, 'self',
     typeMetadata=ClassInstanceTypeMetadata(cls=ArcGISWorkspace),

@@ -106,7 +106,7 @@ class ArcGISRaster(DatasetCollection):
 
         self.SetLazyPropertyValue('ArcGISDataType', d.DataType)
         self.SetLazyPropertyValue('Bands', d.BandCount)
-        self.SetLazyPropertyValue('SpatialReference', Dataset.ConvertSpatialReference('arcgis', gp.CreateSpatialReference_management(d.SpatialReference).split(';')[0], 'obj'))
+        self.SetLazyPropertyValue('SpatialReference', Dataset.ConvertSpatialReference('arcgis', gp.CreateSpatialReference_management(d.SpatialReference).getOutput(0).split(';')[0], 'obj'))
 
         # Log a debug message with the properties of the raster.
         
@@ -427,7 +427,6 @@ class ArcGISRaster(DatasetCollection):
         if outputIsFile and not outputIsAIG and os.path.splitext(path)[1].lower() not in ['.asc', '.gif', '.j2c', '.j2k', '.jp2', '.jpc', '.jpe', '.jpg', '.jpeg', '.jpx', '.png', '.txt']:
             cls._LogDebug(_('%(class)s: Creating ArcGIS raster "%(path)s" with GDAL.'), {'class': cls.__name__, 'path': path})
             GDALDataset._ImportDatasetsToPath(path, sourceDatasets, mode, None, {'useArcGISSpatialReference': True, 'useUnscaledData': useUnscaledData, 'calculateStatistics': False, 'blockSize': blockSize})
-            gp.RefreshCatalog(os.path.dirname(path))
             
         # Otherwise, create a temporary directory, write an IMG file to it
         # with GDAL, and copy the IMG file to the destination path.
@@ -445,7 +444,6 @@ class ArcGISRaster(DatasetCollection):
 
                 tempRaster = os.path.join(tempDir, 'raster.img')
                 GDALDataset._ImportDatasetsToPath(tempRaster, sourceDatasets, mode, None, {'useArcGISSpatialReference': True, 'useUnscaledData': useUnscaledData, 'calculateStatistics': False, 'blockSize': blockSize})
-                gp.RefreshCatalog(tempDir)
 
                 # If the destination raster is an ArcInfo ASCII grid,
                 # use the RasterToASCII_conversion tool to create it.

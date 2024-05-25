@@ -7,6 +7,7 @@
 # root of this project or https://opensource.org/license/bsd-3-clause for the
 # full license text.
 
+from ...ArcGIS import ArcGISDependency
 from ...Internationalization import _
 from ...Metadata import *
 from ...Types import *
@@ -38,7 +39,8 @@ AddPropertyMetadata(ArcGISRaster.ArcGISDataType,
 # Public constructor: ArcGISRaster.__init__
 
 AddMethodMetadata(ArcGISRaster.__init__,
-    shortDescription=_('ArcGISRaster constructor.'))
+    shortDescription=_('ArcGISRaster constructor.'),
+    dependencies=[ArcGISDependency()])
 
 AddArgumentMetadata(ArcGISRaster.__init__, 'self',
     typeMetadata=ClassInstanceTypeMetadata(cls=ArcGISRaster),

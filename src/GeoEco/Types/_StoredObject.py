@@ -12,6 +12,7 @@
 
 import os
 import re
+import sys
 
 from ..DynamicDocString import DynamicDocString
 from ..Internationalization import _

@@ -8,6 +8,7 @@
 # root of this project or https://opensource.org/license/bsd-3-clause for the
 # full license text.
 
+from ...ArcGIS import ArcGISDependency
 from ...Internationalization import _
 from ...Metadata import *
 from ...Types import *
@@ -34,7 +35,8 @@ AddPropertyMetadata(ArcGISRasterBand.Band,
 # Public constructor: ArcGISRasterBand.__init__
 
 AddMethodMetadata(ArcGISRasterBand.__init__,
-    shortDescription=_('ArcGISRasterBand constructor.'))
+    shortDescription=_('ArcGISRasterBand constructor.'),
+    dependencies=[ArcGISDependency()])
 
 AddArgumentMetadata(ArcGISRasterBand.__init__, 'self',
     typeMetadata=ClassInstanceTypeMetadata(cls=ArcGISRasterBand),
@@ -71,7 +73,8 @@ deleted."""))
 
 AddArgumentMetadata(ArcGISRasterBand.ConstructFromArcGISPath, 'cls',
     typeMetadata=ClassOrClassInstanceTypeMetadata(cls=ArcGISRasterBand),
-    description=_(':class:`%s` or an instance of it.') % ArcGISRasterBand.__name__)
+    description=_(':class:`%s` or an instance of it.') % ArcGISRasterBand.__name__,
+    dependencies=[ArcGISDependency()])
 
 AddArgumentMetadata(ArcGISRasterBand.ConstructFromArcGISPath, 'path',
     typeMetadata=ArcGISRasterLayerTypeMetadata(mustExist=True),

@@ -13,7 +13,6 @@ Replace PythonAggregatedModuleDependency with PythonModuleDependency
 Search for aggregated and make sure it is ok
 Remove ArcGISProductDependency and use ArcGISDependency instead
 Remove GetResultCacheKey
-Remove RefreshCatalog
 Remove ImportGDALModule
 Change 0x%(id)08X to 0x%(id)016X
 Do not call Destroy on GDAL objects anymore
@@ -21,6 +20,8 @@ Do not call Destroy on GDAL objects anymore
 ArcPro vs. Desktop issues to check for:
 =======================================
 
+Remove RefreshCatalog
 gp.workspace changed to arcpy.env.workspace (lowercase workspace)
 gp.List* functions now return lists rather than ArcGIS enumerator object
 gp.Describe().Extent now returns an object with properties rather than a string
+gp.CreateSpatialReference_management now returns a Result object, so we have to do .getOutput(0)

@@ -9,6 +9,7 @@
 # root of this project or https://opensource.org/license/bsd-3-clause for the
 # full license text.
 
+import inspect
 import os
 import re
 
@@ -19,6 +20,11 @@ from ...Internationalization import _
 from .. import Dataset, Database
 from ..Collections import DatasetCollectionTree
 from ..GDAL import GDALDataset
+
+from ._ArcGISRaster import ArcGISRaster
+#from ._ArcGISTable import ArcGISTable
+# TODO: After porting ArcGISTable, uncomment the line above and delete the line below
+ArcGISTable = int
 
 
 class ArcGISWorkspace(DatasetCollectionTree, Database):
@@ -44,7 +50,7 @@ class ArcGISWorkspace(DatasetCollectionTree, Database):
 
         # Validate datasetType.
 
-        if not isclass(datasetType) or not issubclass(datasetType, (ArcGISRaster, ArcGISTable)):
+        if not inspect.isclass(datasetType) or not issubclass(datasetType, (ArcGISRaster, ArcGISTable)):
             raise TypeError(_('datasetType must be an ArcGISRaster or ArcGISTable, or a subclass of one of them.'))
 
         # Set the display name based on the type of workspace it is.
@@ -86,8 +92,8 @@ class ArcGISWorkspace(DatasetCollectionTree, Database):
         
         gp.CreateRasterCatalog_management(os.path.dirname(rasterCatalog),
                                           os.path.basename(rasterCatalog),
-                                          gp.CreateSpatialReference_management(arcGISSpatialRefString),
-                                          gp.CreateSpatialReference_management(arcGISSpatialRefString),
+                                          gp.CreateSpatialReference_management(arcGISSpatialRefString).getOutput(0),
+                                          gp.CreateSpatialReference_management(arcGISSpatialRefString).getOutput(0),
                                           None,
                                           None,
                                           None,
@@ -543,9 +549,9 @@ class ArcGISWorkspace(DatasetCollectionTree, Database):
         if issubclass(self._DatasetType, ArcGISRaster) and os.path.exists(os.path.join(self.Path, *pathComponents)) and self._TreeDataTypeCache[os.path.join(self.Path, *pathComponents[:-1])].lower() == 'folder':
             gp = GeoprocessorManager.GetWrappedGeoprocessor()
             try:
-                sr = gp.CreateSpatialReference_management(gp.Describe(os.path.join(self.Path, *pathComponents)).SpatialReference).split(';')[0]
+                sr = gp.CreateSpatialReference_management(gp.Describe(os.path.join(self.Path, *pathComponents)).SpatialReference).getOutput(0).split(';')[0]
             except:
-                sr = gp.CreateSpatialReference_management(gp.Describe(os.path.join(self.Path, *pathComponents)).SpatialReference).split(';')[0]     # Sometimes Arc 10 fails randomly with RuntimeError: DescribeData: Method SpatialReference does not exist. Try again.
+                sr = gp.CreateSpatialReference_management(gp.Describe(os.path.join(self.Path, *pathComponents)).SpatialReference).getOutput(0).split(';')[0]     # Sometimes Arc 10 fails randomly with RuntimeError: DescribeData: Method SpatialReference does not exist. Try again.
             spatialReference = Dataset.ConvertSpatialReference('arcgis', sr, 'obj')
             return GDALDataset(os.path.join(*pathComponents), parentCollection=self, queryableAttributeValues=attrValues, lazyPropertyValues={'SpatialReference': spatialReference}, cacheDirectory=self.CacheDirectory, **options)
             
