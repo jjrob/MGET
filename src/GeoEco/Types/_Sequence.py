@@ -274,7 +274,7 @@ class SequenceTypeMetadata(TypeMetadata):
         if self.MaxLength is not None and self.MaxLength < 2147483647:
             constraints.append('Maximum length: ' + repr(self.MaxLength))
         if self.MustBeSameLengthAsArgument is not None:
-            constraints.append('Must have the same length as %s' % self.MustBeSameLengthAsArgument)
+            constraints.append('Must have the same length as `%s`' % self.MustBeSameLengthAsArgument)
         return constraints
 
 

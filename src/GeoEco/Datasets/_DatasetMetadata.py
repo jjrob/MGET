@@ -189,11 +189,12 @@ The allowed values are:
   <https://gdal.org/api/python/spatial_ref_api.html#osgeo.osr.SpatialReference>`_
   class.
 
-"""))
+To set the spatial reference to unknown, set `srType` to ``'obj'`` and `sr` to
+:py:data:`None`."""))
 
 AddArgumentMetadata(Dataset.SetSpatialReference, 'sr',
-    typeMetadata=AnyObjectTypeMetadata(),
-    description=_('Spatial reference for the dataset.'))
+    typeMetadata=AnyObjectTypeMetadata(canBeNone=True),
+    description=_("Spatial reference for the dataset. To set the spatial reference to unknown, set `srType` to ``'obj'`` and `sr` to :py:data:`None`."))
 
 
 ###################################################################################

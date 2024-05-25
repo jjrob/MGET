@@ -114,6 +114,18 @@ class NumPyArrayTypeMetadata(TypeMetadata):
             for value in self.AllowedDTypes:
                 listNode.appendChild(document.createElement('string')).appendChild(document.createTextNode(value))
 
+    def GetConstraintDescriptionStrings(self):
+        constraints = []
+        if self.Dimensions is not None:
+            constraints.append(_('This array must have %i dimensions.') % self.Dimensions)
+        if self.MinShape is not None:
+            constraints.append(_('The shape of this array must not be less than %s.') % self.MinShape)
+        if self.MaxShape is not None:
+            constraints.append(_('The shape of this array must not be greater than %s.') % self.MaxShape)
+        if self.AllowedDTypes is not None and len(self.AllowedDTypes) > 0:
+            constraints.append(_('This array must have one of the following dtypes: ' + ', '.join(['``' + repr(av) + '``' for av in self.AllowedDTypes])))
+        return constraints
+
     def ValidateValue(self, value, variableName, methodLocals=None, argMetadata=None):
 
         # It is possible that self.PythonType is set to object, rather than

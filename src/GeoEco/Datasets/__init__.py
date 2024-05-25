@@ -23,6 +23,7 @@ from ._Cursors import SelectCursor
 from ._Cursors import UpdateCursor
 from ._Cursors import InsertCursor
 from ._Grid import Grid
+from ._NumpyGrid import NumpyGrid
 
 
 ###############################################################################
@@ -41,6 +42,7 @@ from . import _DatabaseMetadata
 from . import _TableMetadata
 from . import _CursorsMetadata
 from . import _GridMetadata
+from . import _NumpyGridMetadata
 
 
 ###############################################################################
@@ -54,6 +56,7 @@ __all__ = ['CollectibleObject',
            'Field',
            'Grid',
            'InsertCursor',
+           'NumpyGrid',
            'QueryableAttribute',
            'SelectCursor',
            'Table',

@@ -14,7 +14,6 @@ from ..Types import *
 
 from . import Dataset
 from ._Grid import Grid
-from ._CollectibleObject import CollectibleObject
 
 
 ###############################################################################
@@ -238,8 +237,8 @@ the adjacent cell:
 # Public properties
 
 AddPropertyMetadata(Grid.Dimensions,
-    typeMetadata=UnicodeStringTypeMetadata(allowedValues=['xy', 'xyz', 'xyt', 'xyzt']),
-    shortDescription=_('Dimensions of this dataset.'))
+    typeMetadata=UnicodeStringTypeMetadata(allowedValues=['yx', 'zyx', 'tyx', 'tzyx']),
+    shortDescription=_('Dimensions of this grid.'))
 
 AddPropertyMetadata(Grid.CoordIncrements,
     typeMetadata=TupleTypeMetadata(elementType=FloatTypeMetadata(canBeNone=True, mustBeGreaterThan=0.)),
@@ -251,15 +250,15 @@ AddPropertyMetadata(Grid.CoordDependencies,
 
 AddPropertyMetadata(Grid.TIncrementUnit,
     typeMetadata=UnicodeStringTypeMetadata(canBeNone=True, allowedValues=['year', 'month', 'day', 'hour', 'minute', 'second']),
-    shortDescription=_('Unit of the ``t`` coordinate. :py:data:`None` if :attr:`Dimensions` does not contain a ``t`` coordinate.'))
+    shortDescription=_('Unit of the ``t`` coordinate. :py:data:`None` if the grid\'s dimensions do not contain a ``t`` coordinate.'))
 
 AddPropertyMetadata(Grid.TSemiRegularity,
     typeMetadata=UnicodeStringTypeMetadata(canBeNone=True, allowedValues=['annual']),
-    shortDescription=_("Type of semi-regularity used for the ``t`` coordinate. :py:data:`None` if :attr:`Dimensions` does not contain a ``t`` coordinate or the ``t`` coordinate is not semi-regular."))
+    shortDescription=_("Type of semi-regularity used for the ``t`` coordinate. :py:data:`None` if the grid\'s dimensions do not contain a ``t`` coordinate or the ``t`` coordinate is not semi-regular."))
 
 AddPropertyMetadata(Grid.TCountPerSemiRegularPeriod,
     typeMetadata=IntegerTypeMetadata(canBeNone=True),
-    shortDescription=_("Number of time slices per semi-regular period (i.e. per year). :py:data:`None` if :attr:`Dimensions` does not contain a ``t`` coordinate or the ``t`` coordinate is not semi-regular."))
+    shortDescription=_("Number of time slices per semi-regular period (i.e. per year). :py:data:`None` if the grid\'s dimensions do not contain a ``t`` coordinate or the ``t`` coordinate is not semi-regular."))
 
 AddPropertyMetadata(Grid.Shape,
     typeMetadata=TupleTypeMetadata(elementType=IntegerTypeMetadata(canBeNone=True, mustBeGreaterThan=0)),
@@ -267,20 +266,49 @@ AddPropertyMetadata(Grid.Shape,
 
 AddPropertyMetadata(Grid.CenterCoords,
     typeMetadata=AnyObjectTypeMetadata(),
-    shortDescription=_("Coordinates of the grid cell centers, indexed using the 1-character dimension of interest and optionally a :py:class:`range` to retrieve a :class:`numpy.ndarray` of coordinates (e.g. ``CenterCoords['x', 0:4]``) or an integer to retrieve a :py:class:`float` for a single coordinate (e.g. ``CenterCoords['x', 10]``)."))
+    shortDescription=_("Coordinates of the grid cell centers, indexed using the 1-character dimension of interest and optionally a :py:class:`range` to retrieve a :class:`numpy.ndarray` of coordinates (e.g. ``CenterCoords['x', 0:4]``) or an integer to retrieve a :py:class:`float` for a single coordinate (e.g. ``CenterCoords['x', 10]``). Coordinates for the ``t`` dimension are returned as :py:class:`~datetime.datetime` instances."))
 
 AddPropertyMetadata(Grid.MinCoords,
     typeMetadata=AnyObjectTypeMetadata(),
-    shortDescription=_("Minimum coordinate value for each cell (i.e., the coordinates of the cells' left edges), indexed using the 1-character dimension of interest and optionally a :py:class:`range` to retrieve a :class:`numpy.ndarray` of coordinates (e.g. ``MinCoords['x', 0:4]``) or an integer to retrieve a :py:class:`float` for a single coordinate (e.g. ``MinCoords['x', 10]``)."))
+    shortDescription=_("Minimum coordinate value for each cell (i.e., the coordinates of the cells' left edges), indexed using the 1-character dimension of interest and optionally a :py:class:`range` to retrieve a :class:`numpy.ndarray` of coordinates (e.g. ``MinCoords['x', 0:4]``) or an integer to retrieve a :py:class:`float` for a single coordinate (e.g. ``MinCoords['x', 10]``). Coordinates for the ``t`` dimension are returned as :py:class:`~datetime.datetime` instances."))
 
 AddPropertyMetadata(Grid.MaxCoords,
     typeMetadata=AnyObjectTypeMetadata(),
-    shortDescription=_("Maximum coordinate value for each cell (i.e., the coordinates of the cells' right edges), indexed using the 1-character dimension of interest and optionally a :py:class:`range` to retrieve a :class:`numpy.ndarray` of coordinates (e.g. ``MaxCoords['x', 0:4]``) or an integer to retrieve a :py:class:`float` for a single coordinate (e.g. ``MaxCoords['x', 10]``)."))
+    shortDescription=_("Maximum coordinate value for each cell (i.e., the coordinates of the cells' right edges), indexed using the 1-character dimension of interest and optionally a :py:class:`range` to retrieve a :class:`numpy.ndarray` of coordinates (e.g. ``MaxCoords['x', 0:4]``) or an integer to retrieve a :py:class:`float` for a single coordinate (e.g. ``MaxCoords['x', 10]``). Coordinates for the ``t`` dimension are returned as :py:class:`~datetime.datetime` instances."))
+
+AddPropertyMetadata(Grid.DataType,
+    typeMetadata=UnicodeStringTypeMetadata(allowedValues=['int8', 'uint8', 'int16', 'uint16', 'int32', 'uint32', 'float32', 'float64']),
+    shortDescription=_('Numeric data type of the grid, after the scaling function (if any) has been applied to the raw data. :class:`numpy.ndarray`\\ s returned by :attr:`Data` have this type.'))
+
+AddPropertyMetadata(Grid.NoDataValue,
+    typeMetadata=AnyObjectTypeMetadata(canBeNone=True),
+    shortDescription=_(':py:class:`int` or :py:class:`float` value that indicates that cells of :attr:`Data` should be interpreted as having no data (these are also known as missing, NA, or NULL cells), or :py:data:`None` if all cells must have data.'))
+
+AddPropertyMetadata(Grid.Data,
+    typeMetadata=AnyObjectTypeMetadata(),
+    shortDescription=_("This grid's data, indexable using slices (e.g. ``grid.Data[:, 5:10, -10:]``) or integers (e.g. ``grid.Data[0,1,-2]``) or both in combination. Strides and negative indexes are supported in the traditional manner. If the grid is writable, :attr:`Data` can be assigned to write values to the grid, e.g. ``grid.Data[0,1] = 5`` or ``grid.Data[:,:] = numpy.zeros(grid.Shape)``. Returns and accepts :class:`numpy.ndarray`, :py:class:`float`, and :py:class:`int`."))
+
+AddPropertyMetadata(Grid.DataIsScaled,
+    typeMetadata=BooleanTypeMetadata(),
+    shortDescription=_("If True, the underlying raw data are stored as the :attr:`UnscaledDataType` to save storage space and then transformed by a *scaling equation* on the fly when they are returned by :attr:`Data`. The raw data can be accessed with :attr:`UnscaledData`. If False, the raw data are returned as is, with no transformation needed, and :attr:`UnscaledDataType` and :attr:`DataType` are the same, and :attr:`UnscaledData` returns the same values as :attr:`Data`."))
+
+AddPropertyMetadata(Grid.UnscaledDataType,
+    typeMetadata=Grid.DataType.__doc__.Obj.Type,
+    shortDescription=_('Numeric data type of the grid\'s raw data, before it has been transformed by a scaling equation. :class:`numpy.ndarray`\\ s returned by :attr:`UnscaledData` have this type. If no transformation is needed (:attr:`DataIsScaled` is False), then :attr:`UnscaledDataType` and :attr:`ScaledDataType` are the same, and :attr:`UnscaledData` returns the same values as :attr:`Data`.'))
+
+AddPropertyMetadata(Grid.UnscaledNoDataValue,
+    typeMetadata=AnyObjectTypeMetadata(canBeNone=True),
+    shortDescription=_(':py:class:`int` or :py:class:`float` value that indicates that cells of :attr:`UnscaledData` should be interpreted as having no data (these are also known as missing, NA, or NULL cells), or :py:data:`None` if all cells must have data.'))
+
+AddPropertyMetadata(Grid.UnscaledData,
+    typeMetadata=AnyObjectTypeMetadata(),
+    shortDescription=_("This grid's data underlying raw data, before it has been transformed by a scaling equation. :attr:`UnscaledData` is indexable using slices (e.g. ``grid.UnscaledData[:, 5:10, -10:]``) or integers (e.g. ``grid.UnscaledData[0,1,-2]``) or both in combination. Strides and negative indexes are supported in the traditional manner. If the grid is writable, :attr:`UnscaledData` can be assigned to write values to the grid, e.g. ``grid.UnscaledData[0,1] = 5`` or ``grid.UnscaledData[:,:] = numpy.zeros(grid.Shape)``. Returns and accepts :class:`numpy.ndarray`, :py:class:`float`, and :py:class:`int`."))
 
 # Private constructor: Grid.__init__
 
 AddMethodMetadata(Grid.__init__,
-    shortDescription=_('Grid constructor.'))
+    shortDescription=_('Grid constructor.'),
+    dependencies=[PythonModuleDependency('numpy', cheeseShopName='numpy')])
 
 AddArgumentMetadata(Grid.__init__, 'self',
     typeMetadata=ClassInstanceTypeMetadata(cls=Grid),
@@ -294,6 +322,21 @@ CopyArgumentMetadata(Dataset.__init__, 'lazyPropertyValues', Grid.__init__, 'laz
 AddResultMetadata(Grid.__init__, 'obj',
     typeMetadata=ClassInstanceTypeMetadata(cls=Grid),
     description=_(':class:`%s` instance.') % Grid.__name__)
+
+# Public method: Grid.GetIndicesForCoords
+
+AddMethodMetadata(Grid.GetIndicesForCoords,
+    shortDescription=_('Given a :py:class:`tuple` or :py:class:`list` of coordinates, returns a :py:class:`list` of :py:class:`int` indices into :attr:`Data` for the cell that contains the coordinates.'))
+
+CopyArgumentMetadata(Grid.__init__, 'self', Grid.GetIndicesForCoords, 'self')
+
+AddArgumentMetadata(Grid.GetIndicesForCoords, 'coords',
+    typeMetadata=AnyObjectTypeMetadata(),
+    description=_(':py:class:`tuple` or :py:class:`list` of coordinates that are :py:class:`float` (for ``x``, ``y``, and ``z``) or :py:class:`~datetime.datetime` (for ``t``). The coordinates must be in the same order as :attr:`Dimensions`.'))
+
+AddResultMetadata(Grid.GetIndicesForCoords, 'indices',
+    typeMetadata=ListTypeMetadata(elementType=IntegerTypeMetadata(), minLength=2, maxLength=4),
+    description=_('List of integer indices into :attr:`Data` for the cell that contains `coords`.'))
 
 
 ###################################################################################
