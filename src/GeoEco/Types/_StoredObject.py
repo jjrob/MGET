@@ -229,12 +229,12 @@ class StoredObjectTypeMetadata(UnicodeStringTypeMetadata):
                     elif self.MustExist:
                         _RaiseException(ValueError(_('The %(type)s %(value)s, specified for the %(variable)s, does not exist. Please specify an existing %(type)s.') % {'type' : self.TypeDisplayName, 'value' : value, 'variable' : variableName}))
 
-                if self.CreateParentDirectories and (re.match('^[A-Za-z]:[\\\\/]', value) or re.match('^[\\\\/]', value)) and not (os.path.dirname(value).lower().endswith('.mdb') and os.path.isfile(os.path.dirname(value)) or
-                                                                                                                                     os.path.dirname(os.path.dirname(value)).lower().endswith('.mdb') and os.path.isfile(os.path.dirname(os.path.dirname(value))) or
-                                                                                                                                     os.path.dirname(value).lower().endswith('.gdb') and os.path.isdir(os.path.dirname(value)) or
-                                                                                                                                     os.path.dirname(os.path.dirname(value)).lower().endswith('.gdb') and os.path.isdir(os.path.dirname(os.path.dirname(value))) or
-                                                                                                                                     os.path.dirname(value).lower().endswith('.sde') and os.path.isfile(os.path.dirname(value)) or
-                                                                                                                                     os.path.dirname(os.path.dirname(value)).lower().endswith('.sde') and os.path.isdir(os.path.dirname(os.path.dirname(value)))):
+                if self.CreateParentDirectories and (re.match('^[A-Za-z]:[\\\\/]', value) or re.match('^[\\\\/]', value)) and \
+                        not (os.path.dirname(value).lower().endswith('.gdb') and os.path.isdir(os.path.dirname(value)) or
+                             os.path.dirname(os.path.dirname(value)).lower().endswith('.gdb') and os.path.isdir(os.path.dirname(os.path.dirname(value))) or
+                             os.path.dirname(value).lower().endswith('.sde') and os.path.isfile(os.path.dirname(value)) or
+                             os.path.dirname(os.path.dirname(value)).lower().endswith('.sde') and os.path.isdir(os.path.dirname(os.path.dirname(value)))):
+                    
                     from ..DataManagement.Directories import Directory
                     Directory.Create(os.path.dirname(value))
 

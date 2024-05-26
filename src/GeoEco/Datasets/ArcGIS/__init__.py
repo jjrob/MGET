@@ -14,6 +14,7 @@
 from ._ArcGISWorkspace import ArcGISWorkspace
 from ._ArcGISRaster import ArcGISRaster
 from ._ArcGISRasterBand import ArcGISRasterBand
+from ._ArcGISTable import ArcGISCopyableTable, ArcGISTable
 
 ###############################################################################
 # Metadata: module
@@ -27,12 +28,15 @@ AddModuleMetadata(shortDescription=_(':class:`~GeoEco.Datasets.Table` and :class
 from . import _ArcGISWorkspaceMetadata
 from . import _ArcGISRasterMetadata
 from . import _ArcGISRasterBandMetadata
+from . import _ArcGISTableMetadata
 
 
 ###############################################################################
 # Names exported by this module
 ###############################################################################
 
-__all__ = ['ArcGISRaster',
+__all__ = ['ArcGISCopyableTable',
+           'ArcGISRaster',
            'ArcGISRasterBand',
-           'ArcGISWorkspace']
+           'ArcGISTable',
+           'ArcGISWorkspace',]

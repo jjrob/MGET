@@ -181,7 +181,7 @@ class ArcGISRasterBand(Grid):
                 data = band.ReadAsArray(xoff, yoff, win_xsize, win_ysize)
             except Exception as e:
                 self._gdal().ErrorReset()
-                raise RuntimeError(_('Failed to retrieve a block of data of %(win_xsize)i columns by %(win_ysize)i rows at offsets x=%(xoff)i, y=%(yoff)i from band %(band)i of %(dn)s (a local copy of %(dn2)s) with the Geospatial Data Abstraction Library (GDAL). Verify that the dataset exists, is accessible, and has the expected dimensions. Detailed error information: band.ReadAsArray(%(xoff)i, %(yoff)i, %(win_xsize)i, %(win_ysize)i) reported %(e)s: %(msg)s.') % {'band': self.Band, 'dn': dataset.DisplayName, 'dn2': self.ParentCollection.DisplayName, 'xoff': xoff, 'yoff': yoff, 'win_xsize': win_xsize, 'win_ysize': win_ysize, 'e': e.__class__.__name__, 'msg': self._Unicode(e)})
+                raise RuntimeError(_('Failed to retrieve a block of data of %(win_xsize)i columns by %(win_ysize)i rows at offsets x=%(xoff)i, y=%(yoff)i from band %(band)i of %(dn)s (a local copy of %(dn2)s) with the Geospatial Data Abstraction Library (GDAL). Verify that the dataset exists, is accessible, and has the expected dimensions. Detailed error information: band.ReadAsArray(%(xoff)i, %(yoff)i, %(win_xsize)i, %(win_ysize)i) reported %(e)s: %(msg)s.') % {'band': self.Band, 'dn': dataset.DisplayName, 'dn2': self.ParentCollection.DisplayName, 'xoff': xoff, 'yoff': yoff, 'win_xsize': win_xsize, 'win_ysize': win_ysize, 'e': e.__class__.__name__, 'msg': e})
 
             # Return the data along with the NoData value that GDAL is using.
             # Note that the data type and NoData value may not be what our

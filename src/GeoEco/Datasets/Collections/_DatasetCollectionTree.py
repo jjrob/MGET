@@ -602,7 +602,7 @@ class DatasetCollectionTree(DatasetCollection):
             for expr in self._PathCreationExpressions:
                 comp = expr % attrValues
                 if gotDateTime:
-                    comp = str(attrValues['DateTime'].strftime(self._Str(comp)))
+                    comp = str(attrValues['DateTime'].strftime(comp))
                 pathComponents.append(comp)
 
             # Add this path and source dataset to our dictionaries.

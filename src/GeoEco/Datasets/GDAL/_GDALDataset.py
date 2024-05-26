@@ -308,7 +308,7 @@ class GDALDataset(FileDatasetCollection):
         # is, determine its existence using the file system. This is
         # presumably faster than trying to open it with GDAL.
 
-        if gdalDatasetName[0] in ['/', '\\'] or hasattr(os.path, 'splitdrive') and os.path.splitdrive(gdalDatasetName)[0] != '' or hasattr(os.path, 'splitunc') and os.path.splitunc(gdalDatasetName)[0] != '':
+        if gdalDatasetName[0] in ['/', '\\'] or hasattr(os.path, 'splitdrive') and os.path.splitdrive(gdalDatasetName)[0] != '':
             return os.path.exists(gdalDatasetName)
 
         # gdalDatasetName is not a file system path. Determine its
@@ -484,7 +484,7 @@ class GDALDataset(FileDatasetCollection):
         # Otherwise, if the path is a file system path, create the
         # parent directories, if they do not exist already.
 
-        elif (path[0] in ['/', '\\'] or hasattr(os.path, 'splitdrive') and os.path.splitdrive(path)[0] != '' or hasattr(os.path, 'splitunc') and os.path.splitunc(path)[0] != '') and not os.path.isdir(os.path.dirname(path)):
+        elif (path[0] in ['/', '\\'] or hasattr(os.path, 'splitdrive') and os.path.splitdrive(path)[0] != '') and not os.path.isdir(os.path.dirname(path)):
             cls._LogDebug(_('%(class)s: Creating directory "%(path)s".'), {'class': cls.__name__, 'path': os.path.dirname(path)})
             try:
                 os.makedirs(os.path.dirname(path))
@@ -564,10 +564,10 @@ class GDALDataset(FileDatasetCollection):
 
                 if sr is not None:
                     try:
-                        gdalDataset.SetProjection(cls._Str(sr))
+                        gdalDataset.SetProjection(sr)
                     except Exception as e:
                         gdal.ErrorReset()
-                        raise RuntimeError(_('Failed to set the spatial reference of Geospatial Data Abstraction Library (GDAL) dataset "%(path)s" (created with the GDAL %(driver)s driver) to %(sr)s. The GDAL SetProjection function failed and reported %(e)s: %(msg)s.') % {'path': path, 'driver': driver.LongName, 'sr': repr(cls._Str(sr)), 'e': e.__class__.__name__, 'msg': e})
+                        raise RuntimeError(_('Failed to set the spatial reference of Geospatial Data Abstraction Library (GDAL) dataset "%(path)s" (created with the GDAL %(driver)s driver) to %(sr)s. The GDAL SetProjection function failed and reported %(e)s: %(msg)s.') % {'path': path, 'driver': driver.LongName, 'sr': repr(sr), 'e': e.__class__.__name__, 'msg': e})
 
                 # Instantiate a GDALDataset instance for the newly-created
                 # GDAL dataset.
@@ -724,7 +724,7 @@ class GDALDataset(FileDatasetCollection):
         except:
             cls._LogDebug(_('%(class)s: Deleting the partially-created GDAL dataset "%(path)s" because an error was raised during creation.'), {'class': cls.__name__, 'path': path})
             try:
-                driver.Delete(cls._Str(path))
+                driver.Delete(path)
             except Exception as e:
                 gdal.ErrorReset()
                 cls._LogWarning(_('Failed to delete the partially-created dataset "%(path)s" using the GDAL %(driver)s driver. The driver\'s Delete function failed with %(e)s: %(msg)s') % {'path': path, 'driver': driver.LongName, 'e': e.__class__.__name__, 'msg': e})

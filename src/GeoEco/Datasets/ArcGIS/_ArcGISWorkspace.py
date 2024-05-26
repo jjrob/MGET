@@ -1,5 +1,5 @@
 # _ArcGISWorkspace.py - Defines ArcGISWorkspace, a DatasetCollectionTree and
-# Database for accessing ArcGIS tabular, vector, and raster Datasets through
+# Database for accessing ArcGIS tabular, vector, and raster datasets through
 # arcpy.
 #
 # Copyright (C) 2024 Jason J. Roberts
@@ -22,9 +22,7 @@ from ..Collections import DatasetCollectionTree
 from ..GDAL import GDALDataset
 
 from ._ArcGISRaster import ArcGISRaster
-#from ._ArcGISTable import ArcGISTable
-# TODO: After porting ArcGISTable, uncomment the line above and delete the line below
-ArcGISTable = int
+from ._ArcGISTable import ArcGISTable
 
 
 class ArcGISWorkspace(DatasetCollectionTree, Database):
@@ -482,7 +480,7 @@ class ArcGISWorkspace(DatasetCollectionTree, Database):
                 
                 if d.DataType.lower() == 'rastercatalog':
                     for raster in gp.ListDatasets('*'):
-                        if raster.startswith(os.path.basename(path) + '\\') or raster.startswith(os.path.basename(path) + '/'):     # Delete redundant raster catalog name from beginning of raster name, if present. Looks like an ArcGIS bug. Found in 9.3.1; other versions not tested. Causes problems later with multiband rasters.
+                        if raster.startswith(os.path.basename(path) + os.path.sep) or raster.startswith(os.path.basename(path) + '/'):     # Delete redundant raster catalog name from beginning of raster name, if present. Looks like an ArcGIS bug. Found in 9.3.1; other versions not tested. Causes problems later with multiband rasters.
                             raster = raster[len(os.path.basename(path))+1:]
                         contents.append(raster)
 

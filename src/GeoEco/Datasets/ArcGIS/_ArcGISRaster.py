@@ -275,7 +275,7 @@ class ArcGISRaster(DatasetCollection):
         # existence using the file system. This is faster than using the
         # geoprocessor.
 
-        if (name[0] in ['/', '\\'] or hasattr(os.path, 'splitdrive') and os.path.splitdrive(name)[0] != '' or hasattr(os.path, 'splitunc') and os.path.splitunc(name)[0] != '') and os.path.splitext(os.path.dirname(name))[1].lower() != '.gdb':
+        if (name[0] in ['/', '\\'] or hasattr(os.path, 'splitdrive') and os.path.splitdrive(name)[0] != '') and os.path.splitext(os.path.dirname(name))[1].lower() != '.gdb':
             return os.path.exists(name)
 
         # name is not a file system path. Determine its existence using the
@@ -357,21 +357,19 @@ class ArcGISRaster(DatasetCollection):
             try:
                 gp.Delete_management(path)
             except Exception as e:
-                raise RuntimeError(_('Failed to delete the existing ArcGIS raster "%(path)s" due to %(e)s: %(msg)s') % {'path': path, 'e': e.__class__.__name__, 'msg': cls._Unicode(e)})
+                raise RuntimeError(_('Failed to delete the existing ArcGIS raster "%(path)s" due to %(e)s: %(msg)s') % {'path': path, 'e': e.__class__.__name__, 'msg': e})
 
         # Otherwise, if the path is a file system path, create the parent
         # directories, if they do not exist already. Use ArcGIS's
         # CreateFolder_management tool, so the ArcGIS catalog is aware of the
         # directories.
 
-        elif (path[0] in ['/', '\\'] or hasattr(os.path, 'splitdrive') and os.path.splitdrive(path)[0] != '' or hasattr(os.path, 'splitunc') and os.path.splitunc(path)[0] != '') and not os.path.exists(os.path.dirname(path)):
+        elif (path[0] in ['/', '\\'] or hasattr(os.path, 'splitdrive') and os.path.splitdrive(path)[0] != '') and not os.path.exists(os.path.dirname(path)):
             cls._LogDebug(_('%(class)s: Creating directory "%(path)s".'), {'class': cls.__name__, 'path': os.path.dirname(path)})
 
             if hasattr(os.path, 'splitdrive') and os.path.splitdrive(path)[0] != '':
                 root, subdirs = os.path.splitdrive(os.path.dirname(path))
-                root = root + '\\'
-            elif hasattr(os.path, 'splitunc') and os.path.splitunc(path)[0] != '':
-                root, subdirs = os.path.splitunc(os.path.dirname(path))
+                root = root + os.path.sep
             else:
                 root, subdirs = path[0], os.path.dirname(path)[1:]
 
@@ -386,7 +384,7 @@ class ArcGISRaster(DatasetCollection):
                     try:
                         gp.CreateFolder_management(dirToCheck, subdir)
                     except Exception as e:
-                        raise RuntimeError(_('Failed to create the directory "%(path)s" due to %(e)s: %(msg)s') % {'path': os.path.join(dirToCheck, subdir), 'e': e.__class__.__name__, 'msg': cls._Unicode(e)})
+                        raise RuntimeError(_('Failed to create the directory "%(path)s" due to %(e)s: %(msg)s') % {'path': os.path.join(dirToCheck, subdir), 'e': e.__class__.__name__, 'msg': e})
                 dirToCheck = os.path.join(dirToCheck, subdir)
 
         # If the output format is ArcInfo binary grid, verify that the raster
@@ -492,7 +490,7 @@ class ArcGISRaster(DatasetCollection):
             try:
                 gp.Delete_management(path)
             except Exception as e:
-                cls._LogWarning(_('Failed to delete the partially-created ArcGIS raster "%(path)s" due to %(e)s: %(msg)s') % {'path': path, 'e': e.__class__.__name__, 'msg': cls._Unicode(e)})
+                cls._LogWarning(_('Failed to delete the partially-created ArcGIS raster "%(path)s" due to %(e)s: %(msg)s') % {'path': path, 'e': e.__class__.__name__, 'msg': e})
             raise
 
         # Report progress.

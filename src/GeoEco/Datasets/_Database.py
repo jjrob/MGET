@@ -53,7 +53,7 @@ class Database(object):
         try:
             return self._CreateTable(tableName, geometryType, spatialReference, geometryFieldName, options)
         except Exception as e:
-            raise RuntimeError(_('Failed to create %(objectType)s %(tableName)s in %(dn)s due to %(e)s: %(msg)s.') % {'objectType': self._GetObjectTypeDisplayName(tableName), 'tableName': tableName, 'dn': self._DisplayName, 'e': e.__class__.__name__, 'msg': self._Str(e)})
+            raise RuntimeError(_('Failed to create %(objectType)s %(tableName)s in %(dn)s due to %(e)s: %(msg)s.') % {'objectType': self._GetObjectTypeDisplayName(tableName), 'tableName': tableName, 'dn': self._DisplayName, 'e': e.__class__.__name__, 'msg': e})
 
     def CreateTableFromTemplate(self, tableName, templateTable, fields=None, allowSafeCoercions=True, **options):
         self.__doc__.Obj.ValidateMethodInvocation()
@@ -211,7 +211,7 @@ class Database(object):
         try:
             self._DeleteTable(tableName)
         except Exception as e:
-            raise RuntimeError(_('Failed to delete %(objectType)s %(tableName)s from %(dn)s due to %(e)s: %(msg)s.') % {'objectType': self._GetObjectTypeDisplayName(tableName), 'tableName': tableName, 'dn': self._DisplayName, 'e': e.__class__.__name__, 'msg': self._Str(e)})
+            raise RuntimeError(_('Failed to delete %(objectType)s %(tableName)s from %(dn)s due to %(e)s: %(msg)s.') % {'objectType': self._GetObjectTypeDisplayName(tableName), 'tableName': tableName, 'dn': self._DisplayName, 'e': e.__class__.__name__, 'msg': e})
 
     # Private members that the derived class must implement.
 

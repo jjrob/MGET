@@ -306,16 +306,12 @@ class ArcGISRasterTypeMetadata(StoredObjectTypeMetadata):
                             
                             elif inDirectory:
 
-                                # If it is a file or personal
-                                # geodatabase, go on to the next
-                                # deeper component in the path.
+                                # If it is a file geodatabase, go on to the
+                                # next deeper component in the path.
                                 
                                 if os.path.isdir(newPath):
                                     if newPath.lower().endswith('.gdb'):
                                         inGDB = True
-
-                                elif newPath.lower().endswith('.mdb') and os.path.isfile(newPath):
-                                    inGDB = True
 
                                 # Otherwise, if it is the last
                                 # component in the path, it is the

@@ -140,13 +140,13 @@ class FTPDirectoryTree(DatasetCollectionTree):
             try:
                 return self._FTP.nlst(directory)
             except Exception as e:
-                raise RuntimeError(_('Failed to obtain a directory listing of %(dir)s from FTP server %(host)s. Check that the server is operating properly and that your computer can connect to it. If necessary, contact the server\'s operator for assistance. Error details: %(e)s: %(msg)s.') % {'dir': directory, 'host': self._Host, 'e': e.__class__.__name__, 'msg': self._Unicode(e)})
+                raise RuntimeError(_('Failed to obtain a directory listing of %(dir)s from FTP server %(host)s. Check that the server is operating properly and that your computer can connect to it. If necessary, contact the server\'s operator for assistance. Error details: %(e)s: %(msg)s.') % {'dir': directory, 'host': self._Host, 'e': e.__class__.__name__, 'msg': e})
         else:
             self._LogDebug(_('%(class)s 0x%(id)016X: Trying FTP.nlst()'), {'class': self.__class__.__name__, 'id': id(self)})
             try:
                 return self._FTP.nlst()
             except Exception as e:
-                raise RuntimeError(_('Failed to obtain a directory listing from FTP server %(host)s. Check that the server is operating properly and that your computer can connect to it. If necessary, contact the server\'s operator for assistance. Error details: %(e)s: %(msg)s.') % {'host': self._Host, 'e': e.__class__.__name__, 'msg': self._Unicode(e)})
+                raise RuntimeError(_('Failed to obtain a directory listing from FTP server %(host)s. Check that the server is operating properly and that your computer can connect to it. If necessary, contact the server\'s operator for assistance. Error details: %(e)s: %(msg)s.') % {'host': self._Host, 'e': e.__class__.__name__, 'msg': e})
 
     def _ConstructFoundObject(self, pathComponents, attrValues, options):
         return self.DatasetType(os.path.join(*pathComponents), parentCollection=self, queryableAttributeValues=attrValues, cacheDirectory=self.CacheDirectory, **options)
@@ -189,14 +189,14 @@ class FTPDirectoryTree(DatasetCollectionTree):
         try:
             f = open(localPath, 'ab')
         except Exception as e:
-            raise RuntimeError(_('Failed to open temporary file %(local)s to receive downloaded data. Error details: %(e)s: %(msg)s.') % {'local': localPath, 'e': e.__class__.__name__, 'msg': self._Unicode(e)})
+            raise RuntimeError(_('Failed to open temporary file %(local)s to receive downloaded data. Error details: %(e)s: %(msg)s.') % {'local': localPath, 'e': e.__class__.__name__, 'msg': e})
 
         try:
             try:
                 f.seek(0, 2)
                 position = f.tell()
             except Exception as e:
-                raise RuntimeError(_('Failed to seek to the end of temporary file %(local)s. Error details: %(e)s: %(msg)s.') % {'local': localPath, 'e': e.__class__.__name__, 'msg': self._Unicode(e)})
+                raise RuntimeError(_('Failed to seek to the end of temporary file %(local)s. Error details: %(e)s: %(msg)s.') % {'local': localPath, 'e': e.__class__.__name__, 'msg': e})
 
             # Initiate the download. This will return a socket for the FTP
             # data connection.
@@ -204,7 +204,7 @@ class FTPDirectoryTree(DatasetCollectionTree):
             try:
                 sock, size = self._FTP.ntransfercmd('RETR ' + remotePath, f.tell())
             except Exception as e:
-                raise RuntimeError(_('Failed to initiate a download of %(remote)s from FTP server %(host)s. The FTP RETR command failed with: %(e)s: %(msg)s.') % {'remote': remotePath, 'host': self._Host, 'e': e.__class__.__name__, 'msg': self._Unicode(e)})
+                raise RuntimeError(_('Failed to initiate a download of %(remote)s from FTP server %(host)s. The FTP RETR command failed with: %(e)s: %(msg)s.') % {'remote': remotePath, 'host': self._Host, 'e': e.__class__.__name__, 'msg': e})
 
             try:
                 if position > 0:
@@ -229,7 +229,7 @@ class FTPDirectoryTree(DatasetCollectionTree):
                     try:
                         chunk = sock.recv(4096)
                     except Exception as e:
-                        raise RuntimeError(_('The download of %(remote)s from FTP server %(host)s was interrupted. Error details: %(e)s: %(msg)s.') % {'remote': remotePath, 'host': self._Host, 'e': e.__class__.__name__, 'msg': self._Unicode(e)})
+                        raise RuntimeError(_('The download of %(remote)s from FTP server %(host)s was interrupted. Error details: %(e)s: %(msg)s.') % {'remote': remotePath, 'host': self._Host, 'e': e.__class__.__name__, 'msg': e})
 
                     if chunk is None or len(chunk) <= 0:
                         break
@@ -237,7 +237,7 @@ class FTPDirectoryTree(DatasetCollectionTree):
                     try:
                         f.write(chunk)
                     except Exception as e:
-                        raise RuntimeError(_('Failed to write downloaded data to temporary file %(local)s. Error details: %(e)s: %(msg)s.') % {'local': localPath, 'e': e.__class__.__name__, 'msg': self._Unicode(e)})
+                        raise RuntimeError(_('Failed to write downloaded data to temporary file %(local)s. Error details: %(e)s: %(msg)s.') % {'local': localPath, 'e': e.__class__.__name__, 'msg': e})
 
             finally:
                 try:
@@ -287,7 +287,7 @@ class FTPDirectoryTree(DatasetCollectionTree):
                                 self._FTP.connect(self._Host, self._Port)
                         except Exception as e:
                             self._FTP = None
-                            message = _('Failed to open FTP connection to server %(host)r, port %(port)r. Verify that the server hostname and port are correct. If they are, check that the server is operating properly and that your computer can connect to it. If necessary, contact the server\'s operator for assistance. Error details: %(e)s: %(msg)s.') % {'host': self._Host, 'port': self._Port, 'e': e.__class__.__name__, 'msg': self._Unicode(e)}
+                            message = _('Failed to open FTP connection to server %(host)r, port %(port)r. Verify that the server hostname and port are correct. If they are, check that the server is operating properly and that your computer can connect to it. If necessary, contact the server\'s operator for assistance. Error details: %(e)s: %(msg)s.') % {'host': self._Host, 'port': self._Port, 'e': e.__class__.__name__, 'msg': e}
                             raise
 
                         if self._User.lower() == 'anonymous':
@@ -300,7 +300,7 @@ class FTPDirectoryTree(DatasetCollectionTree):
                         except Exception as e:
                             self._Close()
                             loginFailures += 1
-                            message = _('Failed to log in to FTP server %(host)r as user %(user)r. Verify that the user name and password are correct. If necessary, contact the server\'s operator for assistance. Error details: %(e)s: %(msg)s.') % {'host': self._Host, 'user': self._User, 'e': e.__class__.__name__, 'msg': self._Unicode(e)}
+                            message = _('Failed to log in to FTP server %(host)r as user %(user)r. Verify that the user name and password are correct. If necessary, contact the server\'s operator for assistance. Error details: %(e)s: %(msg)s.') % {'host': self._Host, 'user': self._User, 'e': e.__class__.__name__, 'msg': e}
                             raise
 
                         self._LoginSucceeded = True
@@ -315,7 +315,7 @@ class FTPDirectoryTree(DatasetCollectionTree):
                             self._FTP.voidcmd('TYPE I')
                         except Exception as e:
                             self._Close()
-                            message = _('Failed to switch the FTP transfer type to binary for the FTP connection to server %(host)r. This error is unusual. If it reoccurs and will not stop, please contact the MGET development team for assistance. Error details: FTP.voidcmd(\'TYPE I\') failed with %(e)s: %(msg)s.') % {'host': self._Host, 'e': e.__class__.__name__, 'msg': self._Unicode(e)}
+                            message = _('Failed to switch the FTP transfer type to binary for the FTP connection to server %(host)r. This error is unusual. If it reoccurs and will not stop, please contact the MGET development team for assistance. Error details: FTP.voidcmd(\'TYPE I\') failed with %(e)s: %(msg)s.') % {'host': self._Host, 'e': e.__class__.__name__, 'msg': e}
                             raise
 
                         # We will do downloads in FTP passive mode, which is
@@ -378,12 +378,12 @@ class FTPDirectoryTree(DatasetCollectionTree):
                     try:
                         returnValue = func(*params)
                     except Exception as e:
-                        message = self._Unicode(e)
+                        message = e
                         self._LogDebug(_('%(class)s 0x%(id)016X: Sending FTP QUIT'), {'class': self.__class__.__name__, 'id': id(self)})
                         try:
                             self._FTP.quit()
                         except Exception as e:
-                            self._LogDebug(_('%(class)s 0x%(id)016X: FTP.quit() failed and raised %(e)s: %(msg)s. Closing the connection.'), {'class': self.__class__.__name__, 'id': id(self), 'e': e.__class__.__name__, 'msg': self._Unicode(e)})
+                            self._LogDebug(_('%(class)s 0x%(id)016X: FTP.quit() failed and raised %(e)s: %(msg)s. Closing the connection.'), {'class': self.__class__.__name__, 'id': id(self), 'e': e.__class__.__name__, 'msg': e})
                             try:
                                 self._FTP.close()
                             except:
@@ -508,7 +508,7 @@ class FTPDirectoryTree(DatasetCollectionTree):
             try:
                 self._FTP.quit()
             except Exception as e:
-                self._LogDebug(_('%(class)s 0x%(id)016X: FTP.quit() failed and raised %(e)s: %(msg)s. Closing the connection.'), {'class': self.__class__.__name__, 'id': id(self), 'e': e.__class__.__name__, 'msg': self._Unicode(e)})
+                self._LogDebug(_('%(class)s 0x%(id)016X: FTP.quit() failed and raised %(e)s: %(msg)s. Closing the connection.'), {'class': self.__class__.__name__, 'id': id(self), 'e': e.__class__.__name__, 'msg': e})
                 try:
                     self._FTP.close()
                 except:

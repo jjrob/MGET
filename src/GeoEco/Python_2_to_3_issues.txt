@@ -16,6 +16,7 @@ Remove GetResultCacheKey
 Remove ImportGDALModule
 Change 0x%(id)08X to 0x%(id)016X
 Do not call Destroy on GDAL objects anymore
+os.path.splitunc was subsumed into os.path.splitdrive
 
 ArcPro vs. Desktop issues to check for:
 =======================================
@@ -25,3 +26,5 @@ gp.workspace changed to arcpy.env.workspace (lowercase workspace)
 gp.List* functions now return lists rather than ArcGIS enumerator object
 gp.Describe().Extent now returns an object with properties rather than a string
 gp.CreateSpatialReference_management now returns a Result object, so we have to do .getOutput(0)
+gp.CreatePersonalGDB_management no longer exists
+Look for code that involves .mdb

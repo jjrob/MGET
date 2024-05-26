@@ -584,7 +584,7 @@ CopyArgumentMetadata(Table.OpenSelectCursor, 'rowDescriptionSingular', Table.Ope
 CopyArgumentMetadata(Table.OpenSelectCursor, 'rowDescriptionPlural', Table.OpenInsertCursor, 'rowDescriptionPlural')
 
 AddResultMetadata(Table.OpenInsertCursor, 'cursor',
-   typeMetadata=ClassInstanceTypeMetadata(cls=UpdateCursor),
+   typeMetadata=ClassInstanceTypeMetadata(cls=InsertCursor),
     description=_('Opened :class:`~GeoEco.Datasets.InsertCursor` positioned on the first row (if any rows were returned).'))
 
 
