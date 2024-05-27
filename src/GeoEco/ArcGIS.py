@@ -512,7 +512,7 @@ def ValidateMethodMetadataForExposureAsArcGISTool(moduleName, className, methodN
 class _ArcGISObjectWrapper(object):
 
     def __init__(self, obj):
-        _ArcGISObjectWrapper._LogDebug('Wrapping object %s', repr(obj))     # Do not remove repr() from here. For some reason, the message does not get logged without it.
+        _ArcGISObjectWrapper._LogDebug('Wrapping object %.255r', obj)
         self._Object = obj
         self._WrappedMethods = {}
 
@@ -524,7 +524,7 @@ class _ArcGISObjectWrapper(object):
         # instance, not of the wrapped object. In this case, we must use the
         # object class's implementation of __getattribute__.
 
-        if name.startswith('_'):
+        if name.startswith('_') and name not in ['__iter__', '__next__', '__getitem__', '__len__', '__contains__']:
             return object.__getattribute__(self, name)
 
         # The caller is asking for a data attribute or a method of the wrapped
@@ -608,7 +608,7 @@ class _ArcGISObjectWrapper(object):
 
         # Log the returned attribute value.
 
-        self._LogDebug('%s.%s returned %r', self._Object, name, value)
+        self._LogDebug('%.255s.%s returned %.255r', self._Object, name, value)
 
         # The returned value is a property. Convert it from the geoprocessor's
         # preferred type to the type we prefer and return that instead.
@@ -646,7 +646,7 @@ class _ArcGISObjectWrapper(object):
 
         # Log the set value.
 
-        self._LogDebug('Set %s.%s to %r', self._Object, name, value)
+        self._LogDebug('Set %s.%s to %.255r', self._Object, name, value)
 
     def __call__(self, *args, **kwargs):
 
@@ -771,11 +771,11 @@ class _ArcGISObjectWrapper(object):
         try:
             sig = inspect.signature(func)
             boundArgs = sig.bind(*args, **kwargs)
-            argsStr = ', '.join(f'{key}={value!r}' for key, value in boundArgs.arguments.items())
+            argsStr = ', '.join(f'{key}={value!r:.255}' for key, value in boundArgs.arguments.items())
         except:
-            argsStr = ', '.join([repr(arg) for arg in args] + ['%s=%r' % (key, value) for key, value in kwargs.items()])
+            argsStr = ', '.join([repr(arg) for arg in args] + ['%s=%.255r' % (key, value) for key, value in kwargs.items()])
 
-        _ArcGISObjectWrapper._LogDebug('Calling %s(%s)', funcName, argsStr)
+        _ArcGISObjectWrapper._LogDebug('Calling %.255s(%s)', funcName, argsStr)
 
         # Call the function.
 
@@ -789,7 +789,10 @@ class _ArcGISObjectWrapper(object):
         
         except Exception as e:
             self._LogReturnedGeoprocessingMessages(func)
-            self._LogError(_('Execution of %(funcName)s failed when given the inputs %(args)s and reported %(error)s: %(msg)s. This may result from a problem with your inputs or it may indicate a programming mistake in this tool or ArcGIS itself. Please review any preceding error messages, check your inputs, and try again. If you suspect a programming mistake in this tool or ArcGIS, please contact the author of this tool for assistance.') % {'funcName': funcName, 'args': argsStr, 'error': e.__class__.__name__, 'msg': e})
+            if isinstance(e, StopIteration):
+                self._LogDebug(_('%(funcName).255s raised StopIteration.') % {'funcName': funcName})
+            else:
+                self._LogError(_('Execution of %(funcName).255s failed when given the inputs %(args)s and reported %(error)s: %(msg)s. This may result from a problem with your inputs or it may indicate a programming mistake in this tool or ArcGIS itself. Please review any preceding error messages, check your inputs, and try again. If you suspect a programming mistake in this tool or ArcGIS, please contact the author of this tool for assistance.') % {'funcName': funcName, 'args': argsStr, 'error': e.__class__.__name__, 'msg': e})
             raise
 
         # The method executed successfully. Log any geoprocessing messages it
@@ -799,7 +802,7 @@ class _ArcGISObjectWrapper(object):
 
         # Log a message reporting the result.
 
-        _ArcGISObjectWrapper._LogDebug('%s returned %r', funcName, result)
+        _ArcGISObjectWrapper._LogDebug('%.255s returned %.255r', funcName, result)
 
         # Convert the result from the geoprocessor's preferred type to our
         # preferred type and return it to the caller.
@@ -843,7 +846,7 @@ class _ArcGISObjectWrapper(object):
         # wrap instances of non-simple types in _ArcGISObjectWrapper
         # instances. So if we got a simple type back, just return it.
 
-        if value is None or isinstance(value, (bool, int, float, complex, str, datetime.datetime)):
+        if value is None or isinstance(value, (bool, int, float, complex, str, datetime.datetime, bytearray)):
             return value
 
         # If the value is a list, tuple, or dict, process every item with it.
@@ -935,6 +938,28 @@ class _ArcGISObjectWrapper(object):
             logging.getLogger('GeoEco.ArcGIS').error(format, *args, **kwargs)
         except:
             pass
+
+    # In order to be recongized as supporting iteration, _ArcGISObjectWrapper
+    # has to implement these methods:
+
+    def __iter__(self):
+        return self.__getattr__('__iter__')()
+
+    def __next__(self):
+        return self.__getattr__('__next__')()
+
+    # For sequence protocol, we have to support these:
+
+    def __getitem__(self, index):
+        return self.__getattr__('__getitem__')(index)
+
+    def __len__(self):
+        return self.__getattr__('__len__')()
+
+    def __contains__(self, item):
+        return self.__getattr__('__getitem__')(item)
+
+
 
 
 ###############################################################################

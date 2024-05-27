@@ -48,7 +48,7 @@ class ArcGISTable(Table, ArcGISCopyableTable):
 
     AutoDeleteFieldAddedByArcGIS = property(_GetAutoDeleteFieldAddedByArcGIS, doc=DynamicDocString())
 
-    def __init__(self, path, autoDeleteFieldAddedByArcGIS=False, parentCollection=None, queryableAttributeValues=None, lazyPropertyValues=None):
+    def __init__(self, path, autoDeleteFieldAddedByArcGIS=False, parentCollection=None, queryableAttributeValues=None, lazyPropertyValues=None, cacheDirectory=None):
         self.__doc__.Obj.ValidateMethodInvocation()
 
         # Initialize our properties.
@@ -177,6 +177,8 @@ class ArcGISTable(Table, ArcGISCopyableTable):
             self.SetLazyPropertyValue('MaxStringLength', None)
 
         # Get the fields.
+
+        fields = []
 
         for f in d.Fields:
             fields.append(self._ConstructFieldObject(f))
@@ -414,7 +416,7 @@ class ArcGISTable(Table, ArcGISCopyableTable):
                 gp.RemoveIndex_management(self._GetFullPath(), indexName)
 
     def _GetRowCount(self):
-        return GeoprocessorManager.GetWrappedGeoprocessor().GetCount_management(self._GetFullPath())
+        return int(GeoprocessorManager.GetWrappedGeoprocessor().GetCount_management(self._GetFullPath()).getOutput(0))
 
     def _OpenSelectCursor(self, fields, where, orderBy, rowCount, reportProgress, rowDescriptionSingular, rowDescriptionPlural):
         return _ArcPyDASelectCursor(self, fields, where, orderBy, rowCount, reportProgress, rowDescriptionSingular, rowDescriptionPlural)
@@ -617,7 +619,7 @@ class _ArcPyDAReadableCursor(object):
         if g is not None:
             wkb = g.WKB
             if len(wkb) > 0:
-                return ogr.CreateGeometryFromWkb(str(g.WKB))
+                return ogr.CreateGeometryFromWkb(g.WKB)
 
         if 'OID@' in self._FieldIndex:
             self._Table._LogWarning(_('The %(singular)s of %(dn)s with %(field)s = %(value)s has a null geometry.'), {'singular': self._RowDescriptionSingular, 'dn': self.Table.DisplayName, 'field': self.Table.OIDFieldName, 'value': repr(self._Row[self._FieldIndex['OID@']])})
@@ -662,6 +664,7 @@ class _ArcPyDAWritableCursor(object):
 
 
 class _ArcPyDASelectCursor(_ArcPyDAReadableCursor, SelectCursor):
+    __doc__ = DynamicDocString()
 
     def _Open(self, fields, where, orderBy):
 
@@ -713,6 +716,7 @@ class _ArcPyDASelectCursor(_ArcPyDAReadableCursor, SelectCursor):
 
 
 class _ArcPyDAUpdateCursor(_ArcPyDAReadableCursor, _ArcPyDAWritableCursor, UpdateCursor):
+    __doc__ = DynamicDocString()
 
     def _Open(self, fields, where, orderBy):
 
@@ -772,6 +776,7 @@ class _ArcPyDAUpdateCursor(_ArcPyDAReadableCursor, _ArcPyDAWritableCursor, Updat
 
 
 class _ArcPyDAInsertCursor(_ArcPyDAWritableCursor, InsertCursor):
+    __doc__ = DynamicDocString()
 
     def _Open(self):
 

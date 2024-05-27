@@ -76,6 +76,8 @@ class _Cursor(object):
     # intended to be invoked by external callers.
 
     def __init__(self, table, rowDescriptionSingular, rowDescriptionPlural):
+        # Do not call self.__doc__.Obj.ValidateMethodInvocation() here. The
+        # various Table.OpenXXXXXCursor() functions handle validation for us.
 
         self._Table = table
         self._IsOpen = False
@@ -342,12 +344,11 @@ class SelectCursor(_Cursor):
         except Exception as e:
             raise RuntimeError(_('Failed to retrieve the value of the %(field)s field of a %(singular)s from %(dn)s due to %(e)s: %(msg)s') % {'field': f.Name, 'singular': self._RowDescriptionSingular, 'dn': self._Table.DisplayName, 'e': e.__class__.__name__, 'msg': e})
 
-        # If it is a memoryview, buffer, or bytearray object convert
-        # it to a str.
+        # If it is a memoryview or bytearray object convert it to a str.
 
-        if (sys.version_info[0] > 2 or sys.version_info[0] == 2 and sys.version_info[1] >= 7) and isinstance(value, memoryview):
+        if isinstance(value, memoryview):
             value = value.tobytes()
-        elif isinstance(value, buffer) or (sys.version_info[0] > 2 or sys.version_info[0] == 2 and sys.version_info[1] >= 7) and isinstance(value, bytearray):
+        elif isinstance(value, bytearray):
             value = str(value)
 
         if Dataset._DebugLoggingEnabled():
@@ -435,6 +436,8 @@ class SelectCursor(_Cursor):
     # your initialization code the derived class's _Open method.
 
     def __init__(self, dataset, fields, where, orderBy, rowCount, reportProgress, rowDescriptionSingular, rowDescriptionPlural):
+        # Do not call self.__doc__.Obj.ValidateMethodInvocation() here.
+        # Table.OpenSelectCursor() handles validation for us.
 
         # Initialize the base class and our attributes.
 
@@ -723,6 +726,9 @@ class UpdateCursor(SelectCursor):
     # your initialization code the derive class's _Open method.
 
     def __init__(self, dataset, fields, where, orderBy, rowCount, reportProgress, rowDescriptionSingular, rowDescriptionPlural):
+        # Do not call self.__doc__.Obj.ValidateMethodInvocation() here.
+        # Table.OpenUpdateCursor() handles validation for us.
+
         super(UpdateCursor, self).__init__(dataset, fields, where, orderBy, rowCount, False, rowDescriptionSingular, rowDescriptionPlural)
 
         self._UpdateRowCapabilityError = self._Table._TestCapability('updaterow')
@@ -850,6 +856,9 @@ class InsertCursor(_Cursor):
     # your initialization code the derive class's _Open method.
 
     def __init__(self, dataset, rowCount, reportProgress, rowDescriptionSingular, rowDescriptionPlural):
+        # Do not call self.__doc__.Obj.ValidateMethodInvocation() here.
+        # Table.OpenInsertCursor() handles validation for us.
+
         self.__doc__.Obj.ValidateMethodInvocation()
 
         # Initialize the base class and our attributes.

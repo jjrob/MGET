@@ -13,7 +13,7 @@ from ...Metadata import *
 from ...Types import *
 
 from .. import CollectibleObject, DatasetCollection
-from ._ArcGISTable import ArcGISCopyableTable, ArcGISTable
+from ._ArcGISTable import ArcGISCopyableTable, ArcGISTable, _ArcPyDASelectCursor, _ArcPyDAUpdateCursor, _ArcPyDAInsertCursor
 
 
 ###############################################################################
@@ -98,10 +98,35 @@ AddArgumentMetadata(ArcGISTable.__init__, 'autoDeleteFieldAddedByArcGIS',
 CopyArgumentMetadata(CollectibleObject.__init__, 'parentCollection', ArcGISTable.__init__, 'parentCollection')
 CopyArgumentMetadata(CollectibleObject.__init__, 'queryableAttributeValues', ArcGISTable.__init__, 'queryableAttributeValues')
 CopyArgumentMetadata(CollectibleObject.__init__, 'lazyPropertyValues', ArcGISTable.__init__, 'lazyPropertyValues')
+CopyArgumentMetadata(DatasetCollection.__init__, 'cacheDirectory', ArcGISTable.__init__, 'cacheDirectory')
 
 AddResultMetadata(ArcGISTable.__init__, 'obj',
     typeMetadata=ClassInstanceTypeMetadata(cls=ArcGISTable),
     description=_(':class:`%s` instance.') % ArcGISTable.__name__)
+
+
+# In order for the validation code to work for _ArcPyDASelectCursor,
+# _ArcPyDAUpdateCursor, and _ArcPyDAInsertCursor, they must have a
+# ClassMetadata defined for them. But we do not want to export these classes
+# from GeoEco.Datasets.ArcGIS. To accomplish this, we attach the metadata to
+# the _ArcGISTable module rather than the GeoEco.Datasets.ArcGIS package
+# (which is referenced by __package__).
+
+AddModuleMetadata(
+    module='GeoEco.Datasets.ArcGIS._ArcGISTable',
+    shortDescription=_('Private module that implements ArcGISTable and related classes.'))
+
+AddClassMetadata(_ArcPyDASelectCursor,
+    module='GeoEco.Datasets.ArcGIS._ArcGISTable',
+    shortDescription=_('Private class representing a :class:`~GeoEco.Datasets.SelectCursor` implemented with ``arcpy.da.SearchCursor``. Not intended to be instantiated by callers outside GeoEco.'))
+
+AddClassMetadata(_ArcPyDAUpdateCursor,
+    module='GeoEco.Datasets.ArcGIS._ArcGISTable',
+    shortDescription=_('Private class representing a :class:`~GeoEco.Datasets.UpdateCursor` implemented with ``arcpy.da.SearchCursor``. Not intended to be instantiated by callers outside GeoEco.'))
+
+AddClassMetadata(_ArcPyDAInsertCursor,
+    module='GeoEco.Datasets.ArcGIS._ArcGISTable',
+    shortDescription=_('Private class representing a :class:`~GeoEco.Datasets.InsertCursor` implemented with ``arcpy.da.SearchCursor``. Not intended to be instantiated by callers outside GeoEco.'))
 
 
 ##########################################################################################

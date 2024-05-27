@@ -374,10 +374,17 @@ class DatasetCollection(CollectibleObject):
                         return None
                     return False
 
-            # Import pyparsing and enable "packrat" mode for higher
-            # performance.
+            # Import pyparsing classes.
 
-            from pyparsing import CaselessKeyword, CaselessLiteral, Combine, DelimitedList, nums, one_of, OpAssoc, infix_notation, Opt, ParserElement, QuotedString, Regex, Word
+            from pyparsing import CaselessKeyword, CaselessLiteral, Combine, nums, one_of, OpAssoc, infix_notation, Opt, ParserElement, QuotedString, Regex, Word
+
+            try:
+                from pyparsing import delimitedList as DelimitedList    # Changed in pyparsing 3.1.0a1; see https://github.com/pyparsing/pyparsing/issues/408#issuecomment-1488630192
+            except:
+                from pyparsing import DelimitedList
+
+            # Enable "packrat" mode for higher performance.
+
             ParserElement.enable_packrat()
 
             # Define the parser using pyparsing.

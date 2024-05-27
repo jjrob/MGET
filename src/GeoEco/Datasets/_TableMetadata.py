@@ -410,7 +410,7 @@ AddMethodMetadata(Table.Query,
 CopyArgumentMetadata(Table.GetFieldByName, 'self', Table.Query, 'self')
 
 AddArgumentMetadata(Table.Query, 'fields',
-    typeMetadata=ListTypeMetadata(elementType=UnicodeStringTypeMetadata(minLength=1), minLength=1),
+    typeMetadata=ListTypeMetadata(elementType=UnicodeStringTypeMetadata(minLength=1), minLength=1, canBeNone=True),
     description=_(
 """List of fields to include in the results. If :py:data:`None`, the default,
 all fields will be included. Do not provide "\*", as would be done in a SQL

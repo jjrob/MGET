@@ -9,6 +9,7 @@
 # full license text.
 
 import atexit
+import logging
 import os
 import shutil
 import types
