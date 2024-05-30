@@ -17,3 +17,4 @@ TODO: Write introduction
     GeoEco.Datasets.ArcGIS
     GeoEco.Datasets.Collections
     GeoEco.Datasets.GDAL
+    GeoEco.Datasets.SQLite

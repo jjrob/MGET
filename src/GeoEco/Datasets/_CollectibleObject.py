@@ -151,6 +151,11 @@ class CollectibleObject(object):
             self._LazyPropertyValues = {}
         self._LazyPropertyValues[name] = value
 
+    def DeleteLazyPropertyValue(self, name):
+        self.__doc__.Obj.ValidateMethodInvocation()
+        if self._LazyPropertyValues is not None and name in self._LazyPropertyValues:
+            del self._LazyPropertyValues[name]
+
     def HasLazyPropertyValue(self, name, allowPhysicalValue=True):
         self.__doc__.Obj.ValidateMethodInvocation()
         return self.GetLazyPropertyValue(name, allowPhysicalValue) is not None

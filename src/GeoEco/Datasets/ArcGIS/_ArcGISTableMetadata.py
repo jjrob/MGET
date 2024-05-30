@@ -104,13 +104,11 @@ AddResultMetadata(ArcGISTable.__init__, 'obj',
     typeMetadata=ClassInstanceTypeMetadata(cls=ArcGISTable),
     description=_(':class:`%s` instance.') % ArcGISTable.__name__)
 
-
 # In order for the validation code to work for _ArcPyDASelectCursor,
 # _ArcPyDAUpdateCursor, and _ArcPyDAInsertCursor, they must have a
-# ClassMetadata defined for them. But we do not want to export these classes
-# from GeoEco.Datasets.ArcGIS. To accomplish this, we attach the metadata to
-# the _ArcGISTable module rather than the GeoEco.Datasets.ArcGIS package
-# (which is referenced by __package__).
+# ClassMetadata defined for them. Because we don't export them from the
+# GeoEco.Datasets.ArcGIS package, we must attach their metadata to the
+# _ArcGISTable module itself.
 
 AddModuleMetadata(
     module='GeoEco.Datasets.ArcGIS._ArcGISTable',

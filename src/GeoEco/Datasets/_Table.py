@@ -150,14 +150,14 @@ class Table(Dataset):
         except Exception as e:
             raise RuntimeError(_('Failed to add a field named %(name)s to %(dn)s due to %(e)s: %(msg)s') % {'name': name, 'dn': self.DisplayName, 'e': e.__class__.__name__, 'msg': e})
 
-        # If we succeeded, add the field to our cached list and
-        # dictionary of fields.
+        # If we succeeded, throw out the existing Fields lazy property and our
+        # _FieldsDict cache. This will cause the lazy property and cache to be
+        # reloaded the next time they are needed, so we get the default values
+        # for properties of the new field (e.g. length, precision, or
+        # isNullable).
 
-        fields = list(self.GetLazyPropertyValue('Fields'))
-        fields.append(field)
-        self.SetLazyPropertyValue('Fields', tuple(fields))
-
-        self._FieldsDict[name.upper()] = field
+        self.DeleteLazyPropertyValue('Fields')
+        del self._FieldsDict
 
     def DeleteField(self, name, failIfDoesNotExist=False):
         self.__doc__.Obj.ValidateMethodInvocation()
@@ -190,8 +190,8 @@ class Table(Dataset):
         except Exception as e:
             raise RuntimeError(_('Failed to delete field %(name)s from %(dn)s due to %(e)s: %(msg)s') % {'name': name, 'dn': self.DisplayName, 'e': e.__class__.__name__, 'msg': e})
 
-        # If we succeeded, remove the field from our cached list of
-        # fields.
+        # If we succeeded, remove the field from the Fields lazy property and
+        # our cached list of fields.
 
         fields = list(self.GetLazyPropertyValue('Fields'))
         del fields[i]

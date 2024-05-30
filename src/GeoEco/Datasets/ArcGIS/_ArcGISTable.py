@@ -63,9 +63,19 @@ class ArcGISTable(Table, ArcGISCopyableTable):
         self._AutoDeleteFieldAddedByArcGIS = autoDeleteFieldAddedByArcGIS
         self._DeletedFieldAddedByArcGIS = False
 
+        # Assign values to known queryable attributes.
+
+        queryableAttributes = (QueryableAttribute('TableName', _('Table name'), UnicodeStringTypeMetadata()),) if parentCollection is None or parentCollection.GetQueryableAttribute('TableName') is None else None
+
+        qav = {}
+        if queryableAttributeValues is not None:
+            qav.update(queryableAttributeValues)
+
+        qav['TableName'] = tableName
+
         # Initialize the base class.
         
-        super(ArcGISTable, self).__init__(parentCollection=parentCollection, queryableAttributeValues=queryableAttributeValues, lazyPropertyValues=lazyPropertyValues)
+        super(ArcGISTable, self).__init__(parentCollection=parentCollection, queryableAttributes=queryableAttributes, queryableAttributeValues=queryableAttributeValues, lazyPropertyValues=lazyPropertyValues)
 
     def _GetDisplayName(self):
         return self._DisplayName

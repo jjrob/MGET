@@ -57,6 +57,7 @@ intersphinx_mapping = {
     'python': ('https://docs.python.org/3', None),
     'numpy': ('https://numpy.org/doc/stable/', None),
     'gdal': ('https://gdal.org/', None),
+    'pandas': ('https://pandas.pydata.org/docs/', None),
 }
 
 # Define custom roles for linking to ArcGIS arcpy documentation.

@@ -859,8 +859,6 @@ class InsertCursor(_Cursor):
         # Do not call self.__doc__.Obj.ValidateMethodInvocation() here.
         # Table.OpenInsertCursor() handles validation for us.
 
-        self.__doc__.Obj.ValidateMethodInvocation()
-
         # Initialize the base class and our attributes.
 
         super(InsertCursor, self).__init__(dataset, rowDescriptionSingular, rowDescriptionPlural)

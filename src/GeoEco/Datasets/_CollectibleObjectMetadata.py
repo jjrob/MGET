@@ -239,6 +239,20 @@ value of :py:data:`None`. If :py:data:`None` is provided here, it will
 effectively unset the lazy property, restoring it to the state of not having a
 value."""))
 
+# Public method: CollectibleObject.DeleteLazyPropertyValue
+
+AddMethodMetadata(CollectibleObject.DeleteLazyPropertyValue,
+    shortDescription=_('Deletes the lazy property with the specified name.'),
+    longDescription=_('Use this function to force a lazy property to be reloaded from the underlying physical source of the data.'),
+    isExposedToPythonCallers=True)
+
+CopyArgumentMetadata(CollectibleObject.GetQueryableAttribute, 'self', CollectibleObject.DeleteLazyPropertyValue, 'self')
+
+AddArgumentMetadata(CollectibleObject.DeleteLazyPropertyValue, 'name',
+    typeMetadata=UnicodeStringTypeMetadata(minLength=1, mustMatchRegEx='[a-zA-Z][a-zA-Z0-9_]+'),
+    description=_(
+"""Name of the lazy property to delete."""))
+
 # Public method: CollectibleObject.HasLazyPropertyValue
 
 AddMethodMetadata(CollectibleObject.HasLazyPropertyValue,

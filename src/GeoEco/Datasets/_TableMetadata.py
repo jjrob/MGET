@@ -31,18 +31,16 @@ the type of tabular dataset they're interested in."""))
 
 AddPropertyMetadata(Table.HasOID,
     typeMetadata=BooleanTypeMetadata(),
-    shortDescription=_('True if this table has an ArcGIS "object ID" field.'),
+    shortDescription=_('True if this table has an ArcGIS-style "object ID" field.'),
     longDescription=_(
-"""ArcGIS usually requires tabular datasets to have an integer field that
-uniquely identifies each row. This method returns True if such a field has
-been defined and the underlying programming library used to access the table
-(e.g. `arcpy
-<https://www.esri.com/en-us/arcgis/products/arcgis-python-libraries/libraries/arcpy>`_)
-identifies the field the object ID field."""))
+"""ArcGIS usually requires tabular datasets to have an auto-incrementing
+integer field that uniquely identifies each row. This method returns True if
+such a field has been defined and the underlying programming library used to
+access the table identifies the field the object ID field."""))
 
 AddPropertyMetadata(Table.OIDFieldName,
     typeMetadata=UnicodeStringTypeMetadata(canBeNone=True),
-    shortDescription=_('Name of the ArcGIS "object ID" field, or :py:data:`None` if there is no object ID field.'),
+    shortDescription=_('Name of the ArcGIS-style "object ID" field, or :py:data:`None` if there is no object ID field.'),
     longDescription=_(
 """The object ID field name usually depends on the underlying storage format.
 For example, it may be named ``OID`` or ``FID`` in .DBF files or shapefiles,
@@ -510,7 +508,7 @@ AddMethodMetadata(Table.OpenSelectCursor,
 CopyArgumentMetadata(Table.GetFieldByName, 'self', Table.OpenSelectCursor, 'self')
 
 AddArgumentMetadata(Table.OpenSelectCursor, 'fields',
-    typeMetadata=ListTypeMetadata(elementType=UnicodeStringTypeMetadata(minLength=1), minLength=1),
+    typeMetadata=ListTypeMetadata(elementType=UnicodeStringTypeMetadata(minLength=1), minLength=1, canBeNone=True),
     description=_(
 """List of fields to retrieve. If :py:data:`None`, the default, all fields
 will be retrieved. Do not provide ``'*'``, as would be done in a SQL SELECT
