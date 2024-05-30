@@ -91,11 +91,40 @@ class SQLiteDatabase(FileDatasetCollection, Database):
         return None
 
     def _Close(self):
+
+        # If there is a connection open and it is NOT an in-memory database,
+        # close it now. We close in-memory databases when the SQLiteDatabase
+        # is destroyed rather than when _Close is called. This is because the
+        # in-memory database only exists while the connection is open. We
+        # allow our Close() to be called at any time, with the philosophy that
+        # doing so will free up allocated resources but WITHOUT deleting the
+        # underlying data. To prevent that from happening, we have to keep the
+        # connection open.
+
+        if hasattr(self, '_Connection') and self._Connection is not None and self._Path != ':memory:':
+            self._LogDebug(_('%(class)s 0x%(id)016X: Closing %(dn)s.'), {'class': self.__class__.__name__, 'id': id(self), 'dn': self._DisplayName})
+            self._Connection.close()
+            self._Connection = None
+
+        super(SQLiteDatabase, self)._Close()
+
+    def __del__(self):
+
+        # If there is a connection open, close it. Normally, we wouldn't need
+        # to implement a __del__() to do this: CollectibleObject.__del__()
+        # calls Close() automatically. But our _Close() does not close
+        # connections to in-memory databases, so that their lifetimes are tied
+        # to the SQLiteDatabase instance rather than the connection, allowing
+        # our user to call Close() at any time without deleting the in-memory
+        # database. So we have to explicitly close the connection here, which
+        # will finally delete the in-memory database.
+
         if hasattr(self, '_Connection') and self._Connection is not None:
             self._LogDebug(_('%(class)s 0x%(id)016X: Closing %(dn)s.'), {'class': self.__class__.__name__, 'id': id(self), 'dn': self._DisplayName})
             self._Connection.close()
             self._Connection = None
-        super(SQLiteDatabase, self)._Close()
+
+        super(SQLiteDatabase, self).__del__()
 
     @classmethod
     def _TestCapability(cls, capability):
