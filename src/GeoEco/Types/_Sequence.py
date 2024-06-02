@@ -1,5 +1,5 @@
-# _Sequence.py - Provides classes derived from ..Metadata.TypeMetadata
-# that represent Python sequence types such as lists and dicts.
+# _Sequence.py - Classes derived from ..Metadata.TypeMetadata that represent
+# Python sequence types such as lists and dicts.
 #
 # Copyright (C) 2024 Jason J. Roberts
 #

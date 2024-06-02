@@ -113,7 +113,7 @@ class FileDatasetCollection(DatasetCollection):
             Logger.SetLogInfoAsDebug(True)
             try:
                 from ...DataManagement.Files import File
-                decompressedFile = File.Decompress(localPath, os.path.join(cacheDirectory, os.path.dirname(self.Path)), True, False, self._DecompressedFileToReturn)
+                decompressedFile = File.Decompress(localPath, os.path.join(cacheDirectory, os.path.dirname(self.Path)), True, self._DecompressedFileToReturn)
             finally:
                 Logger.SetLogInfoAsDebug(oldLogInfoAsDebug)
 

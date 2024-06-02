@@ -1,5 +1,5 @@
-# _Datasets.py - Provides classes derived from ..Metadata.TypeMetadata that
-# are related to the ..Datasets object model.
+# _Datasets.py - Classes derived from ..Metadata.TypeMetadata that are related
+# to the ..Datasets object model.
 #
 # Copyright (C) 2024 Jason J. Roberts
 #

@@ -1,5 +1,5 @@
-# Metadata.py - Provides classes used to describe the classes, properties,
-# methods, and other entities in the GeoEco Python package.
+# Metadata.py - Classes used to describe the classes, properties, methods, and
+# other entities in the GeoEco Python package.
 #
 # Copyright (C) 2024 Jason J. Roberts
 #

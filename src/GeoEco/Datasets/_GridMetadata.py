@@ -37,7 +37,7 @@ interface. When GeoEco was ported to Python 3, we decided to expose
 :class:`Grid` and other classes in :mod:`GeoEco.Datasets` in case they were
 useful, but we encourage Python users needing to access multidimensional
 arrays to consider Xarray and similar projects that have greater adoption and
-better developer support.
+a robust, well-funded developer community that supports their maintenance.
 
 **Dimensions**
 

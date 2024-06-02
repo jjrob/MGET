@@ -1,5 +1,5 @@
-# ArcGIS.py - Provides utility functions for interacting with the ESRI ArcGIS
-# software package.
+# ArcGIS.py - Utility functions for interacting with the ESRI ArcGIS software
+# package.
 #
 # Copyright (C) 2024 Jason J. Roberts
 #
@@ -969,7 +969,7 @@ class _ArcGISObjectWrapper(object):
 from .Metadata import *
 from .Types import *
 
-AddModuleMetadata(shortDescription=_('Provides utility functions for interacting with ESRI ArcGIS software.'))
+AddModuleMetadata(shortDescription=_('Utility functions for interacting with ESRI ArcGIS software.'))
 
 ###############################################################################
 # Metadata: GeoprocessorManager class

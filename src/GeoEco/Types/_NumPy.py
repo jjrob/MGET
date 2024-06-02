@@ -1,5 +1,5 @@
-# _NumPy.py - Provides classes derived from ..Metadata.TypeMetadata that
-# represent numpy data types, principally a numpy array.
+# _NumPy.py - Classes derived from ..Metadata.TypeMetadata that represent
+# numpy data types, principally a numpy array.
 #
 # Copyright (C) 2024 Jason J. Roberts
 #

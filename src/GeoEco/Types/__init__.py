@@ -1,5 +1,5 @@
-# Types.py - Provides classes used to describe and validate property values,
-# method arguments, and return values.
+# Types.py - Classes used to describe and validate property values, method
+# arguments, and return values.
 #
 # Copyright (C) 2024 Jason J. Roberts
 #

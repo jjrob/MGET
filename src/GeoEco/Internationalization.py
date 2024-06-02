@@ -1,5 +1,5 @@
-# Internationalization.py - Provides internationalization/localization
-# infrastructure for the GeoEco Python package.
+# Internationalization.py - Internationalization/localization infrastructure
+# for the GeoEco Python package.
 #
 # Copyright (C) 2024 Jason J. Roberts
 #

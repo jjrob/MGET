@@ -17,6 +17,7 @@ Remove ImportGDALModule
 Change 0x%(id)08X to 0x%(id)016X
 Do not call Destroy on GDAL objects anymore
 os.path.splitunc was subsumed into os.path.splitdrive
+Look for '\\' and check it
 
 ArcPro vs. Desktop issues to check for:
 =======================================

@@ -1,5 +1,5 @@
-# Dependencies.py - Provides classes that allow other classes in the GeoEco
-# Python package to declare dependencies on other software.
+# Dependencies.py - Classes that allow other classes in the GeoEco Python
+# package to declare dependencies on other software.
 #
 # Copyright (C) 2024 Jason J. Roberts
 #

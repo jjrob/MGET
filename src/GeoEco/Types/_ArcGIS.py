@@ -1,5 +1,5 @@
-# _ArcGIS.py - Provides classes derived from .Metadata.TypeMetadata that
-# represent ArcGIS data types, such as feature classes and rasters.
+# _ArcGIS.py - Classes derived from .Metadata.TypeMetadata that represent
+# ArcGIS data types, such as feature classes and rasters.
 #
 # Copyright (C) 2024 Jason J. Roberts
 #

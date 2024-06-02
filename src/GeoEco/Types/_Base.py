@@ -1,5 +1,5 @@
-# _Base.py - Provides classes derived from ..Metadata.TypeMetadata that
-# represent basic Python types such as integers, floats, and strings.
+# _Base.py - Classes derived from ..Metadata.TypeMetadata that represent basic
+# Python types such as integers, floats, and strings.
 #
 # Copyright (C) 2024 Jason J. Roberts
 #

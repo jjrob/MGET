@@ -1,5 +1,5 @@
-# _StoredObject.py - Provides classes derived from ..Metadata.TypeMetadata
-# that represent stored objects such as files and directories.
+# _StoredObject.py - Classes derived from ..Metadata.TypeMetadata that
+# represent stored objects such as files and directories.
 #
 # Copyright (C) 2024 Jason J. Roberts
 #
@@ -302,9 +302,11 @@ class StoredObjectTypeMetadata(UnicodeStringTypeMetadata):
             constraints.append('Must not exist.')
         if self.MustBeDifferentThanArguments is not None and len(self.MustBeDifferentThanArguments) > 0:
             if len(self.MustBeDifferentThanArguments) == 1:
-                constraints.append('Must not equal the value of %s' % self.MustBeDifferentThanArguments[0])
+                constraints.append('Must be different than `%s`' % self.MustBeDifferentThanArguments[0])
+            elif len(self.MustBeDifferentThanArguments) == 2:
+                constraints.append('Must be different than `%s` and `%s`' % (self.MustBeDifferentThanArguments[0], self.MustBeDifferentThanArguments[1]))
             else:
-                constraints.append('Must not equal the values of: %s' % ', '.join(self.MustBeDifferentThanArguments))
+                constraints.append('Must must be different than %s and `%s`' % (', '.join(['`' + arg + '`' for arg in self.MustBeDifferentThanArguments[:-1]]), self.MustBeDifferentThanArguments[-1]))
         return constraints
 
     @classmethod
