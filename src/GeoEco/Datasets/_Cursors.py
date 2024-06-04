@@ -172,7 +172,12 @@ class _Cursor(object):
                 value = int(value)
 
             elif f.DataType == 'float32' or f.DataType == 'float64':
-                if not isinstance(value, float):
+                if isinstance(value, int):
+                    if f.DataType == 'float32' and (value < -2**24+1 or value > 2**24-1):
+                        raise ValueError(_('Cannot set the value of the %(field)s field of this %(singular)s of %(dn)s to integer %(value)s because %(field)s uses the 32-bit floating point data type, which can only exactly represent integers between -2^24 + 1 and 2^24 - 1, and %(value)s is outside of that range.') % {'singular': self._RowDescriptionSingular, 'dn': self._Table.DisplayName, 'field': f.Name, 'value': repr(value)})
+                    elif f.DataType == 'float64' and (value < -2**53+1 or value > 2**53-1):
+                        raise ValueError(_('Cannot set the value of the %(field)s field of this %(singular)s of %(dn)s to integer %(value)s because %(field)s uses the 64-bit floating point data type, which can only exactly represent integers between -2^53 + 1 and 2^53 - 1, and %(value)s is outside of that range.') % {'singular': self._RowDescriptionSingular, 'dn': self._Table.DisplayName, 'field': f.Name, 'value': repr(value)})
+                elif not isinstance(value, float):
                     raise TypeError(_('Cannot set the value of the %(field)s field of this %(singular)s of %(dn)s to %(value)s because the data type of that field is %(dt)s. To set %(dt)s fields, you must provide an instance of %(type)s.') % {'singular': self._RowDescriptionSingular, 'dn': self._Table.DisplayName, 'field': f.Name, 'value': repr(value), 'dt': f.DataType, 'type': str(float)})
 
                 # I'm not doing a range check on float32 because it is too
@@ -180,6 +185,8 @@ class _Cursor(object):
                 # that anyone would exceed the range of float32 in normal
                 # circumstances. If they do, the underlying programming
                 # library will hopefully catch the problem.
+
+                value = float(value)
 
             elif f.DataType == 'string':
                 if not isinstance(value, str):

@@ -427,6 +427,25 @@ particular kind of :class:`~GeoEco.Datasets.Table` you are working with."""),
 
 CopyArgumentMetadata(UpdateCursor.SetValue, 'self', UpdateCursor.DeleteRow, 'self')
 
+# We also need to define metadata for GetValue, GetGeometry, and GetOID
+# because, unfortunately, we implement a very short wrapper for each that
+# essentially just performs a check and calls the base class (SelectCursor).
+# It seems cumbersome that we have to write metadata, but because we overrode
+# the base class's implementation, we do. So we just copy it from there.
+
+AddMethodMetadata(UpdateCursor.GetValue, shortDescription=SelectCursor.GetValue.__doc__.Obj._ShortDescription, longDescription=SelectCursor.GetValue.__doc__.Obj._LongDescription)
+CopyArgumentMetadata(UpdateCursor.SetValue, 'self', UpdateCursor.GetValue, 'self')
+CopyArgumentMetadata(SelectCursor.GetValue, 'field', UpdateCursor.GetValue, 'field')
+CopyResultMetadata(SelectCursor.GetValue, 'value', UpdateCursor.GetValue, 'value')
+
+AddMethodMetadata(UpdateCursor.GetGeometry, shortDescription=SelectCursor.GetGeometry.__doc__.Obj._ShortDescription, longDescription=SelectCursor.GetGeometry.__doc__.Obj._LongDescription)
+CopyArgumentMetadata(UpdateCursor.SetValue, 'self', UpdateCursor.GetGeometry, 'self')
+CopyResultMetadata(SelectCursor.GetGeometry, 'geometry', UpdateCursor.GetGeometry, 'geometry')
+
+AddMethodMetadata(UpdateCursor.GetOID, shortDescription=SelectCursor.GetOID.__doc__.Obj._ShortDescription, longDescription=SelectCursor.GetOID.__doc__.Obj._LongDescription)
+CopyArgumentMetadata(UpdateCursor.SetValue, 'self', UpdateCursor.GetOID, 'self')
+CopyResultMetadata(SelectCursor.GetOID, 'oid', UpdateCursor.GetOID, 'oid')
+
 
 ###############################################################################
 # Metadata: InsertCursor class

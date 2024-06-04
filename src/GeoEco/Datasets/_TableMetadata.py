@@ -411,7 +411,7 @@ AddArgumentMetadata(Table.Query, 'fields',
     typeMetadata=ListTypeMetadata(elementType=UnicodeStringTypeMetadata(minLength=1), minLength=1, canBeNone=True),
     description=_(
 """List of fields to include in the results. If :py:data:`None`, the default,
-all fields will be included. Do not provide "\*", as would be done in a SQL
+all fields will be included. Do not provide ``*``, as would be done in a SQL
 SELECT statement that wanted to retrieve all fields.
 
 This usual reason to not retrieve all of the fields is to minimize database

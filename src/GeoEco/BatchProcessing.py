@@ -2027,7 +2027,7 @@ workspace containing the table will be prepended instead."""),
         # Add fields for the outputs and calculate them by calling the calculate
         # field method.
 
-        table = database.QueryDatasets("TableName = 'work'", reportProgress=False)
+        table = database.QueryDatasets("TableName = 'work'", reportProgress=False)[0]
 
         if outputParamNames is not None:
             for name in outputParamNames:

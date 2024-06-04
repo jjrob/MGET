@@ -49,5 +49,6 @@ use them and gain automatic logging of basic operations.
     :template: autosummary/module.rst
     :recursive:
 
+    GeoEco.DataManagement.Directories
     GeoEco.DataManagement.Fields
     GeoEco.DataManagement.Files

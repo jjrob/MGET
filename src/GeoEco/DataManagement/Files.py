@@ -639,29 +639,29 @@ class File(object):
         tableObj = database.CreateTable(table)
         
         try:
-            fileField = tableObj.AddField(fileField, pathFieldsDataType, length=maxPathLength)
+            tableObj.AddField(fileField, pathFieldsDataType, length=maxPathLength)
 
             if relativePathField is not None:
-                relativePathField = tableObj.AddField(relativePathField, pathFieldsDataType, length=maxPathLength)
+                tableObj.AddField(relativePathField, pathFieldsDataType, length=maxPathLength)
 
             if sizeField is not None:
-                sizeField = tableObj.AddField(sizeField, sizeFieldDataType)
+                tableObj.AddField(sizeField, sizeFieldDataType)
 
             if dateCreatedField is not None:
-                dateCreatedField = tableObj.AddField(dateCreatedField, dateFieldsDataType)
+                tableObj.AddField(dateCreatedField, dateFieldsDataType)
 
             if dateModifiedField is not None:
-                dateModifiedField = tableObj.AddField(dateModifiedField, dateFieldsDataType)
+                tableObj.AddField(dateModifiedField, dateFieldsDataType)
 
             if parsedDateField is not None:
-                parsedDateField = tableObj.AddField(parsedDateField, dateFieldsDataType)
+                tableObj.AddField(parsedDateField, dateFieldsDataType)
 
             if unixTimeField is not None:
-                unixTimeField = tableObj.AddField(unixTimeField, unixTimeFieldDataType)
+                tableObj.AddField(unixTimeField, unixTimeFieldDataType)
 
             # Create an insert cursor and fill the table.
 
-            cursor = tableObj.OpenInsertCursor(table)
+            cursor = tableObj.OpenInsertCursor()
             try:
                 cls.FindAndFillTable(directory,
                                      cursor,
@@ -699,7 +699,7 @@ class File(object):
         return table        
 
     @classmethod
-    def FindAndCreateArcGISTable(cls, directory, workspace, table, fileField, wildcard='*', searchTree=False, minSize=None, maxSize=None, minDateCreated=None, maxDateCreated=None, minDateModified=None, maxDateModified=None, relativePathField=None, sizeField=None, dateCreatedField=None, dateModifiedField=None, parsedDateField=None, dateParsingExpression=None, unixTimeField=None, maxPathLength=255, overwriteExisting=False):
+    def FindAndCreateArcGISTable(cls, directory, workspace, table, fileField, wildcard='*', searchTree=False, minSize=None, maxSize=None, minDateCreated=None, maxDateCreated=None, minDateModified=None, maxDateModified=None, relativePathField=None, sizeField=None, dateCreatedField=None, dateModifiedField=None, parsedDateField=None, dateParsingExpression=None, unixTimeField=None, maxPathLength=None, overwriteExisting=False):
         cls.__doc__.Obj.ValidateMethodInvocation()
 
         # If the caller's workspace is a directory (rather than a database),
@@ -1321,6 +1321,7 @@ are:
   the date that was parsed is in the UTC timezone. The UNIX time values
   produced by this tool do not include leap seconds; this tool assumes that a
   regular year is 31536000 seconds and a leap year is 31622400 seconds.
+
 """))
 
 # Public method: File.FindAndFillTable
@@ -1493,10 +1494,10 @@ numeric type that supports large numbers, such as ``float64`` or
 AddArgumentMetadata(File.FindAndCreateTable, 'dateFieldsDataType',
     typeMetadata=UnicodeStringTypeMetadata(),
     description=_(
-"""Data type to use when creating the file creation date,
-file modification date, and parsed date fields. This should be ``datetime`` if
-the underlying storage format supports dates with times, or ``date`` if only
-dates are supported."""))
+"""Data type to use when creating the file creation date, file modification
+date, and parsed date fields. This should be ``datetime`` if the underlying
+storage format supports dates with times, or ``date`` if only dates are
+supported."""))
 
 AddArgumentMetadata(File.FindAndCreateTable, 'unixTimeFieldDataType',
     typeMetadata=UnicodeStringTypeMetadata(),
@@ -1592,9 +1593,9 @@ would be::
     D:\\f1
     \\\\MyServer\\Data\\f1
 
-If the table is in a personal geodatabase::
+If the table is in a file geodatabase::
 
-    C:\\Data\\Files\\FileInfo.mdb\\FoundFiles
+    C:\\Data\\Files\\FileInfo.gdb\\FoundFiles
 
 the relative paths would be::    
 
@@ -1731,10 +1732,10 @@ BatchProcessing.GenerateForMethod(File.Copy,
     outputParamExpressionArcGISDisplayNames=[_('Destination file Python expression')],
     outputParamDescriptions=[_('%s paths of the destination files.')],
     outputParamExpressionDescriptions=[
-"""Python expression used to calculate the absolute path of the
-destination file. The expression may be any Python statement
-appropriate for passing to the eval function and must return a Unicode
-string. The expression may reference the following variables:
+"""Python expression used to calculate the absolute path of the destination
+file. The expression may be any Python statement appropriate for passing to
+the eval function and must return a Unicode string. The expression may
+reference the following variables:
 
 * directoryToSearch - the value provided for the directory to search
   parameter
@@ -1748,10 +1749,10 @@ The default expression::
 
     os.path.join(destinationDirectory, sourceFile[len(directoryToSearch)+1:])
 
-stores the file in the destination directory at the same relative
-location as it appears in the directory to search. The destination
-path is calculated by stripping the directory to search from the
-source path and replacing it with the destination directory.
+stores the file in the destination directory at the same relative location as
+it appears in the directory to search. The destination path is calculated by
+stripping the directory to search from the source path and replacing it with
+the destination directory.
 
 For more information on Python syntax, please see the `Python
 documentation <http://www.python.org/doc/>`_."""],

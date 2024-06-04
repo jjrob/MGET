@@ -7,7 +7,7 @@ name = "mget3"
 authors = [
     {name = "Jason Roberts", email = "jason.roberts@duke.edu"},
 ]
-description = "Marine Geospatial Ecology Tools: access and manipulate ecological and oceanographic data"
+description = "Marine Geospatial Ecology Tools: access and manipulate marine ecological and oceanographic data"
 readme = "README.md"
 requires-python = ">=3.9"
 keywords = ["marine", "geospatial", "ecology", "gis"]
@@ -41,3 +41,8 @@ version_file = "src/GeoEco/_version.py"
 
 [tool.setuptools.package-data]
 "GeoEco.Configuration" = ["Logging.ini"]
+
+[tool.pytest.ini_options]
+addopts = [
+    "--import-mode=importlib",
+]
