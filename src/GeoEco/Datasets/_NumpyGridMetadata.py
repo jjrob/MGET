@@ -109,7 +109,7 @@ AddArgumentMetadata(NumpyGrid.__init__, 'physicalDimensionsFlipped',
     description=_(':py:class:`tuple` of :py:class:`bool` indicating how the data of in `numpyArray` are ordered for each physical dimension. If False, the dimension is ordered in ascending coordinate order; if True, it is in descending coordinate order.'))
 
 AddArgumentMetadata(NumpyGrid.__init__, 'scaledDataType',
-    typeMetadata=Grid.DataType.__doc__.Obj.Type,
+    typeMetadata=UnicodeStringTypeMetadata(allowedValues=['int8', 'uint8', 'int16', 'uint16', 'int32', 'uint32', 'float32', 'float64'], canBeNone=True),
     description=Grid.DataType.__doc__.Obj.ShortDescription)
 
 AddArgumentMetadata(NumpyGrid.__init__, 'scaledNoDataValue',

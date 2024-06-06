@@ -158,8 +158,8 @@ class RotatedGlobalGrid(Grid):
         return data, self.UnscaledNoDataValue
 
 
-##########################################################################################
-# This module is not meant to be imported directly. Import GeoEco.Datasets.ArcGIS instead.
-##########################################################################################
+###########################################################################################
+# This module is not meant to be imported directly. Import GeoEco.Datasets.Virtual instead.
+###########################################################################################
 
 __all__ = []

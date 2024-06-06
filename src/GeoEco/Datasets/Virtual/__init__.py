@@ -11,7 +11,9 @@
 # To keep file sizes managable, we split the names defined by this package
 # across several files.
 
+from ._FastMarchingDistanceGrid import FastMarchingDistanceGrid
 from ._RotatedGlobalGrid import RotatedGlobalGrid
+from ._WindFetchGrid import WindFetchGrid
 
 
 ###############################################################################
@@ -23,11 +25,15 @@ from ...Metadata import AddModuleMetadata
 
 AddModuleMetadata(shortDescription=_(':class:`~GeoEco.Datasets.Grid`\\ s and :class:`~GeoEco.Datasets.DatasetCollection`\\ s that transform :class:`~GeoEco.Datasets.Grid`\\ s and :class:`~GeoEco.Datasets.DatasetCollection`\\ s, lazily if possible.'))
 
+from . import _FastMarchingDistanceGridMetadata
 from . import _RotatedGlobalGridMetadata
+from . import _WindFetchGridMetadata
 
 
 ###############################################################################
 # Names exported by this module
 ###############################################################################
 
-__all__ = ['RotatedGlobalGrid']
+__all__ = ['FastMarchingDistanceGrid',
+           'RotatedGlobalGrid',
+           'WindFetchGrid']

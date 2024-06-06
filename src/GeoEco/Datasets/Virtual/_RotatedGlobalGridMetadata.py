@@ -70,3 +70,10 @@ AddArgumentMetadata(RotatedGlobalGrid.__init__, 'rotationUnits',
 AddResultMetadata(RotatedGlobalGrid.__init__, 'obj',
     typeMetadata=ClassInstanceTypeMetadata(cls=RotatedGlobalGrid),
     description=_(':class:`%s` instance.') % RotatedGlobalGrid.__name__)
+
+
+###########################################################################################
+# This module is not meant to be imported directly. Import GeoEco.Datasets.Virtual instead.
+###########################################################################################
+
+__all__ = []

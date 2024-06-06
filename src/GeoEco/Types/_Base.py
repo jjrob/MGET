@@ -583,13 +583,13 @@ class DateTimeTypeMetadata(TypeMetadata):
     def GetConstraintDescriptionStrings(self):
         constraints = super(DateTimeTypeMetadata, self).GetConstraintDescriptionStrings()
         if self.MinValue is not None:
-            constraints.append('Minimum value:  ' + repr(self.MinValue))
+            constraints.append('Minimum value: ' + repr(self.MinValue))
         if self.MustBeGreaterThan is not None:
-            constraints.append('Greater than:   ' + repr(self.MustBeGreaterThan))
+            constraints.append('Must be greater than ' + repr(self.MustBeGreaterThan))
         if self.MaxValue is not None:
-            constraints.append('Maximum value:  ' + repr(self.MaxValue))
+            constraints.append('Maximum value: ' + repr(self.MaxValue))
         if self.MustBeLessThan is not None:
-            constraints.append('Less than:      ' + repr(self.MustBeLessThan))
+            constraints.append('Must be less than ' + repr(self.MustBeLessThan))
         return constraints
 
 
@@ -718,13 +718,13 @@ class FloatTypeMetadata(TypeMetadata):
     def GetConstraintDescriptionStrings(self):
         constraints = super(FloatTypeMetadata, self).GetConstraintDescriptionStrings()
         if self.MinValue is not None:
-            constraints.append('Minimum value:  ' + repr(self.MinValue))
+            constraints.append('Minimum value: ' + repr(self.MinValue))
         if self.MustBeGreaterThan is not None:
-            constraints.append('Greater than:   ' + repr(self.MustBeGreaterThan))
+            constraints.append('Must be greater than ' + repr(self.MustBeGreaterThan))
         if self.MaxValue is not None:
-            constraints.append('Maximum value:  ' + repr(self.MaxValue))
+            constraints.append('Maximum value: ' + repr(self.MaxValue))
         if self.MustBeLessThan is not None:
-            constraints.append('Less than:      ' + repr(self.MustBeLessThan))
+            constraints.append('Must be less than ' + repr(self.MustBeLessThan))
         return constraints
 
 
@@ -820,13 +820,13 @@ class IntegerTypeMetadata(TypeMetadata):
     def GetConstraintDescriptionStrings(self):
         constraints = super(IntegerTypeMetadata, self).GetConstraintDescriptionStrings()
         if self.MinValue is not None:
-            constraints.append('Minimum value:  ' + repr(self.MinValue))
+            constraints.append('Minimum value: ' + repr(self.MinValue))
         if self.MustBeGreaterThan is not None:
-            constraints.append('Greater than:   ' + repr(self.MustBeGreaterThan))
+            constraints.append('Must be greater than ' + repr(self.MustBeGreaterThan))
         if self.MaxValue is not None:
-            constraints.append('Maximum value:  ' + repr(self.MaxValue))
+            constraints.append('Maximum value: ' + repr(self.MaxValue))
         if self.MustBeLessThan is not None:
-            constraints.append('Less than:      ' + repr(self.MustBeLessThan))
+            constraints.append('Must be less than ' + repr(self.MustBeLessThan))
         return constraints
 
 

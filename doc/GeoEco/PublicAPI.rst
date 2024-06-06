@@ -28,6 +28,7 @@ community that supports their long-term maintenance.
     GeoEco.Datasets.Collections
     GeoEco.Datasets.GDAL
     GeoEco.Datasets.SQLite
+    GeoEco.Datasets.Virtual
 
 Data Management
 ---------------

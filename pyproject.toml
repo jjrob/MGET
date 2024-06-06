@@ -29,6 +29,7 @@ dependencies = [
     "gdal",
     "numpy",
     "pyparsing",
+    "scikit-fmm",
 ]
 
 dynamic = ["version"]

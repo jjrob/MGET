@@ -789,8 +789,8 @@ class Grid(Dataset):
         #     3. The tuple may contain no more elements than the
         #        dimensions of the grid.
 
-        if not isinstance(key, (int, slice, tuple)):
-            raise TypeError(_('The key must be an integer, a slice, or a tuple of integers and slices.'))
+        if not isinstance(key, (int, slice, tuple)) or isinstance(key, bool):           # Note: bool is a subclass of int, so the second check is needed
+            raise TypeError(_('Grids may only be indexed with a tuple of integers and slices, or a single integer or slice.'))
 
         if not isinstance(key, tuple):
             key = (key,)
@@ -799,8 +799,8 @@ class Grid(Dataset):
             raise IndexError(_('Too many indices.'))
 
         for i in range(len(key)):
-            if not isinstance(key[i], (int, slice)) or isinstance(key[i], slice) and (not isinstance(key[i].start, (int, type(None))) or not isinstance(key[i].stop, (int, type(None))) or not isinstance(key[i].step, (int, type(None)))):
-                raise IndexError(_('Indices must be integers or integer slices.'))
+            if not isinstance(key[i], (int, slice)) or isinstance(key, bool) or isinstance(key[i], slice) and (not isinstance(key[i].start, (int, type(None))) or not isinstance(key[i].stop, (int, type(None))) or not isinstance(key[i].step, (int, type(None)))):
+                raise IndexError(_('Grid indices must be integers or integer slices.'))
             if isinstance(key[i], int):
                 if key[i] >= self.Shape[i]:
                     raise IndexError(_('Index out of bounds for dimension \'%(dim)s\'; %(val)i > dimension length %(len)i.') % {'dim': self.Dimensions[i], 'val': key[i], 'len': self.Shape[i]})
@@ -907,8 +907,6 @@ class Grid(Dataset):
     
     def _SetUnscaledDataWithArray(self, key, value):
 
-        # TODO: Validate that this grid is writable.
-
         # Validate the key and if any of the phyical dimensions are
         # flipped (e.g. the y coordinate decreases as the y index
         # increases), flip the key indices for those dimensions
@@ -929,10 +927,10 @@ class Grid(Dataset):
         expectedShape = []
 
         for i in range(len(self.Dimensions)):
-            if i >= len(key):
+            if i >= len(flippedKey):
                 length = self.Shape[i]
-            elif isinstance(key[i], slice):
-                length = len(range(*key[i].indices(self.Shape[i])))
+            elif isinstance(flippedKey[i], slice):
+                length = len(range(*flippedKey[i].indices(self.Shape[i])))
             else:
                 length = 1
             expectedSize *= length
@@ -982,10 +980,11 @@ class Grid(Dataset):
         needToFlipData = []
         largeStep = False
         largeStepKey = []
+        physicalDimensionsFlipped = self.GetLazyPropertyValue('PhysicalDimensionsFlipped')
 
         for i in range(len(self.Dimensions)):
             if i < len(flippedKey):
-                if isinstance(key[i], slice):
+                if isinstance(flippedKey[i], slice):
                     start, stop, step = flippedKey[i].indices(self.Shape[i])
                     largeStep = largeStep or step is not None and abs(step) > 1
                     if step is not None and step < 0:
@@ -1016,7 +1015,7 @@ class Grid(Dataset):
 
         if True in needToFlipData:
             self._LogDebug(_('%(class)s 0x%(id)016X: Flipping the following axes prior to writing data: %(axes)s'), {'class': self.__class__.__name__, 'id': id(self), 'axes': ', '.join([d for d in self.Dimensions if needToFlipData[self.Dimensions.index(d)]])})
-            value = value.__getitem__([slice(None, None, {True: -1, False: None}[f]) for f in needToFlipData])
+            value = value.__getitem__(tuple([slice(None, None, {True: -1, False: None}[f]) for f in needToFlipData]))
 
         # If the physical dimension order is different than our
         # standard order (tzyx), reorder the slices and data into the
@@ -1079,7 +1078,7 @@ class Grid(Dataset):
         raise NotImplementedError(_('The _ReadNumpyArray method of class %s has not been implemented.') % self.__class__.__name__)
 
     def _WriteNumpyArray(self, sliceList, data):
-        raise NotImplementedError(_('The _WriteNumpyArray method of class %s has not been implemented.') % self.__class__.__name__)
+        raise RuntimeError(_('The Data property of class %(class)s is read only. It is not possible to set the values of cells in a %(class)s instance.') % {'class': self.__class__.__name__})
 
 
 class _ContainerEmulator(object):      # Private helper class for Grid
