@@ -181,6 +181,10 @@ class WindFetchGrid(Grid):
                     if self._MaxDist is not None:
                         self._CachedSlice[self._CachedSlice > self._MaxDist] = self._MaxDist
 
+                    # Set nan values to the NoData value.
+
+                    self._CachedSlice[numpy.isnan(self._CachedSlice)] = self.NoDataValue
+
                     self._CachedSliceIndices = s[:-2]
 
                 # Extract an array representing the caller's region of
@@ -278,7 +282,17 @@ class WindFetchGrid(Grid):
 
         # Compute and return mean fetch across all of the directions.
 
-        return(numpy.mean(numpy.stack(dirArrays), axis=0))
+        meanFetch = numpy.nanmean(numpy.stack(dirArrays), axis=0)
+
+        # The computations above estimate fetch in some of the land cells as
+        # well as water. Set the land cells back to nan.
+
+        if numpy.isnan(landValue):
+            meanFetch = numpy.where(numpy.isnan(array), numpy.nan, meanFetch)
+        else:
+            meanFetch = numpy.where(array == landValue, numpy.nan, meanFetch)
+            
+        return(meanFetch)
 
 
 ###########################################################################################
