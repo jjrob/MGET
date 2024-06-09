@@ -371,6 +371,7 @@ field."""),
 
 AddMethodMetadata(Field.CalculateArcGISFields,
     shortDescription=_('Calculates values for one or more fields of a table using Python expressions.'),
+    isExposedAsArcGISTool=True,
     arcGISDisplayName=_('Calculate Fields Using Python Expressions'),
     arcGISToolCategory=_('Data Management\\Fields'),
     dependencies=[ArcGISDependency()])
@@ -410,6 +411,7 @@ AddResultMetadata(Field.CalculateArcGISFields, 'outputTable',
 
 AddMethodMetadata(Field.CalculateArcGISField,
     shortDescription=_('Calculates the value of a table field using a Python expression.'),
+    isExposedAsArcGISTool=True,
     arcGISDisplayName=_('Calculate Field Using a Python Expression'),
     arcGISToolCategory=_('Data Management\\Fields'),
     dependencies=[ArcGISDependency()])

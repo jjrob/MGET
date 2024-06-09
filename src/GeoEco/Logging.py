@@ -344,7 +344,7 @@ class Logger(object):
             cls.Warning(systemDefaultFileWarning)
             cls.Info(_('Log messages will only be sent to the console output (stdout).'))
 
-        # Active ArcGIS logging if requested.
+        # Activate ArcGIS logging if requested.
 
         if activateArcGISLogging and (loggingConfigFile is not None and callersFileWarning is None or userDefaultFile is not None and userDefaultFileWarning is None or systemDefaultFileWarning is None):
             cls.ActivateArcGISLogging()

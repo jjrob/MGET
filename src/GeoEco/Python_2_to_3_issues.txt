@@ -31,3 +31,4 @@ Look for code that involves .mdb
 These functions now reutrn a Result object, so we have to do .getOutput(0):
     gp.CreateSpatialReference_management
     gp.GetCount_management
+Replace initializeToArcGISGeoprocessorVariable=u'OverwriteOutput' with initializeToArcGISGeoprocessorVariable='env.overwriteOutput'

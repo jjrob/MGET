@@ -859,7 +859,7 @@ AddArgumentMetadata(Directory.Copy, 'overwriteExistingFiles',
 :exc:`ValueError` will be raised if any destination file exists. This
 parameter is ignored if `deleteExistingDestinationDirectory` is True, since
 that parameter will cause any existing files to be deleted."""),
-    initializeToArcGISGeoprocessorVariable='OverwriteOutput')
+    initializeToArcGISGeoprocessorVariable='env.overwriteOutput')
 
 # Public method: Directory.Create
 
@@ -1435,7 +1435,7 @@ AddArgumentMetadata(Directory.FindAndCreateTable, 'overwriteExisting',
     description=_(
 """If True, the output table will be overwritten, if it exists. If False, a
 :exc:`ValueError` will be raised if the output table exists."""),
-    initializeToArcGISGeoprocessorVariable='OverwriteOutput')
+    initializeToArcGISGeoprocessorVariable='env.overwriteOutput')
 
 AddResultMetadata(Directory.FindAndCreateTable, 'createdTable',
     typeMetadata=UnicodeStringTypeMetadata(),

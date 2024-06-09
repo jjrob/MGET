@@ -485,7 +485,7 @@ class BatchProcessing(object):
                 AddArgumentMetadata(processListMethodName, 'overwriteExisting', cls=methodMetadata.Class.Object, module=methodMetadata.Class.Module.Object,
                                     typeMetadata=BooleanTypeMetadata(),
                                     description=overwriteExistingDescription,
-                                    initializeToArcGISGeoprocessorVariable='OverwriteOutput')
+                                    initializeToArcGISGeoprocessorVariable='env.overwriteOutput')
 
         # If the non-batch method has one or more input or output parameters
         # that can be base paths, add the basePath parameter to the batch
@@ -1068,7 +1068,7 @@ paths prior to processing, as follows:
                 AddArgumentMetadata(processTableMethodName, 'overwriteExisting', cls=methodMetadata.Class.Object, module=methodMetadata.Class.Module.Object,
                                     typeMetadata=BooleanTypeMetadata(),
                                     description=overwriteExistingDescription,
-                                    initializeToArcGISGeoprocessorVariable='OverwriteOutput')
+                                    initializeToArcGISGeoprocessorVariable='env.overwriteOutput')
 
         # If the non-batch method has one or more input or output parameters
         # that can be base paths, add the basePath parameter to the batch
@@ -1565,7 +1565,7 @@ converted to absolute paths prior to processing, as follows:
                 AddArgumentMetadata(processArcGISTableMethodName, 'overwriteExisting', cls=methodMetadata.Class.Object, module=methodMetadata.Class.Module.Object,
                                     typeMetadata=BooleanTypeMetadata(),
                                     description=overwriteExistingDescription,
-                                    initializeToArcGISGeoprocessorVariable='OverwriteOutput')
+                                    initializeToArcGISGeoprocessorVariable='env.overwriteOutput')
 
         # If the non-batch method has one or more input or output parameters
         # that can be base paths, add the basePath parameter to the batch
@@ -1942,7 +1942,7 @@ workspace containing the table will be prepended instead."""),
                 AddArgumentMetadata(findAndProcessMethodName, 'overwriteExisting', cls=methodMetadata.Class.Object, module=methodMetadata.Class.Module.Object,
                                     typeMetadata=BooleanTypeMetadata(),
                                     description=overwriteExistingDescription,
-                                    initializeToArcGISGeoprocessorVariable='OverwriteOutput')
+                                    initializeToArcGISGeoprocessorVariable='env.overwriteOutput')
 
         # If one or more of the method's results is designated as a
         # derived result for ArcGIS, copy these results from the

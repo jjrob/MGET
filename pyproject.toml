@@ -30,6 +30,7 @@ dependencies = [
     "numpy",
     "pyparsing",
     "scikit-fmm",
+    "scipy",
 ]
 
 dynamic = ["version"]

@@ -849,7 +849,7 @@ AddArgumentMetadata(File.Copy, 'destinationFile',
 AddArgumentMetadata(File.Copy, 'overwriteExisting',
     typeMetadata=BooleanTypeMetadata(),
     description=_('If True, the destination file will be overwritten, if it exists. If False, a :exc:`ValueError` will be raised if the destination file exists.'),
-    initializeToArcGISGeoprocessorVariable='OverwriteOutput')
+    initializeToArcGISGeoprocessorVariable='env.overwriteOutput')
 
 # Public method: File.CopySilent
 
@@ -903,7 +903,7 @@ AddArgumentMetadata(File.Decompress, 'destinationDirectory',
 AddArgumentMetadata(File.Decompress, 'overwriteExisting',
     typeMetadata=BooleanTypeMetadata(),
     description=_('If True, the extracted destination files will be overwritten, if they already exist. If False, a :exc:`ValueError` will be raised if any destination files already exist.'),
-    initializeToArcGISGeoprocessorVariable='OverwriteOutput')
+    initializeToArcGISGeoprocessorVariable='env.overwriteOutput')
 
 AddArgumentMetadata(File.Decompress, 'decompressedFileToReturn',
     typeMetadata=UnicodeStringTypeMetadata(canBeNone=True),
@@ -1519,7 +1519,7 @@ AddArgumentMetadata(File.FindAndCreateTable, 'overwriteExisting',
     description=_(
 """If True, the output table will be overwritten, if it exists. If False, a
 :exc:`ValueError` will be raised if the output table exists."""),
-    initializeToArcGISGeoprocessorVariable='OverwriteOutput')
+    initializeToArcGISGeoprocessorVariable='env.overwriteOutput')
 
 AddResultMetadata(File.FindAndCreateTable, 'createdTable',
     typeMetadata=UnicodeStringTypeMetadata(),
@@ -1697,7 +1697,7 @@ file will be copied to the destination file and then deleted."""),
 AddArgumentMetadata(File.Move, 'overwriteExisting',
     typeMetadata=BooleanTypeMetadata(),
     description=File.Copy.__doc__.Obj.Arguments[3].Description,
-    initializeToArcGISGeoprocessorVariable='OverwriteOutput')
+    initializeToArcGISGeoprocessorVariable='env.overwriteOutput')
 
 # Public method: File.MoveSilent
 
