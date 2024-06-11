@@ -554,10 +554,13 @@ class _ArcGISObjectWrapper(object):
                     raise
 
         # If we catch an exception, log an error and reraise it the original
-        # exception.
+        # exception. If it is an AttributeError, do NOT log a message, because
+        # this may be normal behavior: hasattr() calls getattr() and checks
+        # for the exception.
         
         except Exception as e:
-            self._LogError(_('Failed to get the value of the %(name)s attribute of %(obj)s. This may result from a problem with your inputs or it may indicate a programming mistake in this tool or ArcGIS itself. Please check your inputs and try again. Also review any preceding error messages and the detailed error information that appears at the end of this message. If you suspect a programming mistake in this tool or ArcGIS, please contact the author of this tool for assistance. Detailed error information: The following exception was raised when the attribute was retrieved: %(error)s: %(msg)s') % {'name': name, 'obj': self._Object, 'error': e.__class__.__name__, 'msg': e})
+            if not isinstance(e, AttributeError):
+                self._LogError(_('Failed to get the value of the %(name)s attribute of %(obj)s. This may result from a problem with your inputs or it may indicate a programming mistake in this tool or ArcGIS itself. Please check your inputs and try again. Also review any preceding error messages and the detailed error information that appears at the end of this message. If you suspect a programming mistake in this tool or ArcGIS, please contact the author of this tool for assistance. Detailed error information: The following exception was raised when the attribute was retrieved: %(error)s: %(msg)s') % {'name': name, 'obj': self._Object, 'error': e.__class__.__name__, 'msg': e})
             raise
 
         # If the caller asked for a method or function, create a wrapper, add

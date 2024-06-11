@@ -371,189 +371,47 @@ class ToolValidator:
     def _RestructuredTextToEsriXDoc(cls, rst):
         return '<xdoc>' + rst.replace('\n', '<br/>') + '</xdoc>'      # TODO
 
-    #############################################################################
-    # TODO: Remove the following obsolete functions
-    #############################################################################
-
-    @classmethod
-    def _CreateToolboxPythonFile(cls, displayName, alias, methodsForToolbox, outputDir):
-
-        # Write the toolbox.module.py file.
-
-        pyFilePath = outputDir / 'toolbox.module.py'
-
-        Logger.Info(f'Writing {pyFilePath.name}')
-
-        with pyFilePath.open('wt') as f:
-
-            # Write the imports and Toolbox class:
-
-            newline = '\n'
-            f.write(
-f"""# toolbox.module.py - GeoEco's ArcGIS Python geoprocessing tools.
-#
-# Copyright (C) 2024 Jason J. Roberts
-#
-# This file is part of Marine Geospatial Ecology Tools (MGET) and is released
-# under the terms of the 3-Clause BSD License. See the LICENSE file at the
-# root of this project or https://opensource.org/license/bsd-3-clause for the
-# full license text.
-
-import arcpy
-
-class Toolbox(object):
-    def __init__(self):
-        self.label = '''{displayName}'''
-        self.alias = '{alias}'
-        self.tools = [
-            {(','+newline+'            ').join([meth.__doc__._Obj.Class.Name.split('.')[-1] + meth.__doc__._Obj.Name for meth in methodsForToolbox])}
-        ]
-""")
-            # Write a class for each tool.
-
-            for method in methodsForToolbox:
-                methodMetadata = method.__doc__._Obj
-                cls._WriteToolPythonClass(methodMetadata, f)
-
-    @classmethod
-    def _WriteToolPythonClass(cls, mm, f):
-
-        # Write the class declaration and __init__(). Following ESRI's Python
-        # tools that come with Arc Pro, we set self.description to an empty
-        # string, self.canRunInBackground to False, and self.params to None.
-
-        bs = '\\'
-        quote = "'"
-        className = mm.Class.Name.split('.')[-1] + mm.Name
-
-        Logger.Debug(f'    class {className}:')
-
-        f.write(
-f"""
-
-class {className}(object):
-    def __init__(self):
-        self.label = '''{mm.ArcGISDisplayName}'''
-        self.description = ''
-        self.canRunInBackground = False
-        self.category = '{mm.ArcGISToolCategory.replace(bs, bs+bs) if mm.ArcGISToolCategory is not None else ""}'
-        self.params = None
-""")
-        # Write the getParameterInfo() method.
-
-        Logger.Debug(f'        getParameterInfo():')
-
-        f.write('\n')
-        f.write('    def getParameterInfo(self):\n')
-        f.write('        params = []\n')
-
-        for am in mm.Arguments:
-            if am.ArcGISDisplayName is None:
-                continue
-
-            Logger.Debug(f'            parameter: {am.Name}')
-
-            f.write(
-f"""        
-        params.append(arcpy.Parameter(
-            displayName='''{am.ArcGISDisplayName}''',
-            name='{am.Name}',
-            datatype='{cls._GetArcGISDataType(am.Type)}',
-            parameterType='{'Required' if not am.HasDefault else 'Optional'}',
-            direction='{am.Direction}'
-        ))
-""")
-            if am.ArcGISCategory is not None and len(am.ArcGISCategory) > 0:
-                f.write(f'        params[-1].category = {repr(am.ArcGISCategory)}\n')
-
-            if isinstance(am.Type, SequenceTypeMetadata):
-                f.write(f'        params[-1].multiValue = True\n')
-
-            if am.ArcGISParameterDependencies is not None and len(am.ArcGISParameterDependencies) > 0:
-                f.write(f'        params[-1].parameterDependencies = [{", ".join([quote + d + quote for d in am.ArcGISParameterDependencies])}]\n')
-
-            if am.HasDefault and am.Default is not None:
-                f.write(f'        params[-1].value = {repr(am.Default)}\n')
-
-            # TODO: filters
-
-        for rm in mm.Results:
-            if rm.ArcGISDisplayName is None:
-                continue
-
-            Logger.Debug(f'            result: {rm.Name}')
-
-            f.write(
-f"""        
-        params.append(arcpy.Parameter(
-            displayName='''{rm.ArcGISDisplayName}''',
-            name='{rm.Name}',
-            datatype='{cls._GetArcGISDataType(rm.Type)}',
-            parameterType='Derived',
-            direction='Output'
-        ))
-""")
-            if rm.ArcGISParameterDependencies is not None and len(rm.ArcGISParameterDependencies) > 0:
-                f.write(f'        params[-1].parameterDependencies = [{", ".join([quote + d + quote for d in rm.ArcGISParameterDependencies])}]\n')
-
-        f.write('\n')
-        f.write('        return params\n')
-
-        # Write execute().
-
-        Logger.Debug(f'        execute()')
-
-        moduleFQN = mm.Class.Module.Name
-        if moduleFQN.split('.')[-1].startswith('_'):
-            moduleFQN = moduleFQN.rsplit('.', 1)[0]     # If we get an internal module, e.g. GeoEco.Foo.Bar._Baz, we want to import the containing package, e.g. GeoEco.Foo.Bar.
-        f.write(
-f"""
-    def execute(self, parameters, messages):
-        import GeoEco.ArcToolbox
-        import {moduleFQN}
-        GeoEco.ArcToolbox._ExecuteMethodAsGeoprocessingTool({moduleFQN}.{mm.Class.Name}.{mm.Name}, parameters, messages)
-""")
-
-        # Write isLicensed(), updateParameters(), and updateMessages(), and
-        # postExecute(). We do not use these for anything.
-
-        f.write(
-"""
-    def isLicensed(self):
-        return True
-
-    def updateParameters(self, parameters):
-        pass
-
-    def updateMessages(self, parameters):
-        pass
-
-    def postExecute(self, parameters):
-        pass
-""")
-
 
 def _ExecuteMethodAsGeoprocessingTool(method):
 
     # Determine the method's argument values.
 
-    import arcpy
+    from GeoEco.ArcGIS import GeoprocessorManager
 
-    mm = method.__doc__.Obj
-    paramInfo = arcpy.GetParameterInfo()
+    gp = GeoprocessorManager.GetWrappedGeoprocessor()
+    paramInfo = gp.GetParameterInfo()
     pni = {p.name: i for i, p in enumerate(paramInfo)}
+    mm = method.__doc__.Obj
     argValues = {}
-
-    in_raster = arcpy.GetParameterAsText(pni["in_raster"])
 
     for am in mm.Arguments:
         if am.InitializeToArcGISGeoprocessorVariable is not None:
-            argValues[am.Name] = getattr(arcpy, am.InitializeToArcGISGeoprocessorVariable)
+            value = gp
+            for attr in am.InitializeToArcGISGeoprocessorVariable.split('.'):
+                value = getattr(value, attr)
+            argValues[am.Name] = value
 
         if am.ArcGISDisplayName is None:
                 continue
 
-        argValues[am.Name] = arcpy.GetParameter(pni[am.Name])
+        # Unfortunately, we can't easily use gp.GetParameter(), because it
+        # returns an opaque object in most situations. So we will follow
+        # ESRI's examples and use gp.GetParameterAsText() and parse the
+        # result, which is what we've always done from the beginning of
+        # GeoEco.
+
+        value = gp.GetParameterAsText(pni[am.Name])
+        if value == '#' or len(value) <= 0:
+            if am.Type.CanBeNone:
+                value = None
+            elif am.HasDefault:
+                value = am.Default
+            else:
+                value = None   # This will cause an exception to be raised by the method's validation code when we call the method
+        else:
+            value = am.Type.ParseValueFromArcGISInputParameterString(value, am.ArcGISDisplayName, pni[am.Name] + 1)
+
+        argValues[am.Name] = value
 
     # Log a debug message indicating the method is being called.
 
@@ -561,7 +419,19 @@ def _ExecuteMethodAsGeoprocessingTool(method):
 
     # Call the method.
 
-    method(**argValues)
+    results = method(**argValues)
+
+    # Set the "derived" output parameters using the returned results
+
+    if len(mm.Results) > 0:
+        r = 0
+        if len(mm.Results) == 1:
+            results = (results,)
+        for i, rm in enumerate(mm.Results):
+            if rm.ArcGISDisplayName is not None:
+                Logger.Debug('Setting geoprocessing output parameter %s=%r' % (rm.Name, results[i]))
+                gp.SetParameterAsText(pni[rm.Name], str(results[r]))
+                r += 1
 
 
 def Main() -> int:
