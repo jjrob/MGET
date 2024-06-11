@@ -71,7 +71,7 @@ class ArcGISTable(Table, ArcGISCopyableTable):
         if queryableAttributeValues is not None:
             qav.update(queryableAttributeValues)
 
-        qav['TableName'] = tableName
+        qav['TableName'] = os.path.split(path)[-1]
 
         # Initialize the base class.
         
@@ -228,7 +228,7 @@ class ArcGISTable(Table, ArcGISCopyableTable):
         return self.GetLazyPropertyValue(name)
 
     def _ConstructFieldObject(self, f):
-        dataType = f.Type.lower()
+        dataType = f.type.lower()
         if dataType == 'oid':
             dataType = 'oid'
         elif dataType == 'geometry':
@@ -252,10 +252,10 @@ class ArcGISTable(Table, ArcGISCopyableTable):
             dataType = 'binary'
         else:
             dataType = 'unknown'
-        isNullable = f.IsNullable
+        isNullable = f.isNullable
         isNullable = isinstance(isNullable, (bool, int)) and bool(isNullable) or isinstance(isNullable, str) and isNullable.lower() == 'true'
-        isSettable = dataType != 'oid' and not (f.Name.lower() in ['shape_length', 'shape.stlength()'] and self.GetLazyPropertyValue('GeometryType') in ['MultiLineString', 'MultiLineString25D', 'MultiPolygon', 'MultiPolygon25D']) and not (f.Name.lower() in ['shape_area', 'shape.starea()'] and self.GetLazyPropertyValue('GeometryType') in ['MultiPolygon', 'MultiPolygon25D'])
-        return Field(f.Name, dataType, f.Length, f.Precision, isNullable, isSettable)
+        isSettable = dataType != 'oid' and not (f.name.lower() in ['shape_length', 'shape.stlength()'] and self.GetLazyPropertyValue('GeometryType') in ['MultiLineString', 'MultiLineString25D', 'MultiPolygon', 'MultiPolygon25D']) and not (f.name.lower() in ['shape_area', 'shape.starea()'] and self.GetLazyPropertyValue('GeometryType') in ['MultiPolygon', 'MultiPolygon25D'])
+        return Field(f.name, dataType, f.length, f.precision, isNullable, isSettable)
 
     @classmethod
     def _TestCapability(cls, capability):

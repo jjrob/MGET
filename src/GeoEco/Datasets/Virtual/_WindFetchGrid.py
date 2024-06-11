@@ -8,6 +8,8 @@
 # root of this project or https://opensource.org/license/bsd-3-clause for the
 # full license text.
 
+import warnings
+
 from ...DynamicDocString import DynamicDocString
 from ...Internationalization import _
 
@@ -215,7 +217,7 @@ class WindFetchGrid(Grid):
         # Define a helper function for calculating fetch in one direction.
 
         import numpy
-        import scipy.ndimage.interpolation
+        import scipy.ndimage
 
         def fetch_single_dir(array, cellSize, direction):
 
@@ -259,9 +261,9 @@ class WindFetchGrid(Grid):
 
             pad_width = estimated_pad(array, cellSize)
             array_pad = padding(array, pad_width, numpy.nan)
-            array_rot = scipy.ndimage.interpolation.rotate(array_pad, angle=direction, reshape=False, mode="constant", cval=numpy.nan, order=0)
+            array_rot = scipy.ndimage.rotate(array_pad, angle=direction, reshape=False, mode="constant", cval=numpy.nan, order=0)
             array_fetch = fetch_length_vect(array_rot, cellSize)
-            array_inv_rot = scipy.ndimage.interpolation.rotate(array_fetch, angle=360-direction, reshape=False, mode="constant", cval=numpy.nan, order=0)
+            array_inv_rot = scipy.ndimage.rotate(array_fetch, angle=360-direction, reshape=False, mode="constant", cval=numpy.nan, order=0)
             array_inv_pad = padding(array_inv_rot, pad_width, -cellSize, inverse=True)
 
             return(array_inv_pad)
@@ -282,7 +284,9 @@ class WindFetchGrid(Grid):
 
         # Compute and return mean fetch across all of the directions.
 
-        meanFetch = numpy.nanmean(numpy.stack(dirArrays), axis=0)
+        with warnings.catch_warnings():
+            warnings.filterwarnings(action='ignore', message='Mean of empty slice')
+            meanFetch = numpy.nanmean(numpy.stack(dirArrays), axis=0)
 
         # The computations above estimate fetch in some of the land cells as
         # well as water. Set the land cells back to nan.

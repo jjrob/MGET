@@ -151,7 +151,7 @@ class BatchProcessing(object):
         if outputParamNames is not None:
             assert isinstance(skipExistingDescription, (str, type(None))), 'skipExistingDescription must be a string or None when outputParamNames is provided'
             argMetadata = methodMetadata.GetArgumentByName('overwriteExisting')
-            if argMetadata is not None and isinstance(argMetadata.Type, BooleanTypeMetadata) and argMetadata.InitializeToArcGISGeoprocessorVariable.lower() == 'overwriteoutput':
+            if argMetadata is not None and isinstance(argMetadata.Type, BooleanTypeMetadata) and argMetadata.InitializeToArcGISGeoprocessorVariable.lower().endswith('overwriteoutput'):
                 assert isinstance(overwriteExistingDescription, str), 'overwriteExistingDescription must be a string when the method has an OverwriteExisting argument'
 
         assert processArcGISTableMethodName is None or processTableMethodName is not None, 'If processArcGISTableMethodName is not None, processTableMethodName must not be None'
@@ -378,7 +378,7 @@ class BatchProcessing(object):
                     source += ', skipExisting=False'
                     
                 argMetadata = methodMetadata.GetArgumentByName('overwriteExisting')
-                if argMetadata is not None and isinstance(argMetadata.Type, BooleanTypeMetadata) and argMetadata.InitializeToArcGISGeoprocessorVariable.lower() == 'overwriteoutput':
+                if argMetadata is not None and isinstance(argMetadata.Type, BooleanTypeMetadata) and argMetadata.InitializeToArcGISGeoprocessorVariable.lower().endswith('overwriteoutput'):
                     source += ', overwriteExisting=False'
 
             if needsBasePathArg:
@@ -481,7 +481,7 @@ class BatchProcessing(object):
                                     description=skipExistingDescription)
 
             argMetadata = methodMetadata.GetArgumentByName('overwriteExisting')
-            if argMetadata is not None and isinstance(argMetadata.Type, BooleanTypeMetadata) and argMetadata.InitializeToArcGISGeoprocessorVariable.lower() == 'overwriteoutput':
+            if argMetadata is not None and isinstance(argMetadata.Type, BooleanTypeMetadata) and argMetadata.InitializeToArcGISGeoprocessorVariable.lower().endswith('overwriteoutput'):
                 AddArgumentMetadata(processListMethodName, 'overwriteExisting', cls=methodMetadata.Class.Object, module=methodMetadata.Class.Module.Object,
                                     typeMetadata=BooleanTypeMetadata(),
                                     description=overwriteExistingDescription,
@@ -790,7 +790,7 @@ paths prior to processing, as follows:
             if arg.Name in inputParamNames or outputParamNames is not None and arg.Name in outputParamNames:
                 argList.append(None)
                 argsToGet.append(arg.Name + 'List')
-            elif constantParamNames is not None and arg.Name in constantParamNames or arg.Name.lower() == 'overwriteexisting' and isinstance(arg.Type, BooleanTypeMetadata) and arg.InitializeToArcGISGeoprocessorVariable.lower() == 'overwriteoutput':
+            elif constantParamNames is not None and arg.Name in constantParamNames or arg.Name.lower() == 'overwriteexisting' and isinstance(arg.Type, BooleanTypeMetadata) and arg.InitializeToArcGISGeoprocessorVariable.lower().endswith('overwriteoutput'):
                 argList.append(methodLocals[arg.Name])
                 argsToGet.append(None)
             else:
@@ -973,7 +973,7 @@ paths prior to processing, as follows:
                 source += ', skipExisting=False'
                 
             argMetadata = methodMetadata.GetArgumentByName('overwriteExisting')
-            if argMetadata is not None and isinstance(argMetadata.Type, BooleanTypeMetadata) and argMetadata.InitializeToArcGISGeoprocessorVariable.lower() == 'overwriteoutput':
+            if argMetadata is not None and isinstance(argMetadata.Type, BooleanTypeMetadata) and argMetadata.InitializeToArcGISGeoprocessorVariable.lower().endswith('overwriteoutput'):
                 source += ', overwriteExisting=False'
 
         if needsBasePathArg:
@@ -1064,7 +1064,7 @@ paths prior to processing, as follows:
                                     description=skipExistingDescription)
 
             argMetadata = methodMetadata.GetArgumentByName('overwriteExisting')
-            if argMetadata is not None and isinstance(argMetadata.Type, BooleanTypeMetadata) and argMetadata.InitializeToArcGISGeoprocessorVariable.lower() == 'overwriteoutput':
+            if argMetadata is not None and isinstance(argMetadata.Type, BooleanTypeMetadata) and argMetadata.InitializeToArcGISGeoprocessorVariable.lower().endswith('overwriteoutput'):
                 AddArgumentMetadata(processTableMethodName, 'overwriteExisting', cls=methodMetadata.Class.Object, module=methodMetadata.Class.Module.Object,
                                     typeMetadata=BooleanTypeMetadata(),
                                     description=overwriteExistingDescription,
@@ -1229,7 +1229,7 @@ converted to absolute paths prior to processing, as follows:
             if 'skipExisting' in methodLocals:
                 argList.append(methodLocals['skipExisting'])
             argMetadata = methodMetadata.GetArgumentByName('overwriteExisting')
-            if argMetadata is not None and isinstance(argMetadata.Type, BooleanTypeMetadata) and argMetadata.InitializeToArcGISGeoprocessorVariable.lower() == 'overwriteoutput':
+            if argMetadata is not None and isinstance(argMetadata.Type, BooleanTypeMetadata) and argMetadata.InitializeToArcGISGeoprocessorVariable.lower().endswith('overwriteoutput'):
                 argList.append(methodLocals['overwriteExisting'])
 
         if needsBasePathArg:
@@ -1397,7 +1397,7 @@ converted to absolute paths prior to processing, as follows:
                 source += ', skipExisting=False'
                 
             argMetadata = methodMetadata.GetArgumentByName('overwriteExisting')
-            if argMetadata is not None and isinstance(argMetadata.Type, BooleanTypeMetadata) and argMetadata.InitializeToArcGISGeoprocessorVariable.lower() == 'overwriteoutput':
+            if argMetadata is not None and isinstance(argMetadata.Type, BooleanTypeMetadata) and argMetadata.InitializeToArcGISGeoprocessorVariable.lower().endswith('overwriteoutput'):
                 source += ', overwriteExisting=False'
 
         if needsBasePathArg:
@@ -1561,7 +1561,7 @@ converted to absolute paths prior to processing, as follows:
                                     arcGISCategory=_('Batch processing options'))
 
             argMetadata = methodMetadata.GetArgumentByName('overwriteExisting')
-            if argMetadata is not None and isinstance(argMetadata.Type, BooleanTypeMetadata) and argMetadata.InitializeToArcGISGeoprocessorVariable.lower() == 'overwriteoutput':
+            if argMetadata is not None and isinstance(argMetadata.Type, BooleanTypeMetadata) and argMetadata.InitializeToArcGISGeoprocessorVariable.lower().endswith('overwriteoutput'):
                 AddArgumentMetadata(processArcGISTableMethodName, 'overwriteExisting', cls=methodMetadata.Class.Object, module=methodMetadata.Class.Module.Object,
                                     typeMetadata=BooleanTypeMetadata(),
                                     description=overwriteExistingDescription,
@@ -1649,7 +1649,7 @@ workspace containing the table will be prepended instead."""),
                 argList.append(methodLocals['skipExisting'])
                 
             argMetadata = methodMetadata.GetArgumentByName('overwriteExisting')
-            if argMetadata is not None and isinstance(argMetadata.Type, BooleanTypeMetadata) and argMetadata.InitializeToArcGISGeoprocessorVariable.lower() == 'overwriteoutput':
+            if argMetadata is not None and isinstance(argMetadata.Type, BooleanTypeMetadata) and argMetadata.InitializeToArcGISGeoprocessorVariable.lower().endswith('overwriteoutput'):
                 argList.append(methodLocals['overwriteExisting'])
 
         if needsBasePathArg:
@@ -1782,7 +1782,7 @@ workspace containing the table will be prepended instead."""),
                 source += ', skipExisting=False'
                 
             argMetadata = methodMetadata.GetArgumentByName('overwriteExisting')
-            if argMetadata is not None and isinstance(argMetadata.Type, BooleanTypeMetadata) and argMetadata.InitializeToArcGISGeoprocessorVariable.lower() == 'overwriteoutput':
+            if argMetadata is not None and isinstance(argMetadata.Type, BooleanTypeMetadata) and argMetadata.InitializeToArcGISGeoprocessorVariable.lower().endswith('overwriteoutput'):
                 source += ', overwriteExisting=False'
 
         source += '):\n'
@@ -1938,7 +1938,7 @@ workspace containing the table will be prepended instead."""),
                                     arcGISCategory=_('Batch processing options'))
                 
             argMetadata = methodMetadata.GetArgumentByName('overwriteExisting')
-            if argMetadata is not None and isinstance(argMetadata.Type, BooleanTypeMetadata) and argMetadata.InitializeToArcGISGeoprocessorVariable.lower() == 'overwriteoutput':
+            if argMetadata is not None and isinstance(argMetadata.Type, BooleanTypeMetadata) and argMetadata.InitializeToArcGISGeoprocessorVariable.lower().endswith('overwriteoutput'):
                 AddArgumentMetadata(findAndProcessMethodName, 'overwriteExisting', cls=methodMetadata.Class.Object, module=methodMetadata.Class.Module.Object,
                                     typeMetadata=BooleanTypeMetadata(),
                                     description=overwriteExistingDescription,
@@ -2086,7 +2086,7 @@ workspace containing the table will be prepended instead."""),
                 argList.append(methodLocals['skipExisting'])
                 
             argMetadata = methodMetadata.GetArgumentByName('overwriteExisting')
-            if argMetadata is not None and isinstance(argMetadata.Type, BooleanTypeMetadata) and argMetadata.InitializeToArcGISGeoprocessorVariable.lower() == 'overwriteoutput':
+            if argMetadata is not None and isinstance(argMetadata.Type, BooleanTypeMetadata) and argMetadata.InitializeToArcGISGeoprocessorVariable.lower().endswith('overwriteoutput'):
                 argList.append(methodLocals['overwriteExisting'])
 
         from reprlib import Repr
