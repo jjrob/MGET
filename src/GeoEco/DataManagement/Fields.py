@@ -181,12 +181,12 @@ AddArgumentMetadata(Field.CalculateFields, 'pythonExpressions',
 for each field.
 
 For each row of the table, this function updates the values of the specified
-fields by evaluating their corresponding expressions using the Python eval
-function. In your expressions, you can access the value of any field by
-referencing the field as an attribute of the ``row`` object. For example, if
-your table contains a ``SampledSST`` field and you want to calculate the
-``ActualSST`` field from it, you might calculate ``ActualSST`` with the
-following expression::
+fields by evaluating their corresponding expressions using the Python
+:py:func:`eval` function. In your expressions, you can access the value of any
+field by referencing the field as an attribute of the ``row`` object. For
+example, if your table contains a ``SampledSST`` field and you want to
+calculate the ``ActualSST`` field from it, you might calculate ``ActualSST``
+with the following expression::
 
     row.SampledSST * 0.075 + 3.0
 
@@ -235,7 +235,7 @@ field expressions. For example, you might want to perform a calculation on all
 of the rows that involves the current date and time, but you want the date and
 time to remain constant while the rows are being updated. To obtain the
 current date and time, you know you can import the :py:mod:`datetime` module
-and then invoke the :py:func:`datetime.datetime.now()`. But you do not want to
+and then invoke :py:meth:`datetime.datetime.now`. But you do not want to
 put this into your field expressions because the value will change as the
 system clock ticks during your computations. Instead you can set the ``now``
 variable using the statement::
@@ -284,34 +284,29 @@ AddArgumentMetadata(Field.CalculateField, 'pythonExpression',
     description=_(
 """Python expression to evaluate for the specified field.
 
-For each row of the table, this function updates the value of the field by
-evaluating the expression using the Python eval function. In your expression,
-you can access the value of any field by referencing the field as an attribute
-of the "row" object. For example, if your table contains a SampledSST field
-and you want to calculate the ActualSST field from it, you might calculate
-ActualSST with the following expression::
+For each row of the table, this function updates the values of the specified
+fields by evaluating their corresponding expressions using the Python eval
+function. In your expressions, you can access the value of any field by
+referencing the field as an attribute of the ``row`` object. For example, if
+your table contains a ``SampledSST`` field and you want to calculate the
+``ActualSST`` field from it, you might calculate ``ActualSST`` with the
+following expression::
 
     row.SampledSST * 0.075 + 3.0
 
-Your expression may be any Python statement appropriate for passing to
-the eval function. It must evaluate to a data type that is appropriate
+Your expression may be any Python statement appropriate for passing to the
+:py:func:`eval` function. It must evaluate to a data type that is appropriate
 for the field's data type:
 
-* For string, text, or character fields, return a Python str or
-  unicode object.
+* For string, text, or character fields, return a :py:class:`str`.
 
-* For integer fields of any size less than or equal to 32 bits, return
-  a Python int.
+* For integer fields, return an :py:class:`int`.
 
-* For 32-bit or 64-bit floating point fields, return a Python float.
+* For floating point fields, return a :py:class:`float`.
 
-* For date or datetime fields, return an instance of the Python
-  datetime class.
+* For date or datetime fields, return :py:class:`~datetime.datetime`.
 
-* To set the field to a database NULL value, return Python None.
-
-Other database data types might work if the appropriate Python data
-type is used, but these have not been tested.
+* To set the field to a database NULL value, return Python :py:data:`None`.
 
 For more information on Python syntax, please see the `Python
 documentation <http://www.python.org/doc/>`_."""),
@@ -322,27 +317,26 @@ CopyArgumentMetadata(Table.OpenSelectCursor, 'where', Field.CalculateField, 'whe
 AddArgumentMetadata(Field.CalculateField, 'modulesToImport',
     typeMetadata=Field.CalculateFields.__doc__.Obj.Arguments[5].Type,
     description=_(
-"""Python modules to import prior to evaluating the expression. If
-you need to access Python functions or classes that are provided by a
-module rather than being built-in to the interpreter, list the module
-here. For example, to be able to use the datetime class in your
-expression, list the datetime module here. In your expression, you
-must refer to the class using its fully-qualified name,
-datetime.datetime."""),
+"""Python modules to import prior to evaluating the expression. If you need
+to access Python functions or classes that are provided by a module rather
+than being built-in to the interpreter, list the module here. For example, to
+be able to use the :py:class:`~datetime.datetime` class in your expression,
+list the :py:mod:`datetime` module here. In your expression, you must refer
+to the class using its fully-qualified name, ``datetime.datetime``."""),
     arcGISDisplayName=_('Python modules to import'))
 
 AddArgumentMetadata(Field.CalculateField, 'statementsToExecFirst',
     typeMetadata=ListTypeMetadata(elementType=UnicodeStringTypeMetadata(), canBeNone=True),
     description=_(
 """Python statements to execute prior to looping through the rows of the
-table. The statements are executed sequentially using the Python exec
-statement. You can use Python statements to perform initialization tasks such
+table. The statements are executed sequentially using the Python :py:func:`exec`
+function. You can use Python statements to perform initialization tasks such
 as setting variables that you reference from your field expression. For
 example, you might want to perform a calculation on all of the rows that
 involves the current date and time, but you want the date and time to remain
 constant while the rows are being updated. To obtain the current date and
-time, you know you can import the datetime module and then invoke the
-datetime.datetime.now(). But you do not want to put this into your field
+time, you know you can import the datetime module and then invoke
+:py:meth:`datetime.datetime.now`. But you do not want to put this into your field
 expression because the value will change as the system clock ticks during your
 computations. Instead you can set the ``now`` variable using the statement::
 
@@ -357,13 +351,13 @@ AddArgumentMetadata(Field.CalculateField, 'statementsToExecPerRow',
     description=_(
 """Python statements to execute for every row after the row is retrieved but
 before the field expression is evaluated. The statements are executed
-sequentially using the Python exec statement. You can use Python statements to
-perform arbitrary tasks prior to evaluating your expression. For example, your
-table's rows may represent files from which you want to extract a piece of
-metadata, but the extraction code cannot be expressed in a single statement.
-You could provide the Python statements needed to open each file, extract the
-metadata, and assign it to a variable. Your field expression could then
-reference the variable, causing the metadata value to be stored in the
+sequentially using the Python :py:func:`exec` function. You can use Python
+statements to perform arbitrary tasks prior to evaluating your expression. For
+example, your table's rows may represent files from which you want to extract
+a piece of metadata, but the extraction code cannot be expressed in a single
+statement. You could provide the Python statements needed to open each file,
+extract the metadata, and assign it to a variable. Your field expression could
+then reference the variable, causing the metadata value to be stored in the
 field."""),
     arcGISDisplayName=_('Python statements to execute for every row'))
 
@@ -380,7 +374,7 @@ CopyArgumentMetadata(Field.CalculateFields, 'cls', Field.CalculateArcGISFields, 
 
 AddArgumentMetadata(Field.CalculateArcGISFields, 'table',
     typeMetadata=ArcGISTableViewTypeMetadata(mustExist=True),
-    description=Field.CalculateFields.__doc__.Obj.Arguments[1].Description,
+    description=_('Table that contains the fields to calculate.'),
     arcGISDisplayName=Field.CalculateFields.__doc__.Obj.Arguments[1].ArcGISDisplayName)
 
 AddArgumentMetadata(Field.CalculateArcGISFields, 'fields',

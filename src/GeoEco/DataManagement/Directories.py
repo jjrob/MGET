@@ -856,7 +856,7 @@ AddArgumentMetadata(Directory.Copy, 'overwriteExistingFiles',
     typeMetadata=BooleanTypeMetadata(),
     description=_(
 """If True, destination files will be overwritten, if they exist. If False, a
-:exc:`ValueError` will be raised if any destination file exists. This
+:py:exc:`ValueError` will be raised if any destination file exists. This
 parameter is ignored if `deleteExistingDestinationDirectory` is True, since
 that parameter will cause any existing files to be deleted."""),
     initializeToArcGISGeoprocessorVariable='env.overwriteOutput')
@@ -917,9 +917,8 @@ AddMethodMetadata(Directory.CreateTemporaryDirectory,
 will be used instead of forward slashes.) ``parentDirectory`` will be one of
 the following locations (the first one that is found to exist):
 
-1. The ArcGIS geoprocessor's ``arcpy.env.ScratchWorkspace``, if
-   :class:`~GeoEco.ArcGIS.GeoprocessorManager` has been initialized and
-   ``arcpy.env.ScratchWorkspace`` has been set to something.
+1. The ArcGIS geoprocessor's ``arcpy.env.ScratchWorkspace`` if it has been set
+   to something.
 2. The directory named by the ``TMPDIR`` environment variable. 
 3. The directory named by the ``TEMP`` environment variable. 
 4. The directory named by the ``TMP`` environment variable. 
@@ -1434,7 +1433,7 @@ AddArgumentMetadata(Directory.FindAndCreateTable, 'overwriteExisting',
     typeMetadata=BooleanTypeMetadata(),
     description=_(
 """If True, the output table will be overwritten, if it exists. If False, a
-:exc:`ValueError` will be raised if the output table exists."""),
+:py:exc:`ValueError` will be raised if the output table exists."""),
     initializeToArcGISGeoprocessorVariable='env.overwriteOutput')
 
 AddResultMetadata(Directory.FindAndCreateTable, 'createdTable',

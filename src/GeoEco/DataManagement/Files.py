@@ -848,7 +848,7 @@ AddArgumentMetadata(File.Copy, 'destinationFile',
 
 AddArgumentMetadata(File.Copy, 'overwriteExisting',
     typeMetadata=BooleanTypeMetadata(),
-    description=_('If True, the destination file will be overwritten, if it exists. If False, a :exc:`ValueError` will be raised if the destination file exists.'),
+    description=_('If True, the destination file will be overwritten, if it exists. If False, a :py:exc:`ValueError` will be raised if the destination file exists.'),
     initializeToArcGISGeoprocessorVariable='env.overwriteOutput')
 
 # Public method: File.CopySilent
@@ -902,7 +902,7 @@ AddArgumentMetadata(File.Decompress, 'destinationDirectory',
 
 AddArgumentMetadata(File.Decompress, 'overwriteExisting',
     typeMetadata=BooleanTypeMetadata(),
-    description=_('If True, the extracted destination files will be overwritten, if they already exist. If False, a :exc:`ValueError` will be raised if any destination files already exist.'),
+    description=_('If True, the extracted destination files will be overwritten, if they already exist. If False, a :py:exc:`ValueError` will be raised if any destination files already exist.'),
     initializeToArcGISGeoprocessorVariable='env.overwriteOutput')
 
 AddArgumentMetadata(File.Decompress, 'decompressedFileToReturn',
@@ -925,7 +925,7 @@ this parameter, the path of that decompressed file will be returned.
 If the compressed file is an archive and a wildcard pattern is provided for
 this parameter, the path of the decompressed file matching that pattern will
 be returned. The pattern must match exactly one decompressed file or a
-:exc:`ValueError` will be raised.
+:py:exc:`ValueError` will be raised.
 
 If the archive includes subdirectories, the filename or wildcard pattern must
 account for this. For example, if the archive includes these files::
@@ -1518,7 +1518,7 @@ AddArgumentMetadata(File.FindAndCreateTable, 'overwriteExisting',
     typeMetadata=BooleanTypeMetadata(),
     description=_(
 """If True, the output table will be overwritten, if it exists. If False, a
-:exc:`ValueError` will be raised if the output table exists."""),
+:py:exc:`ValueError` will be raised if the output table exists."""),
     initializeToArcGISGeoprocessorVariable='env.overwriteOutput')
 
 AddResultMetadata(File.FindAndCreateTable, 'createdTable',

@@ -27,6 +27,7 @@ classifiers = [
 dependencies = [
     "docutils",
     "gdal",
+    "lxml",
     "numpy",
     "pyparsing",
     "scikit-fmm",

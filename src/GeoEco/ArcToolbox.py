@@ -225,7 +225,7 @@ class ArcToolboxGenerator(object):
                 'description': '$rc:' + am.Name + '.descr',
             }
             toolContentRC['map'][am.Name + '.name'] = am.ArcGISDisplayName
-            toolContentRC['map'][am.Name + '.descr'] = 'TODO: Add description'  # TODO
+            toolContentRC['map'][am.Name + '.descr'] = cls._RestructuredTextToEsriXDoc(am.Description)
 
             if am.ArcGISCategory is not None and len(am.ArcGISCategory) > 0:
                 if am.ArcGISCategory not in catNums:
@@ -255,12 +255,12 @@ class ArcToolboxGenerator(object):
             toolContent['params'][rm.Name] = {
                 'displayname': '$rc:' + rm.Name + '.name',
                 'datatype': {'type': cls._GetArcGISDataType(rm.Type)},
-                'description': '$rc:' + rm.Name + '.descr',      # TODO
+                'description': '$rc:' + rm.Name + '.descr',
                 'direction': 'out',
                 'type': 'derived',
             }
             toolContentRC['map'][rm.Name + '.name'] = rm.ArcGISDisplayName
-            toolContentRC['map'][rm.Name + '.descr'] = 'TODO: Add description'  # TODO
+            toolContentRC['map'][rm.Name + '.descr'] = cls._RestructuredTextToEsriXDoc(rm.Description)
 
             if rm.ArcGISParameterDependencies is not None and len(rm.ArcGISParameterDependencies) > 0:
                 toolContent['params'][rm.Name]['dependencies'] = rm.ArcGISParameterDependencies
@@ -369,7 +369,194 @@ class ToolValidator:
 
     @classmethod
     def _RestructuredTextToEsriXDoc(cls, rst):
-        return '<xdoc>' + rst.replace('\n', '<br/>') + '</xdoc>'      # TODO
+
+        # Get the docutils XML for the rst.
+
+        import docutils.core
+        import lxml.etree
+
+        docutilsXML = lxml.etree.fromstring(docutils.core.publish_string(rst, writer_name='xml'))
+
+        # If we have not done so already, load the XSL transform for
+        # transforming docutils XML to ESRI XDoc XML.
+
+        if not hasattr(ArcToolboxGenerator, '_RstToXdocTransformer'):
+            xslFile = pathlib.Path('__file__').parent / 'DocutilsToEsriXdoc.xsl'
+            Logger.Info('Parsing %s', xslFile)
+            ArcToolboxGenerator._RstToXdocTransformer = lxml.etree.XSLT(lxml.etree.parse(xslFile))
+
+            # Register some handlers for docutils roles that are not part of
+            # the base restructuredText syntax.
+
+            cls._RegisterCustomDocutilsRoles()
+
+        # Transform the docutils XML into ESRI XDoc XML and return it.
+        #
+        # TODO: replace <i>argumentName</i> with <i>ArcGIS Display Name</i>
+
+        try:
+            return str(ArcToolboxGenerator._RstToXdocTransformer(docutilsXML)).strip('\n')
+
+        except Exception as e:
+            Logger.Error('The following restructuredText:')
+            Logger.Error('')
+
+            for line in rst.split('\n'):
+                Logger.Error('    ' + line)
+
+            Logger.Error('')
+            Logger.Error('was transformed into Docutils XML:')
+            Logger.Error('')
+
+            for line in lxml.etree.tostring(docutilsXML, encoding='unicode', pretty_print=True).split('\n'):
+                Logger.Error('    ' + line)
+
+            Logger.Error('')
+            Logger.Error('but could not be transformed into ESRI XDoc XML because of the following error.')
+
+            raise
+
+    @classmethod
+    def _RegisterCustomDocutilsRoles(cls):
+        from docutils.parsers.rst import roles
+        from docutils import nodes
+
+        # For :arcpy_management:, link to the ArcGIS documentation.
+
+        def arcpy_management_role(name, rawtext, text, lineno, inliner, options={}, content=[]):
+            ref = 'https://pro.arcgis.com/en/pro-app/latest/tool-reference/data-management/%s.htm' % text.lower()
+            node = nodes.reference(text=text.replace('-',''), refuri=ref, **options)
+            return [node], []
+
+        roles.register_canonical_role('arcpy_management', arcpy_management_role)
+
+        # For :py: roles, we'll use Python's intersphinx mappings. First
+        # download the Python intersphinx objects.inv and populate a
+        # dictionary for looking up intersphinx references.
+
+        import sphobjinv
+
+        objectsInvURL = 'https://docs.python.org/3/objects.inv'
+        Logger.Info('Downloading ' + objectsInvURL)
+        inv = sphobjinv.Inventory(url=objectsInvURL)
+        iSphinxLookup = {}
+
+        for dobj in inv.objects:
+            if dobj.domain not in iSphinxLookup:
+                iSphinxLookup[dobj.domain] = {}
+            if dobj.role not in iSphinxLookup[dobj.domain]:
+                iSphinxLookup[dobj.domain][dobj.role] = {}
+            if dobj.name not in iSphinxLookup[dobj.domain][dobj.role]:
+                iSphinxLookup[dobj.domain][dobj.role][dobj.name] = dobj
+            elif dobj.priority < iSphinxLookup[dobj.domain][dobj.role][dobj.name].priority:  # Lower priority numbers are higher priorities, according to https://sphobjinv.readthedocs.io/en/stable/syntax.html
+                iSphinxLookup[dobj.domain][dobj.role][dobj.name] = dobj
+
+        # Define a function for parsing '~'' at the front of role text.
+
+        def strip_tilde(text):
+            if text.startswith('~'):
+                return text[1:], text.split('.')[-1]
+            return text, text
+
+        # Register a role for :py:func:
+
+        import docutils.nodes
+
+        def python_func_role(name, rawtext, text, lineno, inliner, options={}, content=[]):
+            iSphinxName, displayName = strip_tilde(text)
+            if iSphinxName not in iSphinxLookup['py']['function']:
+                raise ValueError('For the :py:func: role, the Python intersphinx objects.inv does not have an entry for %r.' % iSphinxName)
+            dobj = iSphinxLookup['py']['function'][iSphinxName]
+            ref = 'https://docs.python.org/3/' + dobj.uri.replace('$', iSphinxName)
+            link_node = docutils.nodes.reference(refuri=ref, **options)
+            link_node += docutils.nodes.literal(text=displayName + '()')
+            return [link_node], []
+
+        roles.register_canonical_role('py:func', python_func_role)
+
+        # Register a role for :py:meth:
+
+        def python_meth_role(name, rawtext, text, lineno, inliner, options={}, content=[]):
+            iSphinxName, displayName = strip_tilde(text)
+            if iSphinxName not in iSphinxLookup['py']['method']:
+                raise ValueError('For the :py:meth: role, the Python intersphinx objects.inv does not have an entry for %r.' % iSphinxName)
+            dobj = iSphinxLookup['py']['method'][iSphinxName]
+            ref = 'https://docs.python.org/3/' + dobj.uri.replace('$', iSphinxName)
+            link_node = docutils.nodes.reference(refuri=ref, **options)
+            link_node += docutils.nodes.literal(text=displayName + '()')
+            return [link_node], []
+
+        roles.register_canonical_role('py:meth', python_meth_role)
+
+        # Register a role for :py:class:
+
+        def python_class_role(name, rawtext, text, lineno, inliner, options={}, content=[]):
+            iSphinxName, displayName = strip_tilde(text)
+            if iSphinxName not in iSphinxLookup['py']['class']:
+                raise ValueError('For the :py:class: role, the Python intersphinx objects.inv does not have an entry for %r.' % iSphinxName)
+            dobj = iSphinxLookup['py']['class'][iSphinxName]
+            ref = 'https://docs.python.org/3/' + dobj.uri.replace('$', iSphinxName)
+            link_node = docutils.nodes.reference(refuri=ref, **options)
+            link_node += docutils.nodes.literal(text=displayName)
+            return [link_node], []
+
+        roles.register_canonical_role('py:class', python_class_role)
+
+        # Register a role for :py:exc:
+
+        def python_exc_role(name, rawtext, text, lineno, inliner, options={}, content=[]):
+            iSphinxName, displayName = strip_tilde(text)
+            if iSphinxName not in iSphinxLookup['py']['exception']:
+                raise ValueError('For the :py:exc: role, the Python intersphinx objects.inv does not have an entry for %r.' % iSphinxName)
+            dobj = iSphinxLookup['py']['exception'][iSphinxName]
+            ref = 'https://docs.python.org/3/' + dobj.uri.replace('$', iSphinxName)
+            link_node = docutils.nodes.reference(refuri=ref, **options)
+            link_node += docutils.nodes.literal(text=displayName)
+            return [link_node], []
+
+        roles.register_canonical_role('py:exc', python_exc_role)
+
+        # Register a role for :py:data:
+
+        def python_data_role(name, rawtext, text, lineno, inliner, options={}, content=[]):
+            if text not in iSphinxLookup['py']['data']:
+                raise ValueError('For the :py:data: role, the Python intersphinx objects.inv does not have an entry for %r.' % text)
+            dobj = iSphinxLookup['py']['data'][text]
+            ref = 'https://docs.python.org/3/' + dobj.uri.replace('$', text)
+            link_node = docutils.nodes.reference(refuri=ref, **options)
+            link_node += docutils.nodes.literal(text=text)
+            return [link_node], []
+
+        roles.register_canonical_role('py:data', python_data_role)
+
+        # Register a role for :py:mod:
+
+        import docutils.nodes
+
+        def python_mod_role(name, rawtext, text, lineno, inliner, options={}, content=[]):
+            if text not in iSphinxLookup['py']['module']:
+                raise ValueError('For the :py:mod: role, the Python intersphinx objects.inv does not have an entry for %r.' % text)
+            dobj = iSphinxLookup['py']['module'][text]
+            ref = 'https://docs.python.org/3/' + dobj.uri.replace('$', text)
+            link_node = docutils.nodes.reference(refuri=ref, **options)
+            link_node += docutils.nodes.literal(text=text)
+            return [link_node], []
+
+        roles.register_canonical_role('py:mod', python_mod_role)
+
+        # Register a role for :py:ref:
+
+        import docutils.nodes
+
+        def python_ref_role(name, rawtext, text, lineno, inliner, options={}, content=[]):
+            if text not in iSphinxLookup['std']['label']:
+                raise ValueError('For the :py:ref: role, the Python intersphinx objects.inv does not have an entry for %r.' % text)
+            dobj = iSphinxLookup['std']['label'][text]
+            ref = 'https://docs.python.org/3/' + dobj.uri.replace('$', text)
+            link_node = docutils.nodes.reference(text=dobj.dispname, refuri=ref, **options)
+            return [link_node], []
+
+        roles.register_canonical_role('py:ref', python_ref_role)
 
 
 def _ExecuteMethodAsGeoprocessingTool(method):
