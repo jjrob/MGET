@@ -700,7 +700,7 @@ class MethodMetadata(Metadata):
         results = None
         if len(self.Results) > 0:
             # Google-style doc strings only support 1 result. Fail if we have more than 1.
-            assert len(self.Results) == 1, 'The method %s.%s.%s has %i ResultMetadata objects but currently GeoEco.Metadata.MethodMetadata._GetDocString() only supports ResultMetadata object, in conformance with Google-style docstrings. To work around this, you could use a single ResultMetadata with Type set to TupleTypeMetadata or ListTypeMetadata.' % (self.Class.Module.Name, self.Class.Name, self.Name, len(self.Results))
+            assert len(self.Results) == 1, 'The method %s.%s.%s has %i ResultMetadata objects but currently GeoEco.Metadata.MethodMetadata._GetDocString() only supports a single ResultMetadata object, in conformance with Google-style docstrings. To work around this, you could use a single ResultMetadata with Type set to TupleTypeMetadata or ListTypeMetadata.' % (self.Class.Module.Name, self.Class.Name, self.Name, len(self.Results))
 
             results = 'Returns:\n'
             for i in range(len(self.Results)):

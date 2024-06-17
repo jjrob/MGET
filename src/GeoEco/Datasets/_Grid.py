@@ -233,10 +233,16 @@ class Grid(Dataset):
 
     def __init__(self, parentCollection=None, queryableAttributes=None, queryableAttributeValues=None, lazyPropertyValues=None):
 
-        # Initialize the base class. (Note: it handles validation of all of
-        # our parameters, so we do not need to validate them ourself.)
+        # Initialize the base class. Because the base class declared all of
+        # them and will validate all of them, we skip validating them ourself,
+        # so as not to duplicate effort.
 
         super(Grid, self).__init__(parentCollection, queryableAttributes, queryableAttributeValues, lazyPropertyValues)
+
+        # But we do need to initialize our dependencies, though.
+            
+        for d in self.__class__.__doc__.Obj.Dependencies:
+            d.Initialize()
 
         # Set various attributes that implement __getitem__.
 

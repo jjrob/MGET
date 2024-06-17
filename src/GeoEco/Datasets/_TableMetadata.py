@@ -443,7 +443,7 @@ accessed. If not provided, the rows will accessed according to the default
 behavior of the underlying storage format and the programming library used to
 access it.
 
-The ORDER BY clause must be a a comma-separated list of fields. Each field can
+The ORDER BY clause must be a comma-separated list of fields. Each field can
 optionally be followed by a space and the word ``ASC`` to indicate ascending
 order or ``DESC`` to indicate descending order. If neither is specified,
 ``ASC`` is assumed.

@@ -67,7 +67,9 @@ import sphinx.util.nodes
 
 arcpy_url_formatters = {
     'arcpy': 'https://pro.arcgis.com/en/pro-app/latest/arcpy/functions/%s.htm',
+    'arcpy_conversion': 'https://pro.arcgis.com/en/pro-app/latest/tool-reference/conversion/%s.htm',
     'arcpy_management': 'https://pro.arcgis.com/en/pro-app/latest/tool-reference/data-management/%s.htm',
+    'arcpy_sa': 'https://pro.arcgis.com/en/pro-app/latest/tool-reference/spatial-analyst/%s.htm',
 }
 
 def setup(app):

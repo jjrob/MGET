@@ -43,6 +43,7 @@ Homepage = "https://github.com/jjrob/MGET"
 version_file = "src/GeoEco/_version.py"
 
 [tool.setuptools.package-data]
+"GeoEco.ArcToolbox" = ["Marine Geospatial Ecology Tools.atbx"]
 "GeoEco.Configuration" = ["Logging.ini"]
 
 [tool.pytest.ini_options]

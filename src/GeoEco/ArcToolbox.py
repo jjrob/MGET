@@ -421,7 +421,21 @@ class ToolValidator:
         from docutils.parsers.rst import roles
         from docutils import nodes
 
-        # For :arcpy_management:, link to the ArcGIS documentation.
+        # For :arcpy_XXXXX:, link to the ArcGIS documentation.
+
+        def arcpy_role(name, rawtext, text, lineno, inliner, options={}, content=[]):
+            ref = 'https://pro.arcgis.com/en/pro-app/latest/arcpy/functions/%s.htm' % text.lower()
+            node = nodes.reference(text=text.replace('-',''), refuri=ref, **options)
+            return [node], []
+
+        roles.register_canonical_role('arcpy', arcpy_role)
+
+        def arcpy_conversion_role(name, rawtext, text, lineno, inliner, options={}, content=[]):
+            ref = 'https://pro.arcgis.com/en/pro-app/latest/tool-reference/conversion/%s.htm' % text.lower()
+            node = nodes.reference(text=text.replace('-',''), refuri=ref, **options)
+            return [node], []
+
+        roles.register_canonical_role('arcpy_conversion', arcpy_conversion_role)
 
         def arcpy_management_role(name, rawtext, text, lineno, inliner, options={}, content=[]):
             ref = 'https://pro.arcgis.com/en/pro-app/latest/tool-reference/data-management/%s.htm' % text.lower()
@@ -429,6 +443,13 @@ class ToolValidator:
             return [node], []
 
         roles.register_canonical_role('arcpy_management', arcpy_management_role)
+
+        def arcpy_sa_role(name, rawtext, text, lineno, inliner, options={}, content=[]):
+            ref = 'https://pro.arcgis.com/en/pro-app/latest/tool-reference/spatial-analyst/%s.htm' % text.lower()
+            node = nodes.reference(text=text.replace('-',''), refuri=ref, **options)
+            return [node], []
+
+        roles.register_canonical_role('arcpy_sa', arcpy_sa_role)
 
         # For :py: roles, we'll use Python's intersphinx mappings. First
         # download the Python intersphinx objects.inv and populate a

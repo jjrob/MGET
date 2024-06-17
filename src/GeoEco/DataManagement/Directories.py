@@ -17,9 +17,9 @@ import re
 import shutil
 import tempfile
 
-from GeoEco.DynamicDocString import DynamicDocString
-from GeoEco.Internationalization import _
-from GeoEco.Logging import Logger
+from ..DynamicDocString import DynamicDocString
+from ..Internationalization import _
+from ..Logging import Logger
 
 
 class Directory(object):
@@ -260,7 +260,7 @@ class Directory(object):
         # pattern we can pass the re.search() and a corresponding pattern we can
         # subsequently pass to time.strptime().
 
-        from GeoEco.DataManagement.Files import File
+        from .Files import File
 
         if dateParsingExpression is not None and searchPattern is None:
             searchPattern, strptimePattern = File.ValidateDateParsingExpression(dateParsingExpression)
@@ -1731,17 +1731,15 @@ reference the following variables:
 
 * ``sourceDirectory`` - the absolute path of the source directory
 
-The default expression::
-
-    os.path.join(rootDestination, sourceDirectory[len(directoryToSearch)+1:])
-
+The default expression, 
+``os.path.join(rootDestination, sourceDirectory[len(directoryToSearch)+1:])``,
 copies the directory to the root destination directory to the same relative
 location as it appears in the directory to search. The destination directory
 path is calculated by stripping the directory to search from the source
 directory and replacing it with the root destination directory.
 
-For more information on Python syntax, please see the `Python
-documentation <http://www.python.org/doc/>`_."""],
+For more information on Python syntax, please see the `Python documentation
+<http://www.python.org/doc/>`_."""],
     outputParamDefaultExpressions=['os.path.join(rootDestination, sourceDirectory[len(directoryToSearch)+1:])'],
     processListMethodName='CopyList',
     processListMethodShortDescription=_('Copies a list of directories.'),

@@ -1737,25 +1737,23 @@ file. The expression may be any Python statement appropriate for passing to
 the eval function and must return a Unicode string. The expression may
 reference the following variables:
 
-* directoryToSearch - the value provided for the directory to search
+* ``directoryToSearch`` - the value provided for the directory to search
   parameter
 
-* destinationDirectory - the value provided for the destination
-  directory parameter
+* ``destinationDirectory`` - the value provided for the destination directory
+  parameter
 
-* sourceFile - the absolute path of the source file
+* ``sourceFile`` - the absolute path of the source file
 
-The default expression::
-
-    os.path.join(destinationDirectory, sourceFile[len(directoryToSearch)+1:])
-
+The default expression, 
+``os.path.join(destinationDirectory, sourceFile[len(directoryToSearch)+1:])``,
 stores the file in the destination directory at the same relative location as
 it appears in the directory to search. The destination path is calculated by
 stripping the directory to search from the source path and replacing it with
 the destination directory.
 
-For more information on Python syntax, please see the `Python
-documentation <http://www.python.org/doc/>`_."""],
+For more information on Python syntax, please see the `Python documentation
+<http://www.python.org/doc/>`_."""],
     outputParamDefaultExpressions=['os.path.join(destinationDirectory, sourceFile[len(directoryToSearch)+1:])'],
     processListMethodName='CopyList',
     processListMethodShortDescription=_('Copies a list of files.'),

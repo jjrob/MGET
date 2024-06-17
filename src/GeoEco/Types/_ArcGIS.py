@@ -1068,7 +1068,26 @@ class EnvelopeTypeMetadata(UnicodeStringTypeMetadata):
     def ParseFromArcGISString(cls, value):
         if value is None:
             return None, None, None, None
-        assert isinstance(value, str), 'value must be a string, or None'
+
+        # If value is a tuple or list with a length of 4, just return it (as a
+        # tuple).
+
+        if isinstance(value, list):
+            value = tuple(value)
+
+        if isinstance(value, tuple) and len(value) == 4 and all([isinstance(v, (float, int)) for v in value]):
+            return tuple([float(v) for v in value])
+
+        # If it is an object that has attributes XMin, YMin, XMax, and YMax,
+        # as occurs with the arcpy Extent object, return those values.
+
+        if hasattr(value, 'XMin') and hasattr(value, 'YMin') and hasattr(value, 'XMax') and hasattr(value, 'YMax'):
+            return value.XMin, value.YMin, value.XMax, value.YMax       # left, bottom, right, top
+
+        # Otherwise it must be a string.
+
+        if not isinstance(value, str):
+            raise ValueError('The extent value must be a list or tuple of four numbers, or an arcpy Extent object, or a string of four numbers separated by spaces, or None.')
 
         # If the string appears to use commas rather than periods as
         # the decimal point characters, replace the commas with

@@ -76,7 +76,7 @@ AddArgumentMetadata(WindFetchGrid.ComputeFetch, 'cls',
     description=_(':class:`%s` or an instance of it.') % WindFetchGrid.__name__)
 
 AddArgumentMetadata(WindFetchGrid.ComputeFetch, 'array',
-    typeMetadata=NumPyArrayTypeMetadata(allowedDTypes=['int8', 'uint8', 'int16', 'uint16', 'int32', 'uint32', 'int64', 'uint64', 'float32', 'float64', 'float128']),
+    typeMetadata=NumPyArrayTypeMetadata(dimensions=2, minShape=[1,1], allowedDTypes=['int8', 'uint8', 'int16', 'uint16', 'int32', 'uint32', 'int64', 'uint64', 'float32', 'float64', 'float128']),
     description=_(':class:`numpy.ndarray` representing land and water. Must have 2 dimensions.'))
 
 AddArgumentMetadata(WindFetchGrid.ComputeFetch, 'landValue',

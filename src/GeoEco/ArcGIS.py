@@ -979,7 +979,7 @@ AddModuleMetadata(shortDescription=_('Utility functions for interacting with ESR
 ###############################################################################
 
 AddClassMetadata(GeoprocessorManager,
-    shortDescription=_('Manages GeoEco\'s interface to ArcGIS\'s Python API, known historically as the "geoprocessor", and more recently as `arcpy <https://www.esri.com/en-us/arcgis/products/arcgis-python-libraries/libraries/arcpy>`_.'),
+    shortDescription=_('Manages GeoEco\'s interface to ArcGIS\'s Python library, known historically as the "geoprocessor", and more recently as `arcpy <https://www.esri.com/en-us/arcgis/products/arcgis-python-libraries/libraries/arcpy>`_.'),
     longDescription=_(
 """Note:
 

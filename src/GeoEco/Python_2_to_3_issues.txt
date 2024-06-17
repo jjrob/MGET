@@ -24,6 +24,7 @@ ArcPro vs. Desktop issues to check for:
 
 Remove RefreshCatalog
 gp.workspace changed to arcpy.env.workspace (lowercase workspace)
+gp.Extent changed to arcpy.env.extent (lowercase extent)
 gp.List* functions now return lists rather than ArcGIS enumerator object
 gp.Describe().Extent now returns an object with properties rather than a string
 gp.CreatePersonalGDB_management no longer exists
