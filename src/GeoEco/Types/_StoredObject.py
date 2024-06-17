@@ -330,7 +330,7 @@ class StoredObjectTypeMetadata(UnicodeStringTypeMetadata):
         if p is None:
             return False
         if sys.platform == 'win32':
-            if re.match('^[A-Za-z]:[\\\\/]', p) or re.match('^[\\\\/][\\\\/]\w', p):
+            if re.match(r'^[A-Za-z]:[\\\\/]', p) or re.match(r'^[\\\\/][\\\\/]\w', p):
                 return False
         else:
             if p.startswith('/'):

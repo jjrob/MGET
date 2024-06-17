@@ -692,7 +692,7 @@ class ShapefileTypeMetadata(FileTypeMetadata):
                  createParentDirectories=False,
                  minLength=1,
                  maxLength=2147483647,
-                 mustMatchRegEx='.+\.[Ss][Hh][Pp]$',
+                 mustMatchRegEx=r'.+\.[Ss][Hh][Pp]$',
                  canBeNone=False,
                  arcGISType='ESRI.ArcGIS.Catalog.DEShapeFileTypeClass',
                  arcGISAssembly='ESRI.ArcGIS.Catalog',
@@ -1057,7 +1057,7 @@ class EnvelopeTypeMetadata(UnicodeStringTypeMetadata):
     def __init__(self, canBeNone=False):
         super(EnvelopeTypeMetadata, self).__init__(minLength=1,
                                                    maxLength=2147483647,
-                                                   mustMatchRegEx='([-+]?[0-9]*\\.?[0-9]+([eE][-+]?[0-9]+)?)\\s+([-+]?[0-9]*\\.?[0-9]+([eE][-+]?[0-9]+)?)\\s+([-+]?[0-9]*\\.?[0-9]+([eE][-+]?[0-9]+)?)\\s+([-+]?[0-9]*\\.?[0-9]+([eE][-+]?[0-9]+)?)',
+                                                   mustMatchRegEx=r'([-+]?[0-9]*\\.?[0-9]+([eE][-+]?[0-9]+)?)\\s+([-+]?[0-9]*\\.?[0-9]+([eE][-+]?[0-9]+)?)\\s+([-+]?[0-9]*\\.?[0-9]+([eE][-+]?[0-9]+)?)\\s+([-+]?[0-9]*\\.?[0-9]+([eE][-+]?[0-9]+)?)',
                                                    canBeNone=canBeNone,
                                                    arcGISType='ESRI.ArcGIS.Geoprocessing.GPEnvelopeTypeClass',
                                                    arcGISAssembly='ESRI.ArcGIS.Geoprocessing',
@@ -1147,12 +1147,12 @@ class PointTypeMetadata(UnicodeStringTypeMetadata):
     
     def __init__(self, canBeNone=False):
         super(PointTypeMetadata, self).__init__(minLength=1,
-                                                               mustMatchRegEx='([-+]?[0-9]*\\.?[0-9]+([eE][-+]?[0-9]+)?)\\s+([-+]?[0-9]*\\.?[0-9]+([eE][-+]?[0-9]+)?)',
-                                                               canBeNone=canBeNone,
-                                                               arcGISType='ESRI.ArcGIS.Geoprocessing.GPPointTypeClass',
-                                                               arcGISAssembly='ESRI.ArcGIS.Geoprocessing',
-                                                               canBeArcGISInputParameter=True,
-                                                               canBeArcGISOutputParameter=True)
+                                                mustMatchRegEx=r'([-+]?[0-9]*\\.?[0-9]+([eE][-+]?[0-9]+)?)\\s+([-+]?[0-9]*\\.?[0-9]+([eE][-+]?[0-9]+)?)',
+                                                canBeNone=canBeNone,
+                                                arcGISType='ESRI.ArcGIS.Geoprocessing.GPPointTypeClass',
+                                                arcGISAssembly='ESRI.ArcGIS.Geoprocessing',
+                                                canBeArcGISInputParameter=True,
+                                                canBeArcGISOutputParameter=True)
 
     @classmethod
     def ParseFromArcGISString(cls, value):
