@@ -241,7 +241,7 @@ class Grid(Dataset):
 
         # But we do need to initialize our dependencies, though.
             
-        for d in self.__class__.__doc__.Obj.Dependencies:
+        for d in Grid.__init__.__doc__.Obj.Dependencies:
             d.Initialize()
 
         # Set various attributes that implement __getitem__.
