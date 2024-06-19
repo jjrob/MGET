@@ -15,6 +15,7 @@ import shutil
 from ...ArcGIS import GeoprocessorManager
 from ...DynamicDocString import DynamicDocString
 from ...Internationalization import _
+from ...Types import IntegerTypeMetadata
 
 from .. import Dataset, DatasetCollection, QueryableAttribute, Grid
 from ..GDAL import GDALDataset, GDALRasterBand
@@ -412,19 +413,15 @@ class ArcGISRaster(DatasetCollection):
         # the destination path. This will be much faster than calling any
         # geoprocessor functions.
         #
-        # Do not use GDAL to calculate statistics or build pyramids. Even
-        # though GDAL can do it faster than the geoprocessor, we prefer to use
-        # the geoprocessor to maximize the compatibility of the output raster
-        # with ArcGIS. For example, I do not know how to get GDAL to build an
-        # ArcGIS-compatible histogram. Without the histogram ArcGIS defaults
-        # to displaying integer rasters using a black-to-white stretch rather
-        # than a unique value classifier with random colors. ArcGIS users will
-        # expect colors; to get the necessary histogram, we have to calculate
-        # statistics with the geoprocessor.
+        # Use GDAL to calculate statistics. The geoprocessor's function for
+        # calculating statistics is very slow compared to GDAL. While older
+        # versions of GDAL could not save the statistics in a way that would
+        # work with ArcGIS, it seems to be working now (I am currently
+        # testing with GDAL 3.7).
 
         if outputIsFile and not outputIsAIG and os.path.splitext(path)[1].lower() not in ['.asc', '.gif', '.j2c', '.j2k', '.jp2', '.jpc', '.jpe', '.jpg', '.jpeg', '.jpx', '.png', '.txt']:
             cls._LogDebug(_('%(class)s: Creating ArcGIS raster "%(path)s" with GDAL.'), {'class': cls.__name__, 'path': path})
-            GDALDataset._ImportDatasetsToPath(path, sourceDatasets, mode, None, {'useArcGISSpatialReference': True, 'useUnscaledData': useUnscaledData, 'calculateStatistics': False, 'blockSize': blockSize})
+            GDALDataset._ImportDatasetsToPath(path, sourceDatasets, mode, None, {'useArcGISSpatialReference': True, 'useUnscaledData': useUnscaledData, 'calculateStatistics': calculateStatistics, 'blockSize': blockSize})
             
         # Otherwise, create a temporary directory, write an IMG file to it
         # with GDAL, and copy the IMG file to the destination path.
@@ -434,14 +431,14 @@ class ArcGISRaster(DatasetCollection):
 
             # Create a temporary directory.
 
-            tempDir = tempfile.mkdtemp(prefix='GeoEco_' + cls.__name__ + '_Temp_', dir=self.CacheDirectory)
+            tempDir = tempfile.mkdtemp(prefix='GeoEco_' + cls.__name__ + '_Temp_')
             cls._LogDebug(_('%(class)s: Created temporary directory %(dir)s.'), {'class': cls.__name__, 'dir': tempDir})
 
             try:
                 # Write the IMG file to the temporary directory.
 
                 tempRaster = os.path.join(tempDir, 'raster.img')
-                GDALDataset._ImportDatasetsToPath(tempRaster, sourceDatasets, mode, None, {'useArcGISSpatialReference': True, 'useUnscaledData': useUnscaledData, 'calculateStatistics': False, 'blockSize': blockSize})
+                GDALDataset._ImportDatasetsToPath(tempRaster, sourceDatasets, mode, None, {'useArcGISSpatialReference': True, 'useUnscaledData': useUnscaledData, 'calculateStatistics': calculateStatistics, 'blockSize': blockSize})
 
                 # If the destination raster is an ArcInfo ASCII grid,
                 # use the RasterToASCII_conversion tool to create it.
@@ -454,7 +451,7 @@ class ArcGISRaster(DatasetCollection):
 
                 else:
                     cls._LogDebug(_('%(class)s: Copying "%(src)s" to "%(dest)s".'), {'class': cls.__name__, 'src': tempRaster, 'dest': path})
-                    gp.CopyRaster_Management(tempRaster, path)
+                    gp.CopyRaster_management(tempRaster, path)
 
             # Delete the temporary directory.
 
@@ -466,12 +463,6 @@ class ArcGISRaster(DatasetCollection):
         # additional processing steps fail, delete the raster.
 
         try:
-            # Calculate statistics.
-
-            if calculateStatistics:
-                cls._LogDebug(_('%(class)s: Calculating statistics for ArcGIS raster "%(path)s".'), {'class': cls.__name__, 'path': path})
-                gp.CalculateStatistics_management(path)
-
             # Build the raster attribute table. This can only be done for
             # single-band integer rasters.
 

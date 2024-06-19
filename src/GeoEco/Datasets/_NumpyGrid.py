@@ -37,11 +37,29 @@ class NumpyGrid(Grid):
         if len(dimensions) != len(numpyArray.shape):
             raise ValueError(_('The length of the dimensions string must be equal to the number of dimensions of numpyArray.'))
 
+        if spatialReference is not None and not isinstance(spatialReference, self._osr().SpatialReference):
+            raise TypeError(_('spatialReference must be None or an instance of osgeo.osr.SpatialReference. Use Dataset.ConvertSpatialReference() to obtain one from a WKT string.'))
+
         if unscaledNoDataValue is not None:
             if numpyArray.dtype.name in ['int8', 'uint8', 'int16', 'uint16', 'int32', 'uint32'] and not isinstance(unscaledNoDataValue, int):
-                raise TypeError(_('When numpyArray has the %(name)s dtype, unscaledNoDataValue must be a Python int.') % {'name': numpyArray.dtype.name})
+                if hasattr(unscaledNoDataValue, 'dtype') and (unscaledNoDataValue.dtype.name.startswith('int') or unscaledNoDataValue.dtype.name.startswith('uint')):
+                    unscaledNoDataValue = int(unscaledNoDataValue)
+                elif isinstance(unscaledNoDataValue, float) or hasattr(unscaledNoDataValue, 'dtype') and unscaledNoDataValue.dtype.name.startswith('f'):
+                    if float(int(unscaledNoDataValue)) != unscaledNoDataValue:
+                        raise TypeError(_('When numpyArray has the %(name)s dtype, if unscaledNoDataValue is an instance of a floating point type, it must not have a remainder and must be coercable to an integer.') % {'name': numpyArray.dtype.name})
+                    unscaledNoDataValue = int(unscaledNoDataValue)
+                else:
+                    raise TypeError(_('When numpyArray has the %(name)s dtype, unscaledNoDataValue must be an instance of <class \'int\'> or a numpy integer type.') % {'name': numpyArray.dtype.name})
+
             if numpyArray.dtype.name in ['float32', 'float64'] and not isinstance(unscaledNoDataValue, float):
-                raise TypeError(_('When numpyArray has the %(name)s dtype, unscaledNoDataValue must be a Python float.') % {'name': numpyArray.dtype.name})
+                if hasattr(unscaledNoDataValue, 'dtype') and unscaledNoDataValue.dtype.name.startswith('f'):
+                    unscaledNoDataValue = float(unscaledNoDataValue)
+                elif isinstance(unscaledNoDataValue, int) or hasattr(unscaledNoDataValue, 'dtype') and (unscaledNoDataValue.dtype.name.startswith('int') or unscaledNoDataValue.dtype.name.startswith('uint')):
+                    if int(float(unscaledNoDataValue)) != unscaledNoDataValue:
+                        raise TypeError(_('When numpyArray has the %(name)s dtype, if unscaledNoDataValue is an instance of an integer point type, it must be coercable to a Python float without any loss of precision. The value provided, %(value)r, does not meet this requirement') % {'name': numpyArray.dtype.name, 'value': unscaledNoDataValue})
+                    unscaledNoDataValue = float(unscaledNoDataValue)
+                else:
+                    raise TypeError(_('When numpyArray has the %(name)s dtype, unscaledNoDataValue must an instance of <class \'float\'> or a numpy floating-point type, or an instance of <class \'int\'> or a numpy integer type and the integer must be coercable to a float with no loss of precision.') % {'name': numpyArray.dtype.name})
 
         if 't' in dimensions:
             if tIncrementUnit is None:

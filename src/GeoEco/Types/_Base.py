@@ -163,7 +163,7 @@ class TypeMetadata(object):
         else:
             if not isinstance(value, self.PythonType):
                 from ..Logging import Logger
-                Logger.RaiseException(TypeError(_('The value provided for the %(variable)s is an invalid type ("%(badType)s" in Python). Please provide a value having the Python type "%(goodType)s".') % {'variable' : variableName, 'badType' : type(value).__name__, 'goodType' : self.PythonType.__name__}))
+                Logger.RaiseException(TypeError(_('The value provided for the %(variable)s is an instance of %(badType)s, an invalid type. Please provide an instance of %(goodType)s.') % {'variable' : variableName, 'badType' : type(value), 'goodType' : self.PythonType}))
             if self.AllowedValues is not None:
                 if issubclass(self.PythonType, str):
                     allowedValues = list(map(str.lower, self.AllowedValues))
@@ -663,8 +663,11 @@ class FloatTypeMetadata(TypeMetadata):
 
     def ValidateValue(self, value, variableName, methodLocals=None, argMetadata=None):
         valueChanged = False
-        if isinstance(value, int):
-            value = float(value)
+        if isinstance(value, int) or hasattr(value, 'dtype') and (value.dtype.name.startswith('int') or value.dtype.name.startswith('uint')):
+            newValue = float(value)
+            if int(newValue) != value:
+                _RaiseException(ValueError(_('The %(variable)s requires a float but a %(type)s was provided with the value %(value)r. This value cannot be represented by as a Python float without a loss of precision, so we cannot safely coerce it to a float automatically. Please either provide a float or a %(type)s that can be coerced safely.') % {'value' : value, 'type': type(value), 'variable' : variableName}))
+            value = newValue
             valueChanged = True
         (valueChanged2, value) = super(FloatTypeMetadata, self).ValidateValue(value, variableName, methodLocals, argMetadata)
         if value is not None:

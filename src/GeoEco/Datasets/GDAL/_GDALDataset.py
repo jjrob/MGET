@@ -368,367 +368,379 @@ class GDALDataset(FileDatasetCollection):
         else:
             blockSize = 32*1024*1024        # Default of 32 MB blocks when copying
 
-        # If the caller did not specify a GDALDriverName in the
-        # options, try to guess a driver name from the path's
-        # extension.
+        # Instruct GDAL to force statistics and histogram metadata to be
+        # written to a .aux.xml file, which is what ArcGIS needs. At the time
+        # of this writing, my understanding is that the only driver that uses
+        # this option is GTiff. But there is no harm in setting it regardless
+        # of what driver we will use.
 
-        if driver is None:
-            if not hasattr(GDALDataset, '_GDALWritableDriverNameForExtension'):
-                GDALDataset._GDALWritableDriverNameForExtension = {'.asc': 'AAIGrid',
-                                                                   '.bil': 'EHdr',
-                                                                   '.blx': 'BLX',
-                                                                   '.bmp': 'BMP',
-                                                                   '.bt': 'BT',
-                                                                   '.dem': 'USGSDEM',
-                                                                   '.dt0': 'DTED',
-                                                                   '.dt1': 'DTED',
-                                                                   '.dt2': 'DTED',
-                                                                   '.gen': 'ADRG',
-                                                                   '.gif': 'GIF',
-                                                                   '.img': 'HFA',
-                                                                   '.jpc': 'JPEG',
-                                                                   '.jpe': 'JPEG',
-                                                                   '.jpg': 'JPEG',
-                                                                   '.jpeg': 'JPEG',
-                                                                   '.mpl': 'ILWIS',
-                                                                   '.mpr': 'ILWIS',
-                                                                   '.sdat': 'SDAT',
-                                                                   '.ter': 'Terragen',
-                                                                   '.terrain': 'Terragen',
-                                                                   '.thf': 'ADRG',
-                                                                   '.tff': 'GTiff',
-                                                                   '.tif': 'GTiff',
-                                                                   '.tiff': 'GTiff',
-                                                                   '.txt': 'AAIGrid',
-                                                                   '.xlb': 'BLX',
-                                                                   '.xpm': 'XPM'}
+        with gdal.config_options({'ESRI_XML_PAM': 'TRUE'}):
 
-            ext = os.path.splitext(path)[1].lower()
-            if ext in GDALDataset._GDALWritableDriverNameForExtension:
-                driver = gdal.GetDriverByName(GDALDataset._GDALWritableDriverNameForExtension[ext])
-                if driver is None:
-                    raise ValueError(_('Cannot open Geospatial Data Abstraction Library (GDAL) dataset "%(path)s" using the GDAL "%(driver)s". GDAL was expected to have a driver with that name but does not. Please contact the author of this tool for assistance.') % {'path': path, 'driver': GDALDataset._GDALWritableDriverNameForExtension[ext]})
-            else:
-                raise ValueError(_('Cannot open Geospatial Data Abstraction Library (GDAL) dataset "%(path)s" because a GDALDriverName was not specified in the import options and we could not guess the driver from the destination name. Please provide a value for the GDALDriverName option and try again.') % {'path': path})
+            # If the caller did not specify a GDALDriverName in the
+            # options, try to guess a driver name from the path's
+            # extension.
 
-        # Validate that the source datasets are all Grids and have
-        # dimensions 'yx', evenly-spaced coordinates, valid data
-        # types, and the same spatial reference, shape, coordinate
-        # increments, corner coordinates, and data type.
+            if driver is None:
+                if not hasattr(GDALDataset, '_GDALWritableDriverNameForExtension'):
+                    GDALDataset._GDALWritableDriverNameForExtension = {'.asc': 'AAIGrid',
+                                                                       '.bil': 'EHdr',
+                                                                       '.blx': 'BLX',
+                                                                       '.bmp': 'BMP',
+                                                                       '.bt': 'BT',
+                                                                       '.dem': 'USGSDEM',
+                                                                       '.dt0': 'DTED',
+                                                                       '.dt1': 'DTED',
+                                                                       '.dt2': 'DTED',
+                                                                       '.gen': 'ADRG',
+                                                                       '.gif': 'GIF',
+                                                                       '.img': 'HFA',
+                                                                       '.jpc': 'JPEG',
+                                                                       '.jpe': 'JPEG',
+                                                                       '.jpg': 'JPEG',
+                                                                       '.jpeg': 'JPEG',
+                                                                       '.mpl': 'ILWIS',
+                                                                       '.mpr': 'ILWIS',
+                                                                       '.sdat': 'SDAT',
+                                                                       '.ter': 'Terragen',
+                                                                       '.terrain': 'Terragen',
+                                                                       '.thf': 'ADRG',
+                                                                       '.tff': 'GTiff',
+                                                                       '.tif': 'GTiff',
+                                                                       '.tiff': 'GTiff',
+                                                                       '.txt': 'AAIGrid',
+                                                                       '.xlb': 'BLX',
+                                                                       '.xpm': 'XPM'}
 
-        if not hasattr(GDALDataset, '_GDALDataTypeForNumpyDataType'):
-            GDALDataset._GDALDataTypeForNumpyDataType = {'uint8': gdal.GDT_Byte,
-                                                         'int8': gdal.GDT_Byte,
-                                                         'uint16': gdal.GDT_UInt16,
-                                                         'int16': gdal.GDT_Int16,
-                                                         'uint32': gdal.GDT_UInt32,
-                                                         'int32': gdal.GDT_Int32,
-                                                         'float32': gdal.GDT_Float32,
-                                                         'float64': gdal.GDT_Float64,
-                                                         'complex32': gdal.GDT_CFloat32,
-                                                         'complex64': gdal.GDT_CFloat64}
+                ext = os.path.splitext(path)[1].lower()
+                if ext in GDALDataset._GDALWritableDriverNameForExtension:
+                    driver = gdal.GetDriverByName(GDALDataset._GDALWritableDriverNameForExtension[ext])
+                    if driver is None:
+                        raise ValueError(_('Cannot open Geospatial Data Abstraction Library (GDAL) dataset "%(path)s" using the GDAL "%(driver)s". GDAL was expected to have a driver with that name but does not. Please contact the author of this tool for assistance.') % {'path': path, 'driver': GDALDataset._GDALWritableDriverNameForExtension[ext]})
+                else:
+                    raise ValueError(_('Cannot open Geospatial Data Abstraction Library (GDAL) dataset "%(path)s" because a GDALDriverName was not specified in the import options and we could not guess the driver from the destination name. Please provide a value for the GDALDriverName option and try again.') % {'path': path})
 
-        for dataset in sourceDatasets:
-            if not isinstance(dataset, Grid):
-                raise TypeError(_('Cannot import %(dn)s into Geospatial Data Abstraction Library (GDAL) dataset "%(path)s" because it is a %(type)s, which is not a Grid. It must be a Grid to be imported into a GDAL dataset.') % {'dn': dataset.DisplayName, 'path': path, 'type': dataset.__class__.__name__})
-            if dataset.Dimensions != 'yx':
-                raise ValueError(_('Cannot import %(dn)s into Geospatial Data Abstraction Library (GDAL) dataset "%(path)s" because it has dimensions "%(dim)s". It must have dimensions "yx" to be imported into a GDAL dataset.') % {'dn': dataset.DisplayName, 'path': path, 'dim': dataset.Dimensions})
-            if dataset.CoordDependencies != (None, None):
-                raise ValueError(_('Cannot import %(dn)s into Geospatial Data Abstraction Library (GDAL) dataset "%(path)s" because it does not have evenly-spaced coordinates (the coordinate dependencies are %(deps)s). It must have evenly-spaced coordinates (coordinate dependencies of (None, None)) to be imported into a GDAL dataset.') % {'dn': dataset.DisplayName, 'path': path, 'deps': repr(dataset.CoordDependencies)})
-            if useUnscaledData:
-                if dataset.UnscaledDataType not in list(GDALDataset._GDALDataTypeForNumpyDataType.keys()):
-                    raise ValueError(_('Cannot import %(dn)s into Geospatial Data Abstraction Library (GDAL) dataset "%(path)s" because it has the unscaled data type %(dt)s. To be imported into a GDAL dataset, it must have one of the following unscaled data types: %(dts)s.') % {'dn': dataset.DisplayName, 'path': path, 'dt': dataset.UnscaledDataType, 'dts': ', '.join(list(GDALDataset._GDALDataTypeForNumpyDataType.keys()))})
-            elif dataset.DataType not in list(GDALDataset._GDALDataTypeForNumpyDataType.keys()):
-                raise ValueError(_('Cannot import %(dn)s into Geospatial Data Abstraction Library (GDAL) dataset "%(path)s" because it has the data type %(dt)s. To be imported into a GDAL dataset, it must have one of the following data types: %(dts)s.') % {'dn': dataset.DisplayName, 'path': path, 'dt': dataset.DataType, 'dts': ', '.join(list(GDALDataset._GDALDataTypeForNumpyDataType.keys()))})
+            # Validate that the source datasets are all Grids and have
+            # dimensions 'yx', evenly-spaced coordinates, valid data
+            # types, and the same spatial reference, shape, coordinate
+            # increments, corner coordinates, and data type.
 
-        for i in range(1, len(sourceDatasets)):
-            if not sourceDatasets[0].GetSpatialReference('obj').IsSame(sourceDatasets[i].GetSpatialReference('obj')):
-                raise ValueError(_('Cannot import both %(dn1)s and %(dn2)s into Geospatial Data Abstraction Library (GDAL) dataset "%(path)s" because the two source datasets have different spatial references (%(sr1)s and %(sr2)s). All of the bands of a GDAL dataset must have the same spatial reference.') % {'dn1': sourceDatasets[0].DisplayName, 'dn2': sourceDatasets[i].DisplayName, 'path': path, 'sr1': repr(sourceDatasets[0].GetSpatialReference('wkt')), 'sr2': repr(sourceDatasets[i].GetSpatialReference('wkt'))})
-            if sourceDatasets[0].Shape != sourceDatasets[i].Shape:
-                raise ValueError(_('Cannot import both %(dn1)s and %(dn2)s into Geospatial Data Abstraction Library (GDAL) dataset "%(path)s" because the two source datasets have different shapes (%(shape1)s and %(shape2)s). All of the bands of a GDAL dataset must have the same shape.') % {'dn1': sourceDatasets[0].DisplayName, 'dn2': sourceDatasets[i].DisplayName, 'path': path, 'shape1': repr(sourceDatasets[0].Shape), 'shape2': repr(sourceDatasets[i].Shape)})
-            if sourceDatasets[0].CoordIncrements != sourceDatasets[i].CoordIncrements:
-                raise ValueError(_('Cannot import both %(dn1)s and %(dn2)s into Geospatial Data Abstraction Library (GDAL) dataset "%(path)s" because the two source datasets have different coordinate increments (%(incr1)s and %(incr2)s). All of the bands of a GDAL dataset must have the same coordinate increments.') % {'dn1': sourceDatasets[0].DisplayName, 'dn2': sourceDatasets[i].DisplayName, 'path': path, 'incr1': repr(sourceDatasets[0].CoordIncrements), 'incr2': repr(sourceDatasets[i].CoordIncrements)})
-            if sourceDatasets[0].MinCoords['x',0] != sourceDatasets[i].MinCoords['x',0]:
-                raise ValueError(_('Cannot import both %(dn1)s and %(dn2)s into Geospatial Data Abstraction Library (GDAL) dataset "%(path)s" because the two source datasets have different minimum x coordinates (%(c1)s and %(c2)s). All of the bands of a GDAL dataset must have the same corner coordinates.') % {'dn1': sourceDatasets[0].DisplayName, 'dn2': sourceDatasets[i].DisplayName, 'path': path, 'c1': repr(sourceDatasets[0].MinCoords['x',0]), 'c2': repr(sourceDatasets[i].MinCoords['x',0])})
-            if sourceDatasets[0].MinCoords['y',0] != sourceDatasets[i].MinCoords['y',0]:
-                raise ValueError(_('Cannot import both %(dn1)s and %(dn2)s into Geospatial Data Abstraction Library (GDAL) dataset "%(path)s" because the two source datasets have different minimum y coordinates (%(c1)s and %(c2)s). All of the bands of a GDAL dataset must have the same corner coordinates.') % {'dn1': sourceDatasets[0].DisplayName, 'dn2': sourceDatasets[i].DisplayName, 'path': path, 'c1': repr(sourceDatasets[0].MinCoords['y',0]), 'c2': repr(sourceDatasets[i].MinCoords['y',0])})
-            if useUnscaledData:
-                if sourceDatasets[0].UnscaledDataType != sourceDatasets[i].UnscaledDataType:
-                    raise ValueError(_('Cannot import both %(dn1)s and %(dn2)s into Geospatial Data Abstraction Library (GDAL) dataset "%(path)s" because the two source datasets have different unscaled data types (%(dt1)s and %(dt2)s). All of the bands of a GDAL dataset must have the same data type.') % {'dn1': sourceDatasets[0].DisplayName, 'dn2': sourceDatasets[i].DisplayName, 'path': path, 'dt1': sourceDatasets[0].UnscaledDataType, 'dt2': sourceDatasets[i].UnscaledDataType})
-            elif sourceDatasets[0].DataType != sourceDatasets[i].DataType:
-                raise ValueError(_('Cannot import both %(dn1)s and %(dn2)s into Geospatial Data Abstraction Library (GDAL) dataset "%(path)s" because the two source datasets have different data types (%(dt1)s and %(dt2)s). All of the bands of a GDAL dataset must have the same data type.') % {'dn1': sourceDatasets[0].DisplayName, 'dn2': sourceDatasets[i].DisplayName, 'path': path, 'dt1': sourceDatasets[0].DataType, 'dt2': sourceDatasets[i].DataType})
+            if not hasattr(GDALDataset, '_GDALDataTypeForNumpyDataType'):
+                GDALDataset._GDALDataTypeForNumpyDataType = {'uint8': gdal.GDT_Byte,
+                                                             'int8': gdal.GDT_Byte,
+                                                             'uint16': gdal.GDT_UInt16,
+                                                             'int16': gdal.GDT_Int16,
+                                                             'uint32': gdal.GDT_UInt32,
+                                                             'int32': gdal.GDT_Int32,
+                                                             'float32': gdal.GDT_Float32,
+                                                             'float64': gdal.GDT_Float64,
+                                                             'complex32': gdal.GDT_CFloat32,
+                                                             'complex64': gdal.GDT_CFloat64}
 
-        # If the mode is 'replace' and the GDAL dataset exists, delete
-        # it using the GDAL driver.
+            for dataset in sourceDatasets:
+                if not isinstance(dataset, Grid):
+                    raise TypeError(_('Cannot import %(dn)s into Geospatial Data Abstraction Library (GDAL) dataset "%(path)s" because it is a %(type)s, which is not a Grid. It must be a Grid to be imported into a GDAL dataset.') % {'dn': dataset.DisplayName, 'path': path, 'type': dataset.__class__.__name__})
+                if dataset.Dimensions != 'yx':
+                    raise ValueError(_('Cannot import %(dn)s into Geospatial Data Abstraction Library (GDAL) dataset "%(path)s" because it has dimensions "%(dim)s". It must have dimensions "yx" to be imported into a GDAL dataset.') % {'dn': dataset.DisplayName, 'path': path, 'dim': dataset.Dimensions})
+                if dataset.CoordDependencies != (None, None):
+                    raise ValueError(_('Cannot import %(dn)s into Geospatial Data Abstraction Library (GDAL) dataset "%(path)s" because it does not have evenly-spaced coordinates (the coordinate dependencies are %(deps)s). It must have evenly-spaced coordinates (coordinate dependencies of (None, None)) to be imported into a GDAL dataset.') % {'dn': dataset.DisplayName, 'path': path, 'deps': repr(dataset.CoordDependencies)})
+                if useUnscaledData:
+                    if dataset.UnscaledDataType not in list(GDALDataset._GDALDataTypeForNumpyDataType.keys()):
+                        raise ValueError(_('Cannot import %(dn)s into Geospatial Data Abstraction Library (GDAL) dataset "%(path)s" because it has the unscaled data type %(dt)s. To be imported into a GDAL dataset, it must have one of the following unscaled data types: %(dts)s.') % {'dn': dataset.DisplayName, 'path': path, 'dt': dataset.UnscaledDataType, 'dts': ', '.join(list(GDALDataset._GDALDataTypeForNumpyDataType.keys()))})
+                elif dataset.DataType not in list(GDALDataset._GDALDataTypeForNumpyDataType.keys()):
+                    raise ValueError(_('Cannot import %(dn)s into Geospatial Data Abstraction Library (GDAL) dataset "%(path)s" because it has the data type %(dt)s. To be imported into a GDAL dataset, it must have one of the following data types: %(dts)s.') % {'dn': dataset.DisplayName, 'path': path, 'dt': dataset.DataType, 'dts': ', '.join(list(GDALDataset._GDALDataTypeForNumpyDataType.keys()))})
 
-        if mode == 'replace' and cls._GDALDatasetExists(path):
-            cls._LogDebug(_('%(class)s: Deleting existing GDAL dataset "%(path)s".'), {'class': cls.__name__, 'path': path})
-            try:
-                driver.Delete(path)
-            except Exception as e:
-                gdal.ErrorReset()
-                raise RuntimeError(_('Failed to delete the existing Geospatial Data Abstraction Library (GDAL) dataset "%(path)s" using the GDAL %(driver)s driver. The driver\'s Delete function failed with %(e)s: %(msg)s') % {'path': path, 'driver': driver.LongName, 'e': e.__class__.__name__, 'msg': e})
+            for i in range(1, len(sourceDatasets)):
+                if not sourceDatasets[0].GetSpatialReference('obj').IsSame(sourceDatasets[i].GetSpatialReference('obj')):
+                    raise ValueError(_('Cannot import both %(dn1)s and %(dn2)s into Geospatial Data Abstraction Library (GDAL) dataset "%(path)s" because the two source datasets have different spatial references (%(sr1)s and %(sr2)s). All of the bands of a GDAL dataset must have the same spatial reference.') % {'dn1': sourceDatasets[0].DisplayName, 'dn2': sourceDatasets[i].DisplayName, 'path': path, 'sr1': repr(sourceDatasets[0].GetSpatialReference('wkt')), 'sr2': repr(sourceDatasets[i].GetSpatialReference('wkt'))})
+                if sourceDatasets[0].Shape != sourceDatasets[i].Shape:
+                    raise ValueError(_('Cannot import both %(dn1)s and %(dn2)s into Geospatial Data Abstraction Library (GDAL) dataset "%(path)s" because the two source datasets have different shapes (%(shape1)s and %(shape2)s). All of the bands of a GDAL dataset must have the same shape.') % {'dn1': sourceDatasets[0].DisplayName, 'dn2': sourceDatasets[i].DisplayName, 'path': path, 'shape1': repr(sourceDatasets[0].Shape), 'shape2': repr(sourceDatasets[i].Shape)})
+                if sourceDatasets[0].CoordIncrements != sourceDatasets[i].CoordIncrements:
+                    raise ValueError(_('Cannot import both %(dn1)s and %(dn2)s into Geospatial Data Abstraction Library (GDAL) dataset "%(path)s" because the two source datasets have different coordinate increments (%(incr1)s and %(incr2)s). All of the bands of a GDAL dataset must have the same coordinate increments.') % {'dn1': sourceDatasets[0].DisplayName, 'dn2': sourceDatasets[i].DisplayName, 'path': path, 'incr1': repr(sourceDatasets[0].CoordIncrements), 'incr2': repr(sourceDatasets[i].CoordIncrements)})
+                if sourceDatasets[0].MinCoords['x',0] != sourceDatasets[i].MinCoords['x',0]:
+                    raise ValueError(_('Cannot import both %(dn1)s and %(dn2)s into Geospatial Data Abstraction Library (GDAL) dataset "%(path)s" because the two source datasets have different minimum x coordinates (%(c1)s and %(c2)s). All of the bands of a GDAL dataset must have the same corner coordinates.') % {'dn1': sourceDatasets[0].DisplayName, 'dn2': sourceDatasets[i].DisplayName, 'path': path, 'c1': repr(sourceDatasets[0].MinCoords['x',0]), 'c2': repr(sourceDatasets[i].MinCoords['x',0])})
+                if sourceDatasets[0].MinCoords['y',0] != sourceDatasets[i].MinCoords['y',0]:
+                    raise ValueError(_('Cannot import both %(dn1)s and %(dn2)s into Geospatial Data Abstraction Library (GDAL) dataset "%(path)s" because the two source datasets have different minimum y coordinates (%(c1)s and %(c2)s). All of the bands of a GDAL dataset must have the same corner coordinates.') % {'dn1': sourceDatasets[0].DisplayName, 'dn2': sourceDatasets[i].DisplayName, 'path': path, 'c1': repr(sourceDatasets[0].MinCoords['y',0]), 'c2': repr(sourceDatasets[i].MinCoords['y',0])})
+                if useUnscaledData:
+                    if sourceDatasets[0].UnscaledDataType != sourceDatasets[i].UnscaledDataType:
+                        raise ValueError(_('Cannot import both %(dn1)s and %(dn2)s into Geospatial Data Abstraction Library (GDAL) dataset "%(path)s" because the two source datasets have different unscaled data types (%(dt1)s and %(dt2)s). All of the bands of a GDAL dataset must have the same data type.') % {'dn1': sourceDatasets[0].DisplayName, 'dn2': sourceDatasets[i].DisplayName, 'path': path, 'dt1': sourceDatasets[0].UnscaledDataType, 'dt2': sourceDatasets[i].UnscaledDataType})
+                elif sourceDatasets[0].DataType != sourceDatasets[i].DataType:
+                    raise ValueError(_('Cannot import both %(dn1)s and %(dn2)s into Geospatial Data Abstraction Library (GDAL) dataset "%(path)s" because the two source datasets have different data types (%(dt1)s and %(dt2)s). All of the bands of a GDAL dataset must have the same data type.') % {'dn1': sourceDatasets[0].DisplayName, 'dn2': sourceDatasets[i].DisplayName, 'path': path, 'dt1': sourceDatasets[0].DataType, 'dt2': sourceDatasets[i].DataType})
 
-            # Also delete various files that may have been created by
-            # ArcGIS but that are not deleted by GDAL.
+            # If the mode is 'replace' and the GDAL dataset exists, delete
+            # it using the GDAL driver.
 
-            otherFiles = [path + '.xml', path + '.vat.dbf']
-
-            for f in otherFiles:
-                if os.path.isfile(f):
-                    try:
-                        os.remove(f)
-                    except Exception as e:
-                        raise RuntimeError(_('Failed to delete file "%(file)s". Python\'s os.remove function failed with %(e)s: %(msg)s') % {'file': f, 'e': e.__class__.__name__, 'msg': e})
-
-        # Otherwise, if the path is a file system path, create the
-        # parent directories, if they do not exist already.
-
-        elif (path[0] in ['/', '\\'] or hasattr(os.path, 'splitdrive') and os.path.splitdrive(path)[0] != '') and not os.path.isdir(os.path.dirname(path)):
-            cls._LogDebug(_('%(class)s: Creating directory "%(path)s".'), {'class': cls.__name__, 'path': os.path.dirname(path)})
-            try:
-                os.makedirs(os.path.dirname(path))
-            except Exception as e:
-                raise RuntimeError(_('Failed to create directory "%(path)s". Python\'s os.makedirs function failed and reported %(e)s: %(msg)s') % {'path': os.path.dirname(path), 'e': e.__class__.__name__, 'msg': e})
-        
-        # At this point, the GDAL dataset should not exist and we need
-        # to create it. First check whether the PIXELTYPE option is
-        # assigned properly.
-
-        if useUnscaledData:
-            dataType = sourceDatasets[0].UnscaledDataType
-        else:
-            dataType = sourceDatasets[0].DataType
-
-        if dataType == 'int8':
-            if 'PIXELTYPE=DEFAULT' in gdalCreateOptions:
-                gdalCreateOptions.remove('PIXELTYPE=DEFAULT')
-            if 'PIXELTYPE=SIGNEDBYTE' not in gdalCreateOptions:
-                gdalCreateOptions.append('PIXELTYPE=SIGNEDBYTE')
-        elif 'PIXELTYPE=SIGNEDBYTE' in gdalCreateOptions:
-            gdalCreateOptions.remove('PIXELTYPE=SIGNEDBYTE')
-
-        # For most GDAL drivers, the default values of the creation
-        # options seem designed to maximize compatibility of the
-        # output files with as many other applications as possible. We
-        # are mainly interested in maintaining compatibility for two
-        # applications, ArcGIS and GDAL, which are what our users are
-        # most likely to employ to work with the output files. To
-        # maximize performance and functionality for those
-        # applications, we tweak the default creation options for
-        # certain drivers.
-
-        if driver.ShortName == 'HFA':
-            if useArcGISSpatialReference and 'FORCETOPESTRING=YES' not in gdalCreateOptions and 'FORCETOPESTRING=NO' not in gdalCreateOptions:
-                gdalCreateOptions.append('FORCETOPESTRING=YES')
-            if 'COMPRESSED=YES' not in gdalCreateOptions and 'COMPRESSED=NO' not in gdalCreateOptions:
-                gdalCreateOptions.append('COMPRESSED=YES')
-
-        # Now create the GDAL dataset and set the geographic transform
-        # and spatial reference.
-
-        transform = [sourceDatasets[0].MinCoords['x',0], sourceDatasets[0].CoordIncrements[1], 0.0, sourceDatasets[0].MaxCoords['y',-1], 0.0, 0.0 - sourceDatasets[0].CoordIncrements[0]]
-        if sourceDatasets[0].GetSpatialReference('obj') is not None:
-            if useArcGISSpatialReference:
-                sr = sourceDatasets[0].GetSpatialReference('arcgis')
-            else:
-                sr = sourceDatasets[0].GetSpatialReference('wkt')
-        else:
-            sr = None
-
-        cls._LogDebug(_('%(class)s: Creating GDAL dataset "%(path)s" with the GDAL %(driver)s driver: xsize=%(xsize)i, ysize=%(ysize)i, bands=%(bands)i, dataType=%(dt)s, options=%(options)s, transform=%(transform)s, spatialRef=%(sr)s.'),
-                      {'class': cls.__name__,
-                       'path': path,
-                       'driver': driver.LongName,
-                       'xsize': sourceDatasets[0].Shape[1],
-                       'ysize': sourceDatasets[0].Shape[0],
-                       'bands': len(sourceDatasets),
-                       'dt': dataType,
-                       'options': repr(gdalCreateOptions),
-                       'transform': repr(transform),
-                       'sr': repr(sr)})
-
-        try:
-            gdalDataset = driver.Create(path, sourceDatasets[0].Shape[1], sourceDatasets[0].Shape[0], len(sourceDatasets), GDALDataset._GDALDataTypeForNumpyDataType[dataType], gdalCreateOptions)
-        except Exception as e:
-            gdal.ErrorReset()
-            raise RuntimeError(_('Failed to create the Geospatial Data Abstraction Library (GDAL) dataset "%(path)s" using the GDAL %(driver)s driver with xsize=%(xsize)i, ysize=%(ysize)i, bands=%(bands)i, dataType=%(dt)s, options=%(options)s. The driver\'s Create function failed and reported %(e)s: %(msg)s') % {'path': path, 'driver': driver.LongName, 'xsize': sourceDatasets[0].Shape[1], 'ysize': sourceDatasets[0].Shape[0], 'bands': len(sourceDatasets), 'dt': dataType, 'options': repr(gdalCreateOptions), 'e': e.__class__.__name__, 'msg': e})
-
-        try:
-            try:
+            if mode == 'replace' and cls._GDALDatasetExists(path):
+                cls._LogDebug(_('%(class)s: Deleting existing GDAL dataset "%(path)s".'), {'class': cls.__name__, 'path': path})
                 try:
-                    gdalDataset.SetGeoTransform(transform)
+                    driver.Delete(path)
                 except Exception as e:
                     gdal.ErrorReset()
-                    raise RuntimeError(_('Failed to set the geographic transform of Geospatial Data Abstraction Library (GDAL) dataset "%(path)s" (created with the GDAL %(driver)s driver) to %(transform)s. The GDAL SetGeoTransform function failed and reported %(e)s: %(msg)s.') % {'path': path, 'driver': driver.LongName, 'transform': repr(transform), 'e': e.__class__.__name__, 'msg': e})
+                    raise RuntimeError(_('Failed to delete the existing Geospatial Data Abstraction Library (GDAL) dataset "%(path)s" using the GDAL %(driver)s driver. The driver\'s Delete function failed with %(e)s: %(msg)s') % {'path': path, 'driver': driver.LongName, 'e': e.__class__.__name__, 'msg': e})
 
-                if sr is not None:
-                    try:
-                        gdalDataset.SetProjection(sr)
-                    except Exception as e:
-                        gdal.ErrorReset()
-                        raise RuntimeError(_('Failed to set the spatial reference of Geospatial Data Abstraction Library (GDAL) dataset "%(path)s" (created with the GDAL %(driver)s driver) to %(sr)s. The GDAL SetProjection function failed and reported %(e)s: %(msg)s.') % {'path': path, 'driver': driver.LongName, 'sr': repr(sr), 'e': e.__class__.__name__, 'msg': e})
+                # Also delete various files that may have been created by
+                # ArcGIS but that are not deleted by GDAL.
 
-                # Instantiate a GDALDataset instance for the newly-created
-                # GDAL dataset.
+                otherFiles = [path + '.xml', path + '.vat.dbf']
 
-                destDataset = cls(path, updatable=True)
-                destDataset._GDALDataset = gdalDataset
-                destDataset._OpenedFile = path
-                destDataset._RegisterForCloseAtExit()
-            finally:
-                del gdalDataset
+                for f in otherFiles:
+                    if os.path.isfile(f):
+                        try:
+                            os.remove(f)
+                        except Exception as e:
+                            raise RuntimeError(_('Failed to delete file "%(file)s". Python\'s os.remove function failed with %(e)s: %(msg)s') % {'file': f, 'e': e.__class__.__name__, 'msg': e})
 
-            try:
-                # Now we are ready to copy the source datasets to the
-                # bands of the newly-created GDAL dataset. To avoid
-                # exhausting system memory, we read up to 32 MB at a time
-                # before writing it out. To keep this simple and
-                # efficient, we only read complete rows of the grid.
-                # Compute the number of bytes in a row.
+            # Otherwise, if the path is a file system path, create the
+            # parent directories, if they do not exist already.
 
-                if dataType in ['int8', 'uint8']:
-                    bytesPerCell = 1
-                elif dataType in ['int16', 'uint16']:
-                    bytesPerCell = 2
-                elif dataType in ['int32', 'uint32', 'float32']:
-                    bytesPerCell = 4
-                elif dataType in ['float64', 'complex32']:
-                    bytesPerCell = 8
+            elif (path[0] in ['/', '\\'] or hasattr(os.path, 'splitdrive') and os.path.splitdrive(path)[0] != '') and not os.path.isdir(os.path.dirname(path)):
+                cls._LogDebug(_('%(class)s: Creating directory "%(path)s".'), {'class': cls.__name__, 'path': os.path.dirname(path)})
+                try:
+                    os.makedirs(os.path.dirname(path))
+                except Exception as e:
+                    raise RuntimeError(_('Failed to create directory "%(path)s". Python\'s os.makedirs function failed and reported %(e)s: %(msg)s') % {'path': os.path.dirname(path), 'e': e.__class__.__name__, 'msg': e})
+            
+            # At this point, the GDAL dataset should not exist and we need
+            # to create it. First check whether the PIXELTYPE option is
+            # assigned properly.
+
+            if useUnscaledData:
+                dataType = sourceDatasets[0].UnscaledDataType
+            else:
+                dataType = sourceDatasets[0].DataType
+
+            if dataType == 'int8':
+                if 'PIXELTYPE=DEFAULT' in gdalCreateOptions:
+                    gdalCreateOptions.remove('PIXELTYPE=DEFAULT')
+                if 'PIXELTYPE=SIGNEDBYTE' not in gdalCreateOptions:
+                    gdalCreateOptions.append('PIXELTYPE=SIGNEDBYTE')
+            elif 'PIXELTYPE=SIGNEDBYTE' in gdalCreateOptions:
+                gdalCreateOptions.remove('PIXELTYPE=SIGNEDBYTE')
+
+            # For most GDAL drivers, the default values of the creation
+            # options seem designed to maximize compatibility of the
+            # output files with as many other applications as possible. We
+            # are mainly interested in maintaining compatibility for two
+            # applications, ArcGIS and GDAL, which are what our users are
+            # most likely to employ to work with the output files. To
+            # maximize performance and functionality for those
+            # applications, we tweak the default creation options for
+            # certain drivers.
+
+            if driver.ShortName == 'HFA':
+                if useArcGISSpatialReference and 'FORCETOPESTRING=YES' not in gdalCreateOptions and 'FORCETOPESTRING=NO' not in gdalCreateOptions:
+                    gdalCreateOptions.append('FORCETOPESTRING=YES')
+                if 'COMPRESSED=YES' not in gdalCreateOptions and 'COMPRESSED=NO' not in gdalCreateOptions:
+                    gdalCreateOptions.append('COMPRESSED=YES')
+
+            # Now create the GDAL dataset and set the geographic transform
+            # and spatial reference.
+
+            transform = [sourceDatasets[0].MinCoords['x',0], sourceDatasets[0].CoordIncrements[1], 0.0, sourceDatasets[0].MaxCoords['y',-1], 0.0, 0.0 - sourceDatasets[0].CoordIncrements[0]]
+            if sourceDatasets[0].GetSpatialReference('obj') is not None:
+                if useArcGISSpatialReference:
+                    sr = sourceDatasets[0].GetSpatialReference('arcgis')
                 else:
-                    bytesPerCell = 16
+                    sr = sourceDatasets[0].GetSpatialReference('wkt')
+            else:
+                sr = None
 
-                bytesPerRow = bytesPerCell * sourceDatasets[0].Shape[1]
-                
-                # Iterate through the source datasets, copying each one to
-                # a band of the GDAL dataset.
+            cls._LogDebug(_('%(class)s: Creating GDAL dataset "%(path)s" with the GDAL %(driver)s driver: xsize=%(xsize)i, ysize=%(ysize)i, bands=%(bands)i, dataType=%(dt)s, options=%(options)s, transform=%(transform)s, spatialRef=%(sr)s.'),
+                          {'class': cls.__name__,
+                           'path': path,
+                           'driver': driver.LongName,
+                           'xsize': sourceDatasets[0].Shape[1],
+                           'ysize': sourceDatasets[0].Shape[0],
+                           'bands': len(sourceDatasets),
+                           'dt': dataType,
+                           'options': repr(gdalCreateOptions),
+                           'transform': repr(transform),
+                           'sr': repr(sr)})
 
-                import numpy
-
-                for i in range(len(sourceDatasets)):
-                    band = GDALRasterBand(destDataset, i+1)
-                    try:
-                        # Set the NoData value of the destination dataset
-                        # to that of the source dataset.
-
-                        if useUnscaledData:
-                            noDataValue = sourceDatasets[i].UnscaledNoDataValue
-                        else:
-                            noDataValue = sourceDatasets[i].NoDataValue
-
-                        if noDataValue is not None:
-                            destDataset._OpenBand(i+1)
-                            cls._LogDebug(_('%(class)s 0x%(id)08X: Setting NoData value of band %(band)i to %(nodata)s.') % {'class': cls.__name__, 'id': id(destDataset), 'band': i+1, 'nodata': repr(float(noDataValue))})
-                            try:
-                                destDataset._GDALRasterBand.SetNoDataValue(float(noDataValue))
-                            except Exception as e:
-                                gdal.ErrorReset()
-                                raise RuntimeError(_('Failed to set the NoData value of Geospatial Data Abstraction Library (GDAL) dataset "%(path)s" (created with the GDAL %(driver)s driver) to %(nodata)s. The GDAL SetNoDataValue function failed and reported %(e)s: %(msg)s.') % {'path': path, 'driver': driver.LongName, 'nodata': repr(float(noDataValue)), 'e': e.__class__.__name__, 'msg': e})
-                            
-                        # Copy the data in blocks.
-                        
-                        rowsCopied = 0
-                        rowsToCopy = blockSize / bytesPerRow
-                        allNoData = noDataValue is not None
-
-                        while rowsCopied < sourceDatasets[i].Shape[0]:
-                            if rowsCopied + rowsToCopy > sourceDatasets[i].Shape[0]:
-                                rowsToCopy = sourceDatasets[i].Shape[0] - rowsCopied
-                                
-                            if useUnscaledData:
-                                data = sourceDatasets[i].UnscaledData[rowsCopied:rowsCopied+rowsToCopy, :]
-                                band.UnscaledData[rowsCopied:rowsCopied+rowsToCopy, :] = data
-                            else:
-                                data = sourceDatasets[i].Data[rowsCopied:rowsCopied+rowsToCopy, :]
-                                band.Data[rowsCopied:rowsCopied+rowsToCopy, :] = data
-
-                            if allNoData:
-                                allNoData = numpy.all(data == noDataValue)
-                                
-                            rowsCopied += rowsToCopy
-
-                        # Calculate statistics.
-
-                        if calculateStatistics:
-                            if not allNoData:
-                                cls._LogDebug(_('%(class)s 0x%(id)08X: Calculating statistics for band %(band)i.') % {'class': cls.__name__, 'id': id(destDataset), 'band': i+1})
-
-                                try:
-                                    statistics = destDataset._GDALRasterBand.GetStatistics(False, True)
-                                except Exception as e:
-                                    gdal.ErrorReset()
-                                    raise RuntimeError(_('Failed to calculate the statistics for band %(band)i of Geospatial Data Abstraction Library (GDAL) dataset "%(path)s" (created with the GDAL %(driver)s driver). The GDAL GetStatistics function failed and reported %(e)s: %(msg)s.') % {'band': i+1, 'path': path, 'driver': driver.LongName, 'e': e.__class__.__name__, 'msg': e})
-
-                                try:
-                                    destDataset._GDALRasterBand.SetStatistics(*statistics)
-                                except Exception as e:
-                                    gdal.ErrorReset()
-                                    raise RuntimeError(_('Failed to set the statistics for band %(band)i of Geospatial Data Abstraction Library (GDAL) dataset "%(path)s" (created with the GDAL %(driver)s driver) to %(statistics)s. The GDAL SetStatistics function failed and reported %(e)s: %(msg)s.') % {'band': i+1, 'path': path, 'driver': driver.LongName, 'statistics': repr(statistics), 'e': e.__class__.__name__, 'msg': e})
-                            else:
-                                cls._LogDebug(_('%(class)s 0x%(id)08X: Not calculating statistics for band %(band)i because all of the cells are NoData.') % {'class': cls.__name__, 'id': id(destDataset), 'band': i+1})
-
-                        # If this is not the last band we're creating,
-                        # report progress. We'll report progress for the
-                        # last band after we build overviews so that the
-                        # time required to build them is factored into the
-                        # progress calculations.
-
-                        if progressReporter is not None and i < len(sourceDatasets) - 1:
-                            progressReporter.ReportProgress()
-
-                    # Close the band and the source dataset.
-                    #
-                    # This is less than optimal when we're importing
-                    # more than one grid out of the same raster,
-                    # because when we close the sourceDatasets[i] (the
-                    # band) it will also close its parent (the
-                    # raster), and the parent might need to be
-                    # re-opened when we copy the next band. But we do
-                    # not currently have a mechanism for optimally
-                    # keeping the parent open while closing the child
-                    # when it is not needed anymore. So we err on the
-                    # side of making sure everything is closed.
-                            
-                    finally:
-                        del band
-                        if destDataset._OpenedBand is not None:
-                            cls._LogDebug(_('%(class)s 0x%(id)08X: Closing band %(band)i.') % {'class': destDataset.__class__.__name__, 'id': id(destDataset), 'band': destDataset._OpenedBand})
-                            destDataset._GDALRasterBand = None
-                            destDataset._OpenedBand = None
-
-                        sourceDatasets[i].Close()
-
-                # Build overviews.
-
-                if overviewResamplingMethod is not None:
-                    cls._LogDebug(_('%(class)s 0x%(id)08X: Building overviews: resampling="%(resampling)s", levels=%(levels)s.') % {'class': cls.__name__, 'id': id(destDataset), 'resampling': overviewResamplingMethod, 'levels': repr(overviewList)})
-
-                    try:
-                        destDataset._GDALDataset.BuildOverviews(overviewResamplingMethod, overviewList)
-                    except Exception as e:
-                        gdal.ErrorReset()
-                        raise RuntimeError(_('Failed to build overviews for Geospatial Data Abstraction Library (GDAL) dataset "%(path)s" (created with the GDAL %(driver)s driver) with resampling method "%(resampling)s" and levels %(levels)s. The GDAL BuildOverviews function failed and reported %(e)s: %(msg)s.') % {'path': path, 'driver': driver.LongName, 'resampling': overviewResamplingMethod, 'levels': repr(overviewList), 'e': e.__class__.__name__, 'msg': e})
-
-                # Report progress for the last band we created.
-
-                if progressReporter is not None:
-                    progressReporter.ReportProgress()
-                    
-            finally:
-                destDataset.Close()
-                del destDataset
-
-        # If an exception was raised after the dataset was created,
-        # delete it.
-        
-        except:
-            cls._LogDebug(_('%(class)s: Deleting the partially-created GDAL dataset "%(path)s" because an error was raised during creation.'), {'class': cls.__name__, 'path': path})
             try:
-                driver.Delete(path)
+                gdalDataset = driver.Create(path, sourceDatasets[0].Shape[1], sourceDatasets[0].Shape[0], len(sourceDatasets), GDALDataset._GDALDataTypeForNumpyDataType[dataType], gdalCreateOptions)
             except Exception as e:
                 gdal.ErrorReset()
-                cls._LogWarning(_('Failed to delete the partially-created dataset "%(path)s" using the GDAL %(driver)s driver. The driver\'s Delete function failed with %(e)s: %(msg)s') % {'path': path, 'driver': driver.LongName, 'e': e.__class__.__name__, 'msg': e})
-            raise
+                raise RuntimeError(_('Failed to create the Geospatial Data Abstraction Library (GDAL) dataset "%(path)s" using the GDAL %(driver)s driver with xsize=%(xsize)i, ysize=%(ysize)i, bands=%(bands)i, dataType=%(dt)s, options=%(options)s. The driver\'s Create function failed and reported %(e)s: %(msg)s') % {'path': path, 'driver': driver.LongName, 'xsize': sourceDatasets[0].Shape[1], 'ysize': sourceDatasets[0].Shape[0], 'bands': len(sourceDatasets), 'dt': dataType, 'options': repr(gdalCreateOptions), 'e': e.__class__.__name__, 'msg': e})
+
+            try:
+                try:
+                    try:
+                        gdalDataset.SetGeoTransform(transform)
+                    except Exception as e:
+                        gdal.ErrorReset()
+                        raise RuntimeError(_('Failed to set the geographic transform of Geospatial Data Abstraction Library (GDAL) dataset "%(path)s" (created with the GDAL %(driver)s driver) to %(transform)s. The GDAL SetGeoTransform function failed and reported %(e)s: %(msg)s.') % {'path': path, 'driver': driver.LongName, 'transform': repr(transform), 'e': e.__class__.__name__, 'msg': e})
+
+                    if sr is not None:
+                        try:
+                            gdalDataset.SetProjection(sr)
+                        except Exception as e:
+                            gdal.ErrorReset()
+                            raise RuntimeError(_('Failed to set the spatial reference of Geospatial Data Abstraction Library (GDAL) dataset "%(path)s" (created with the GDAL %(driver)s driver) to %(sr)s. The GDAL SetProjection function failed and reported %(e)s: %(msg)s.') % {'path': path, 'driver': driver.LongName, 'sr': repr(sr), 'e': e.__class__.__name__, 'msg': e})
+
+                    # Instantiate a GDALDataset instance for the newly-created
+                    # GDAL dataset.
+
+                    destDataset = cls(path, updatable=True)
+                    destDataset._GDALDataset = gdalDataset
+                    destDataset._OpenedFile = path
+                    destDataset._RegisterForCloseAtExit()
+                finally:
+                    del gdalDataset
+
+                try:
+                    # Now we are ready to copy the source datasets to the
+                    # bands of the newly-created GDAL dataset. To avoid
+                    # exhausting system memory, we read up to 32 MB at a time
+                    # before writing it out. To keep this simple and
+                    # efficient, we only read complete rows of the grid.
+                    # Compute the number of bytes in a row.
+
+                    if dataType in ['int8', 'uint8']:
+                        bytesPerCell = 1
+                    elif dataType in ['int16', 'uint16']:
+                        bytesPerCell = 2
+                    elif dataType in ['int32', 'uint32', 'float32']:
+                        bytesPerCell = 4
+                    elif dataType in ['float64', 'complex32']:
+                        bytesPerCell = 8
+                    else:
+                        bytesPerCell = 16
+
+                    bytesPerRow = bytesPerCell * sourceDatasets[0].Shape[1]
+                    
+                    # Iterate through the source datasets, copying each one to
+                    # a band of the GDAL dataset.
+
+                    import numpy
+
+                    for i in range(len(sourceDatasets)):
+                        band = GDALRasterBand(destDataset, i+1)
+                        try:
+                            # Set the NoData value of the destination dataset
+                            # to that of the source dataset.
+
+                            if useUnscaledData:
+                                noDataValue = sourceDatasets[i].UnscaledNoDataValue
+                            else:
+                                noDataValue = sourceDatasets[i].NoDataValue
+
+                            if noDataValue is not None:
+                                destDataset._OpenBand(i+1)
+                                cls._LogDebug(_('%(class)s 0x%(id)08X: Setting NoData value of band %(band)i to %(nodata)s.') % {'class': cls.__name__, 'id': id(destDataset), 'band': i+1, 'nodata': repr(float(noDataValue))})
+                                try:
+                                    destDataset._GDALRasterBand.SetNoDataValue(float(noDataValue))
+                                except Exception as e:
+                                    gdal.ErrorReset()
+                                    raise RuntimeError(_('Failed to set the NoData value of Geospatial Data Abstraction Library (GDAL) dataset "%(path)s" (created with the GDAL %(driver)s driver) to %(nodata)s. The GDAL SetNoDataValue function failed and reported %(e)s: %(msg)s.') % {'path': path, 'driver': driver.LongName, 'nodata': repr(float(noDataValue)), 'e': e.__class__.__name__, 'msg': e})
+                                
+                            # Copy the data in blocks.
+                            
+                            rowsCopied = 0
+                            rowsToCopy = blockSize / bytesPerRow
+                            allNoData = noDataValue is not None
+
+                            while rowsCopied < sourceDatasets[i].Shape[0]:
+                                if rowsCopied + rowsToCopy > sourceDatasets[i].Shape[0]:
+                                    rowsToCopy = sourceDatasets[i].Shape[0] - rowsCopied
+                                    
+                                if useUnscaledData:
+                                    data = sourceDatasets[i].UnscaledData[rowsCopied:rowsCopied+rowsToCopy, :]
+                                    band.UnscaledData[rowsCopied:rowsCopied+rowsToCopy, :] = data
+                                else:
+                                    data = sourceDatasets[i].Data[rowsCopied:rowsCopied+rowsToCopy, :]
+                                    band.Data[rowsCopied:rowsCopied+rowsToCopy, :] = data
+
+                                if allNoData:
+                                    allNoData = numpy.all(data == noDataValue)
+                                    
+                                rowsCopied += rowsToCopy
+
+                            # Calculate statistics and a histogram. By calling
+                            # GDALRasterBand.GetStatistics() and
+                            # GDALRasterBand.GetDefaultHistogram(), GDAL will
+                            # write out a .aux.xml file containing the statistics
+                            # and histogram.
+
+                            if calculateStatistics:
+                                if not allNoData:
+                                    cls._LogDebug(_('%(class)s 0x%(id)08X: Calculating statistics and a histogram for band %(band)i.') % {'class': cls.__name__, 'id': id(destDataset), 'band': i+1})
+
+                                    try:
+                                        statistics = destDataset._GDALRasterBand.GetStatistics(False, True)
+                                    except Exception as e:
+                                        gdal.ErrorReset()
+                                        raise RuntimeError(_('Failed to calculate the statistics for band %(band)i of Geospatial Data Abstraction Library (GDAL) dataset "%(path)s" (created with the GDAL %(driver)s driver). The GDAL GetStatistics function failed and reported %(e)s: %(msg)s.') % {'band': i+1, 'path': path, 'driver': driver.LongName, 'e': e.__class__.__name__, 'msg': e})
+
+                                    try:
+                                        destDataset._GDALRasterBand.GetDefaultHistogram()
+                                    except Exception as e:
+                                        gdal.ErrorReset()
+                                        raise RuntimeError(_('Failed to calculate the histogram for band %(band)i of Geospatial Data Abstraction Library (GDAL) dataset "%(path)s" (created with the GDAL %(driver)s driver). The GDAL GetDefaultHistogram function failed and reported %(e)s: %(msg)s.') % {'band': i+1, 'path': path, 'driver': driver.LongName, 'e': e.__class__.__name__, 'msg': e})
+                                else:
+                                    cls._LogDebug(_('%(class)s 0x%(id)08X: Not calculating statistics for band %(band)i because all of the cells are NoData.') % {'class': cls.__name__, 'id': id(destDataset), 'band': i+1})
+
+                            # If this is not the last band we're creating,
+                            # report progress. We'll report progress for the
+                            # last band after we build overviews so that the
+                            # time required to build them is factored into the
+                            # progress calculations.
+
+                            if progressReporter is not None and i < len(sourceDatasets) - 1:
+                                progressReporter.ReportProgress()
+
+                        # Close the band and the source dataset.
+                        #
+                        # This is less than optimal when we're importing
+                        # more than one grid out of the same raster,
+                        # because when we close the sourceDatasets[i] (the
+                        # band) it will also close its parent (the
+                        # raster), and the parent might need to be
+                        # re-opened when we copy the next band. But we do
+                        # not currently have a mechanism for optimally
+                        # keeping the parent open while closing the child
+                        # when it is not needed anymore. So we err on the
+                        # side of making sure everything is closed.
+                                
+                        finally:
+                            del band
+                            if destDataset._OpenedBand is not None:
+                                cls._LogDebug(_('%(class)s 0x%(id)08X: Closing band %(band)i.') % {'class': destDataset.__class__.__name__, 'id': id(destDataset), 'band': destDataset._OpenedBand})
+                                destDataset._GDALRasterBand = None
+                                destDataset._OpenedBand = None
+
+                            sourceDatasets[i].Close()
+
+                    # Build overviews.
+
+                    if overviewResamplingMethod is not None:
+                        cls._LogDebug(_('%(class)s 0x%(id)08X: Building overviews: resampling="%(resampling)s", levels=%(levels)s.') % {'class': cls.__name__, 'id': id(destDataset), 'resampling': overviewResamplingMethod, 'levels': repr(overviewList)})
+
+                        try:
+                            destDataset._GDALDataset.BuildOverviews(overviewResamplingMethod, overviewList)
+                        except Exception as e:
+                            gdal.ErrorReset()
+                            raise RuntimeError(_('Failed to build overviews for Geospatial Data Abstraction Library (GDAL) dataset "%(path)s" (created with the GDAL %(driver)s driver) with resampling method "%(resampling)s" and levels %(levels)s. The GDAL BuildOverviews function failed and reported %(e)s: %(msg)s.') % {'path': path, 'driver': driver.LongName, 'resampling': overviewResamplingMethod, 'levels': repr(overviewList), 'e': e.__class__.__name__, 'msg': e})
+
+                    # Report progress for the last band we created.
+
+                    if progressReporter is not None:
+                        progressReporter.ReportProgress()
+                        
+                finally:
+                    destDataset.Close()
+                    del destDataset
+
+            # If an exception was raised after the dataset was created,
+            # delete it.
+            
+            except:
+                cls._LogDebug(_('%(class)s: Deleting the partially-created GDAL dataset "%(path)s" because an error was raised during creation.'), {'class': cls.__name__, 'path': path})
+                try:
+                    driver.Delete(path)
+                except Exception as e:
+                    gdal.ErrorReset()
+                    cls._LogWarning(_('Failed to delete the partially-created dataset "%(path)s" using the GDAL %(driver)s driver. The driver\'s Delete function failed with %(e)s: %(msg)s') % {'path': path, 'driver': driver.LongName, 'e': e.__class__.__name__, 'msg': e})
+                raise
 
 
 ########################################################################################

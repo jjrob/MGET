@@ -534,22 +534,22 @@ class ArcGISRaster(object):
             Logger.SetLogInfoAsDebug(oldLogInfoAsDebug)
 
     @classmethod
-    def FromNumpyArray(cls, numpyArray, raster, xLowerLeftCorner, yLowerLeftCorner, cellSize, nodataValue=None, coordinateSystem=None, calculateStatistics=True, buildPyramids=False, buildRAT=True, overwriteExisting=False):
+    def FromNumpyArray(cls, numpyArray, raster, xLowerLeftCorner, yLowerLeftCorner, cellSize, noDataValue=None, coordinateSystem=None, calculateStatistics=True, buildPyramids=False, buildRAT=True, overwriteExisting=False):
         cls.__doc__.Obj.ValidateMethodInvocation()
         oldLogInfoAsDebug = Logger.LogInfoAndSetInfoToDebug(_('Creating ArcGIS raster %(out)s...') % {'out' : raster})
         try:
             try:
                 # Create a NumpyGrid for the numpy array.
 
-                from ..Datasets import NumpyGrid
+                from ..Datasets import Dataset, NumpyGrid
 
                 grid = NumpyGrid(numpyArray=numpyArray, 
                                  displayName='NumPy grid', 
-                                 spatialReference=coordinateSystem, 
+                                 spatialReference=Dataset.ConvertSpatialReference('ArcGIS', coordinateSystem, 'Obj'),
                                  dimensions='yx', 
                                  coordIncrements=(cellSize, cellSize), 
                                  cornerCoords=(yLowerLeftCorner + cellSize/2, xLowerLeftCorner + cellSize/2), 
-                                 unscaledNoDataValue=nodataValue)
+                                 unscaledNoDataValue=noDataValue)
 
                 # Define an ArcGISWorkspace for the caller's raster and import
                 # the NumpyGrid into it.
@@ -586,7 +586,7 @@ class ArcGISRaster(object):
                 if len(grids) <= 0:
                     raise ValueError(_('The raster %(raster)s does not have a band number %(band)i.') % {'raster': raster, 'band': band})
 
-                return grids[0].Data[:], grid.NoDataValue
+                return grids[0].Data[:], grids[0].NoDataValue
             except:
                 Logger.LogExceptionAsError()
                 raise
@@ -771,8 +771,8 @@ class ArcGISRaster(object):
                 from ..Datasets import Dataset
 
                 ogr = Dataset._osr()
-                inputSR = Dataset.ConvertSpatialReference('arcgis', inputCoordinateSystem, 'obj')
-                templateSR = Dataset.ConvertSpatialReference('arcgis', coordinateSystem, 'obj')
+                inputSR = Dataset.ConvertSpatialReference('ArcGIS', inputCoordinateSystem, 'Obj')
+                templateSR = Dataset.ConvertSpatialReference('ArcGIS', coordinateSystem, 'Obj')
                 transformer = Dataset._osr().CoordinateTransformation(templateSR, inputSR)
 
                 [templateLeft, templateBottom, templateRight, templateTop] = EnvelopeTypeMetadata.ParseFromArcGISString(extent)
@@ -1784,12 +1784,10 @@ AddMethodMetadata(ArcGISRaster.FromNumpyArray,
 CopyArgumentMetadata(ArcGISRaster.Copy, 'cls', ArcGISRaster.FromNumpyArray, 'cls')
 
 AddArgumentMetadata(ArcGISRaster.FromNumpyArray, 'numpyArray',
-    typeMetadata=NumPyArrayTypeMetadata(dimensions=2, minShape=[1,1], allowedDTypes=['int8', 'uint8', 'int16', 'uint16', 'int32', 'uint32', 'float32']),
+    typeMetadata=NumPyArrayTypeMetadata(dimensions=2, minShape=[1,1], allowedDTypes=['int8', 'uint8', 'int16', 'uint16', 'int32', 'uint32', 'float32', 'float64']),
     description=_('Numpy array to write out as an ArcGIS raster.'))
 
-AddArgumentMetadata(ArcGISRaster.FromNumpyArray, 'raster',
-    typeMetadata=ArcGISRasterTypeMetadata(deleteIfParameterIsTrue='overwriteExisting', createParentDirectories=True),
-    description=_('Output raster to create. If this path refers to the file system, missing directories in the path will be created if they do not exist.'))
+CopyArgumentMetadata(ArcGISRaster.CreateXRaster, 'raster', ArcGISRaster.FromNumpyArray, 'raster')
 
 AddArgumentMetadata(ArcGISRaster.FromNumpyArray, 'xLowerLeftCorner',
     typeMetadata=FloatTypeMetadata(),
@@ -1806,7 +1804,7 @@ AddArgumentMetadata(ArcGISRaster.FromNumpyArray, 'cellSize',
     description=_('Length and width of each cell, in the units of the raster\'s coordinate system. (ArcGIS requires the cells be square. It is not possible to specify a cell size for each dimension.)'),
     arcGISDisplayName=_('Cell size'))
 
-AddArgumentMetadata(ArcGISRaster.FromNumpyArray, 'nodataValue',
+AddArgumentMetadata(ArcGISRaster.FromNumpyArray, 'noDataValue',
     typeMetadata=FloatTypeMetadata(canBeNone=True),
     description=_('Value that indicates a cell has no data. If not specified, all cells are assumed to have data.'),
     arcGISDisplayName=_('NoData value'))
@@ -1816,14 +1814,13 @@ CopyArgumentMetadata(ArcGISRaster.CreateXRaster, 'coordinateSystem', ArcGISRaste
 AddArgumentMetadata(ArcGISRaster.FromNumpyArray, 'calculateStatistics',
     typeMetadata=BooleanTypeMetadata(),
     description=_(
-"""If True, statistics will be calculated for the raster using the ArcGIS
-:arcpy_management:`Calculate-Statistics` tool. This is usually a good idea for
-most raster formats because ArcGIS may only display them with helpful colors
-and gradients if statistics have been calculated. For certain formats, the
-explicit calculation of statistics is not necessary because it happens
-automatically when the rasters are created. If yo're using one of those
-formats, you can set this option to False to speed up the creation of the
-output rasters."""),
+"""If True, statistics will be calculated with GDAL. Calculating statistics is
+usually a good idea for most raster formats because ArcGIS may only
+display them with helpful colors and gradients if statistics have been
+calculated. For certain formats, the explicit calculation of statistics is
+not necessary because it happens automatically when the rasters are
+created. If you're using one of those formats, you can set this option to
+False to speed up the creation of the output rasters."""),
     arcGISDisplayName=_('Calculate statistics'))
 
 AddArgumentMetadata(ArcGISRaster.FromNumpyArray, 'buildRAT',
@@ -2047,7 +2044,7 @@ the projected coordinate system. If no projected coordinate system was
 specified, the coordinates should be specified in the original coordinate
 system.
 
-The ArcGIS :arcpy_management:`Clip` tool is used to perfom the clip. The
+The ArcGIS :arcpy_management:`Clip` tool is used to perform the clip. The
 clipping rectangle must be passed to this tool as a string of four numbers
 separated by spaces. The ArcGIS user interface automatically formats the
 string properly; when invoking this tool from the ArcGIS UI, you need not
@@ -2264,7 +2261,7 @@ impossibly high values. For example, consider a situation in which a percent
 sea ice concentration raster shows a positive gradient approaching the
 coastline but does not provide data right up to shore. Say you wanted to fill
 the missing cells close to shore and were willing to assume that whatever
-gradient occured nearby was reasonable for filling them in. If the positive
+gradient occurred nearby was reasonable for filling them in. If the positive
 gradient is strong enough, the algorithm might extrapolate ice concentration
 values greater than 100 percent, which is impossible. To prevent values from
 exceeding 100 percent, you could specify a maximum value of 100."""),

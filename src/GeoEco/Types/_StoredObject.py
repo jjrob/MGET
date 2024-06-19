@@ -11,6 +11,7 @@
 ##### THIS MODULE IS NOT MEANT TO BE IMPORTED DIRECTLY. IMPORT Types.py INSTEAD. #####
 
 import os
+import pathlib
 import re
 import sys
 
@@ -182,14 +183,21 @@ class StoredObjectTypeMetadata(UnicodeStringTypeMetadata):
         Metadata.AppendPropertyXMLNode(self, 'CreateParentDirectories', node, document)
 
     def ValidateValue(self, value, variableName, methodLocals=None, argMetadata=None):
-        (valueChanged, value) = super(StoredObjectTypeMetadata, self).ValidateValue(value, variableName, methodLocals, argMetadata)
+        valueChanged = False
+        if self.IsPath and isinstance(value, pathlib.Path):
+            value = str(value)
+            valueChanged = True
+
+        (valueChanged2, value) = super(StoredObjectTypeMetadata, self).ValidateValue(value, variableName, methodLocals, argMetadata)
+        valueChanged = valueChanged or valueChanged2
 
         if value is not None:
             exists = None
             isCorrectType = None
             
             if self.IsPath:
-                valueChanged, value, exists, isCorrectType = self._CanonicalizePath(value, argMetadata, methodLocals)
+                valueChanged2, value, exists, isCorrectType = self._CanonicalizePath(value, argMetadata, methodLocals)
+                valueChanged = valueChanged or valueChanged2
 
             if self.MustBeDifferentThanArguments is not None and methodLocals is not None:
                 for arg in self.MustBeDifferentThanArguments:
