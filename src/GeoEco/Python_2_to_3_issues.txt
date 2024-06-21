@@ -29,7 +29,9 @@ gp.List* functions now return lists rather than ArcGIS enumerator object
 gp.Describe().Extent now returns an object with properties rather than a string
 gp.CreatePersonalGDB_management no longer exists
 Look for code that involves .mdb
-These functions now reutrn a Result object, so we have to do .getOutput(0):
+These functions now return a Result object, so we have to do .getOutput(0):
     gp.CreateSpatialReference_management
     gp.GetCount_management
 Replace initializeToArcGISGeoprocessorVariable=u'OverwriteOutput' with initializeToArcGISGeoprocessorVariable='env.overwriteOutput'
+Spatial analyist no longer has tools like ExtractByMask_sa. Need to call gp.sa.ExtractByMask and then save() the output.
+gp.CreateFeatureClass_management must have a lowercase "class": gp.CreateFeatureclass_management

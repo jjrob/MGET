@@ -95,8 +95,8 @@ class ArcGISRaster(object):
         try:
             cls.FromNumpyArray(numpyArray=values, 
                                raster=raster, 
-                               xLowerLeftCorner=bottom, 
-                               yLowerLeftCorner=left, 
+                               xLowerLeftCorner=left, 
+                               yLowerLeftCorner=bottom, 
                                cellSize=cellSize, 
                                coordinateSystem=coordinateSystem, 
                                buildPyramids=buildPyramids, 
@@ -130,13 +130,13 @@ class ArcGISRaster(object):
 
         if cellValue == 'center':
             increment = cellSize / 2
-        elif cellValue == 'bottom':
+        elif cellValue == 'top':
             increment = cellSize
         else:
             increment = 0
 
         import numpy
-        values = numpy.arange(top - increment, bottom - increment, 0 - cellSize).reshape(rows,1) * numpy.ones((rows, cols))
+        values = numpy.arange(bottom + increment, top + increment, cellSize).reshape(rows,1) * numpy.ones((rows, cols))
 
         # Create the raster.
 
@@ -144,8 +144,8 @@ class ArcGISRaster(object):
         try:
             cls.FromNumpyArray(numpyArray=values, 
                                raster=raster, 
-                               xLowerLeftCorner=bottom, 
-                               yLowerLeftCorner=left, 
+                               xLowerLeftCorner=left, 
+                               yLowerLeftCorner=bottom, 
                                cellSize=cellSize, 
                                coordinateSystem=coordinateSystem, 
                                buildPyramids=buildPyramids, 
@@ -598,7 +598,8 @@ class ArcGISRaster(object):
         cls.__doc__.Obj.ValidateMethodInvocation()
         try:
             gp = GeoprocessorManager.GetWrappedGeoprocessor()
-            gp.ExtractByMask_sa(inputRaster, mask, outputRaster)
+            extractedRaster = gp.sa.ExtractByMask(inputRaster, mask)
+            extractedRaster.save(outputRaster)
         except:
             Logger.LogExceptionAsError()
             raise
@@ -676,11 +677,11 @@ class ArcGISRaster(object):
 
             Logger.Debug(_('Clipping...'))
 
-            # If the caller provided a clipping dataset, get its
-            # extent and use that as the clipping rectangle.
+            # If the caller provided a clipping dataset, use it rather than
+            # the clippingRectangle.
 
             if clippingDataset is not None:
-                clippingRectangle = gp.Describe(clippingDataset).Extent
+                clippingRectangle = clippingDataset
 
             # Clip it.
 
@@ -804,7 +805,7 @@ class ArcGISRaster(object):
             # To deal with this annoyance, we will expand the extent in all
             # four directions by 10 cells--guaranteeing that we have a raster
             # that is larger than the desired extent--and then use
-            # ExtractByMask_sa to obtain a raster of the desired extent.
+            # gp.sa.ExtractByMask to obtain a raster of the desired extent.
             #
             # We use 10 cells rather than 1 cell because of a different
             # problem: if the caller requested that we interpolate values for
@@ -867,9 +868,9 @@ class ArcGISRaster(object):
                 Interpolator.InpaintArcGISRaster(projectedRaster, infilledRaster, interpolationMethod, maxHoleSize, minValue=minValue, maxValue=maxValue)
                 projectedRaster = infilledRaster
 
-            # We are about to use ExtractByMask_sa to extract a raster of the
+            # We are about to use gp.sa.ExtractByMask to extract a raster of the
             # desired extent from the projected raster in the temp directory.
-            # But ExtractByMask_sa also has a side effect that we might not
+            # But gp.sa.ExtractByMask also has a side effect that we might not
             # want: it sets cells that are NoData in the mask to NoData in
             # the output raster. If the caller did not request that to happen
             # (using the template raster as the mask), create a constant
@@ -881,7 +882,7 @@ class ArcGISRaster(object):
                 gp.env.outputCoordinateSystem = coordinateSystem
                 try:
                     maskRaster = os.path.join(tempDir.Path, 'constant.img')
-                    gp.CreateConstantRaster_sa(maskRaster, 0, 'INTEGER', cellSize, extent)
+                    maskRaster = gp.sa.CreateConstantRaster(0, 'INTEGER', cellSize, extent)    # No need to save it
                 finally:
                     gp.env.outputCoordinateSystem = oldOutputCoordinateSystem
 
@@ -897,7 +898,8 @@ class ArcGISRaster(object):
 
             # Extract the raster.
 
-            gp.ExtractByMask_sa(projectedRaster, maskRaster, outputRaster)
+            extractedRaster = sa.ExtractByMask(projectedRaster, maskRaster)
+            extractedRaster.save(outputRaster)
 
             # Safety check: validate that the output raster has the same
             # extent as the template.
@@ -1892,9 +1894,10 @@ Note:
 AddMethodMetadata(ArcGISRaster.ExtractByMask,
     shortDescription=_('Extracts the cells of a raster that correspond to the areas defined by a mask.'),
     longDescription=_(
-"""This tool just calls the ArcGIS Spatial Analyst's
-:arcpy_sa:`Extract-by-Mask` tool. It only exists so that we can easily create
-a batched version of that tool."""),
+"""This function just calls the ArcGIS Spatial Analyst's
+:arcpy_sa:`Extract-by-Mask` tool with the `extraction_area` set to ``INSIDE``.
+This function only exists so that we can easily create a batched version of
+that tool."""),
     isExposedAsArcGISTool=False,
     arcGISToolCategory=_('Spatial and Temporal Analysis\\Extract By Mask'),
     dependencies=[ArcGISDependency(), ArcGISExtensionDependency('spatial')])
@@ -2315,7 +2318,7 @@ conform to the input raster's cell edges.
     arcGISDisplayName=_('Simplify polygons'))
 
 AddArgumentMetadata(ArcGISRaster.ToPolygons, 'field',
-    typeMetadata=ArcGISFieldTypeMetadata(mustExist=True, allowedFieldTypes=['SHORT', 'LONG', 'TEXT'], canBeNone=True),
+    typeMetadata=ArcGISFieldTypeMetadata(mustExist=True, allowedFieldTypes=['int8', 'uint8', 'int16', 'uint16', 'int32', 'uint32', 'int64', 'uint64', 'string'], canBeNone=True),
     description=_(
 """The field used to assign values from the cells in the input raster to the
 polygons in the output dataset. It can be an integer or a string field."""),
@@ -2387,7 +2390,7 @@ directories in the path will be created if they do not exist."""),
 CopyArgumentMetadata(ArcGISRaster.ToPolygons, 'simplify', ArcGISRaster.ToPolygonOutlines, 'simplify')
 
 AddArgumentMetadata(ArcGISRaster.ToPolygonOutlines, 'field',
-    typeMetadata=ArcGISFieldTypeMetadata(mustExist=True, allowedFieldTypes=['SHORT', 'LONG', 'TEXT'], canBeNone=True),
+    typeMetadata=ArcGISFieldTypeMetadata(mustExist=True, allowedFieldTypes=['int8', 'uint8', 'int16', 'uint16', 'int32', 'uint32', 'int64', 'uint64', 'string'], canBeNone=True),
     description=_(
 """The field used to assign values from the cells in the input raster to the
 lines in the output dataset. It can be an integer or a string field."""),
@@ -2504,7 +2507,7 @@ directories in the path will be created if they do not exist."""),
     arcGISDisplayName=_('Output point feature class'))
 
 AddArgumentMetadata(ArcGISRaster.ToPoints, 'field',
-    typeMetadata=ArcGISFieldTypeMetadata(mustExist=True, allowedFieldTypes=['SHORT', 'LONG', 'TEXT'], canBeNone=True),
+    typeMetadata=ArcGISFieldTypeMetadata(mustExist=True, allowedFieldTypes=['int8', 'uint8', 'int16', 'uint16', 'int32', 'uint32', 'int64', 'uint64', 'string'], canBeNone=True),
     description=_(
 """The field used to assign values from the cells in the input raster to the
 points in the output dataset. It can be an integer, floating-point, or string

@@ -705,7 +705,7 @@ class _ArcPyDAWritableCursor(object):
         # object and set SHAPE@ to it.
 
         else:
-            gp = GeoprocessorManager.GetWrappedGeoprocessor()
+            gp = GeoprocessorManager.GetGeoprocessor()      # Do not changed to GetWrappedGeoprocessor(); we want the result of gp.FromWKB below to not be a wrapped object, because we're not wrapping the cursor objects, so they need unwrapped parameters when we call their functions
             self._Row[self._FieldIndex['SHAPE@']] = gp.FromWKB(bytearray(geometry.ExportToWkb()))        # This is super convenient. Kudos to ESRI for providing arcpy.FromWKB.
 
 
@@ -743,6 +743,16 @@ class _ArcPyDASelectCursor(_ArcPyDAReadableCursor, SelectCursor):
             else:
                 fields.append('SHAPE@')
 
+        # Fail if orderBy is given and this is a shapefile or DBase table.
+
+        if orderBy is not None:
+            orderBy = 'ORDER BY ' + orderBy
+
+            gp = GeoprocessorManager.GetWrappedGeoprocessor()
+            if gp.Describe(self._Table._GetFullPath()).DataType.lower() in ['shapefile', 'dbasetable'] or \
+               gp.Describe(self._Table._GetFullPath()).DataType.lower() in ['featurelayer', 'tableview'] and gp.Describe(gp.Describe(self._Table._GetFullPath()).CatalogPath).DataType.lower() in ['shapefile', 'dbasetable']:
+                raise ValueError(_('Cannot query %(dn)s with ORDER BY expression %(orderBy)r because ArcGIS does not support ORDER BY expressions for that data format.') % {'dn': self.Table.DisplayName, 'orderBy': orderBy})
+
         # Open the cursor. We do this with GetGeoprocessor() rather than
         # GetWrappedGeoprocessor() so that the arcpy.da.SearchCursor object
         # is not wrapped. Because that object has no explicit "close"
@@ -754,9 +764,6 @@ class _ArcPyDASelectCursor(_ArcPyDAReadableCursor, SelectCursor):
         # the cursor open, which was keeping transactions open and also
         # preventing other cursors from being opened. So we gave up on
         # wrapping the arcpy.da.SearchCursor. This also speeds things up.
-
-        if orderBy is not None:
-            orderBy = 'ORDER BY ' + orderBy
 
         gp = GeoprocessorManager.GetGeoprocessor()  # Do not changed to GetWrappedGeoprocessor(); see above
         
@@ -809,6 +816,16 @@ class _ArcPyDAUpdateCursor(_ArcPyDAReadableCursor, _ArcPyDAWritableCursor, Updat
             else:
                 fields.append('SHAPE@')
 
+        # Fail if orderBy is given and this is a shapefile or DBase table.
+
+        if orderBy is not None:
+            orderBy = 'ORDER BY ' + orderBy
+
+            gp = GeoprocessorManager.GetWrappedGeoprocessor()
+            if gp.Describe(self._Table._GetFullPath()).DataType.lower() in ['shapefile', 'dbasetable'] or \
+               gp.Describe(self._Table._GetFullPath()).DataType.lower() in ['featurelayer', 'tableview'] and gp.Describe(gp.Describe(self._Table._GetFullPath()).CatalogPath).DataType.lower() in ['shapefile', 'dbasetable']:
+                raise ValueError(_('Cannot query %(dn)s with ORDER BY expression %(orderBy)r because ArcGIS does not support ORDER BY expressions for that data format.') % {'dn': self.Table.DisplayName, 'orderBy': orderBy})
+
         # Open the cursor. We do this with GetGeoprocessor() rather than
         # GetWrappedGeoprocessor() so that the arcpy.da.UpdateCursor object
         # is not wrapped. Because that object has no explicit "close"
@@ -820,9 +837,6 @@ class _ArcPyDAUpdateCursor(_ArcPyDAReadableCursor, _ArcPyDAWritableCursor, Updat
         # the cursor open, which was keeping transactions open and also
         # preventing other cursors from being opened. So we gave up on
         # wrapping the arcpy.da.UpdateCursor. This also speeds things up.
-
-        if orderBy is not None:
-            orderBy = 'ORDER BY ' + orderBy
         
         gp = GeoprocessorManager.GetGeoprocessor()  # Do not changed to GetWrappedGeoprocessor(); see above
 

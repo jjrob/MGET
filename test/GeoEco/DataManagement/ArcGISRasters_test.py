@@ -15,9 +15,12 @@ import numpy
 from pathlib import Path
 import pytest
 
-from GeoEco.Datasets import Dataset
+from GeoEco.ArcGIS import GeoprocessorManager
+from GeoEco.Datasets import Dataset, QueryableAttribute
+from GeoEco.Datasets.ArcGIS import ArcGISWorkspace, ArcGISTable, ArcGISRaster as ArcGISRaster2
 from GeoEco.DataManagement.ArcGISRasters import ArcGISRaster
 from GeoEco.Logging import Logger
+from GeoEco.Types import UnicodeStringTypeMetadata
 
 Logger.Initialize()
 
@@ -281,8 +284,6 @@ class TestArcGISRaster():
 
         # Create a file geodatabase.
 
-        from GeoEco.ArcGIS import GeoprocessorManager
-
         GeoprocessorManager.InitializeGeoprocessor()
         gp = GeoprocessorManager.GetWrappedGeoprocessor()
 
@@ -291,10 +292,6 @@ class TestArcGISRaster():
 
         # Define an ArcGISWorkspace for the file GDB. We'll use this to
         # examine the tables we create there.
-
-        from GeoEco.Datasets import QueryableAttribute
-        from GeoEco.Datasets.ArcGIS import ArcGISWorkspace, ArcGISTable
-        from GeoEco.Types import UnicodeStringTypeMetadata
 
         ws = ArcGISWorkspace(path=gdbPath,
                              datasetType=ArcGISTable,
@@ -468,8 +465,6 @@ class TestArcGISRaster():
 
         # Create a file geodatabase.
 
-        from GeoEco.ArcGIS import GeoprocessorManager
-
         GeoprocessorManager.InitializeGeoprocessor()
         gp = GeoprocessorManager.GetWrappedGeoprocessor()
 
@@ -478,10 +473,6 @@ class TestArcGISRaster():
 
         # Define an ArcGISWorkspace for the file GDB. We'll use this to
         # examine the tables we create there.
-
-        from GeoEco.Datasets import QueryableAttribute
-        from GeoEco.Datasets.ArcGIS import ArcGISWorkspace, ArcGISTable
-        from GeoEco.Types import UnicodeStringTypeMetadata
 
         ws = ArcGISWorkspace(path=gdbPath,
                              datasetType=ArcGISTable,
@@ -500,3 +491,270 @@ class TestArcGISRaster():
         expectedDates = [expectedDate for [p, expectedDate] in exampleRastersWithDatesList()]
 
         assert all([results['ParsedDate'][i] == expectedDates[i] for i in range(len(expectedDates))])
+
+
+    def test_CreateXRaster(self, tmp_path):
+        GeoprocessorManager.InitializeGeoprocessor()
+        gp = GeoprocessorManager.GetWrappedGeoprocessor()
+
+        coordinateSystem = Dataset.ConvertSpatialReference('proj4', '+proj=latlong +ellps=WGS84 +datum=WGS84 +no_defs', 'arcgis')
+        cellSize = 0.25
+
+        raster = tmp_path / 'test1.img'
+        ArcGISRaster.CreateXRaster(raster=raster, extent='-180 -90 180 90', cellSize=cellSize, cellValue='Center', coordinateSystem=coordinateSystem)
+        ex = gp.Describe(str(raster)).extent
+        assert ex.XMin == -180 and ex.YMin == -90 and ex.XMax == 180 and ex.YMax == 90
+        data, noDataValue = ArcGISRaster.ToNumpyArray(raster)
+        assert data.min() == -180. + cellSize / 2
+        assert data.max() == 180. - cellSize / 2
+        assert all(data[:,0] == data.min())
+        assert all(data[:,-1] == data.max())
+
+        raster = tmp_path / 'test2.img'
+        ArcGISRaster.CreateXRaster(raster=raster, extent='-180 -90 180 90', cellSize=cellSize, cellValue='Left', coordinateSystem=coordinateSystem)
+        ex = gp.Describe(str(raster)).extent
+        assert ex.XMin == -180 and ex.YMin == -90 and ex.XMax == 180 and ex.YMax == 90
+        data, noDataValue = ArcGISRaster.ToNumpyArray(raster)
+        assert data.min() == -180.
+        assert data.max() == 180. - cellSize
+        assert all(data[:,0] == data.min())
+        assert all(data[:,-1] == data.max())
+
+        raster = tmp_path / 'test3.img'
+        ArcGISRaster.CreateXRaster(raster=raster, extent='-180 -90 180 90', cellSize=cellSize, cellValue='Right', coordinateSystem=coordinateSystem)
+        ex = gp.Describe(str(raster)).extent
+        assert ex.XMin == -180 and ex.YMin == -90 and ex.XMax == 180 and ex.YMax == 90
+        data, noDataValue = ArcGISRaster.ToNumpyArray(raster)
+        assert data.min() == -180. + cellSize
+        assert data.max() == 180.
+        assert all(data[:,0] == data.min())
+        assert all(data[:,-1] == data.max())
+
+
+    def test_CreateYRaster(self, tmp_path):
+        GeoprocessorManager.InitializeGeoprocessor()
+        gp = GeoprocessorManager.GetWrappedGeoprocessor()
+
+        coordinateSystem = Dataset.ConvertSpatialReference('proj4', '+proj=latlong +ellps=WGS84 +datum=WGS84 +no_defs', 'arcgis')
+        cellSize = 0.25
+
+        raster = tmp_path / 'test1.img'
+        ArcGISRaster.CreateYRaster(raster=raster, extent='-180 -90 180 90', cellSize=cellSize, cellValue='Center', coordinateSystem=coordinateSystem)
+        ex = gp.Describe(str(raster)).extent
+        assert ex.XMin == -180 and ex.YMin == -90 and ex.XMax == 180 and ex.YMax == 90
+        data, noDataValue = ArcGISRaster.ToNumpyArray(raster)
+        assert data.min() == -90. + cellSize / 2
+        assert data.max() == 90. - cellSize / 2
+        assert all(data[0,:] == data.min())
+        assert all(data[-1,:] == data.max())
+
+        raster = tmp_path / 'test2.img'
+        ArcGISRaster.CreateYRaster(raster=raster, extent='-180 -90 180 90', cellSize=cellSize, cellValue='Bottom', coordinateSystem=coordinateSystem)
+        ex = gp.Describe(str(raster)).extent
+        assert ex.XMin == -180 and ex.YMin == -90 and ex.XMax == 180 and ex.YMax == 90
+        data, noDataValue = ArcGISRaster.ToNumpyArray(raster)
+        assert data.min() == -90.
+        assert data.max() == 90. - cellSize
+        assert all(data[0,:] == data.min())
+        assert all(data[-1,:] == data.max())
+
+        raster = tmp_path / 'test3.img'
+        ArcGISRaster.CreateYRaster(raster=raster, extent='-180 -90 180 90', cellSize=cellSize, cellValue='Top', coordinateSystem=coordinateSystem)
+        ex = gp.Describe(str(raster)).extent
+        assert ex.XMin == -180 and ex.YMin == -90 and ex.XMax == 180 and ex.YMax == 90
+        data, noDataValue = ArcGISRaster.ToNumpyArray(raster)
+        assert data.min() == -90. + cellSize
+        assert data.max() == 90.
+        assert all(data[0,:] == data.min())
+        assert all(data[-1,:] == data.max())
+
+
+    def test_ExtractByMask(self, tmp_path):
+        dataRaster = tmp_path / 'data.img'
+        ArcGISRaster.FromNumpyArray(numpyArray=numpy.ones((180,360))*2, raster=dataRaster, xLowerLeftCorner=-180, yLowerLeftCorner=-90, cellSize=1)
+
+        maskRaster = tmp_path / 'mask.img'
+        mask = numpy.ones((180,360))
+        mask[0:90, 0:90] = 0
+        ArcGISRaster.FromNumpyArray(numpyArray=mask, raster=maskRaster, xLowerLeftCorner=-180, yLowerLeftCorner=-90, cellSize=1, noDataValue=0)
+
+        outputRaster = tmp_path / 'output.img'
+        ArcGISRaster.ExtractByMask(dataRaster, maskRaster, outputRaster)
+
+        data, noDataValue = ArcGISRaster.ToNumpyArray(outputRaster)
+        assert noDataValue is not None
+        assert (data[0:90, 0:90] == noDataValue).all()
+        assert (data[90:, :] == 2).all()
+        assert (data[:, 90:] == 2).all()
+
+
+    def test_ToLines(self, tmp_path):
+        data = numpy.zeros((180,360), dtype='int16')
+        data[45, 0:180] = 1
+        data[135, 180:360] = 2
+
+        raster = tmp_path / 'raster1.img'
+        shp = tmp_path / 'features1.shp'
+        ArcGISRaster.FromNumpyArray(numpyArray=data, raster=raster, xLowerLeftCorner=-180, yLowerLeftCorner=-90, cellSize=1, noDataValue=0)
+        assert ArcGISRaster.ToNumpyArray(raster)[0].dtype == 'int16'
+        ArcGISRaster.ToLines(inputRaster=raster, outputFeatureClass=shp, backgroundValue='NODATA', field='Value')
+        table = ArcGISTable(str(shp))
+        assert table.GeometryType == 'MultiLineString'
+        with pytest.raises(RuntimeError, match='.*does not support ORDER BY.*'):
+            results = table.Query(orderBy='grid_code ASC', reportProgress=False)
+        results = table.Query(reportProgress=False)
+        assert sorted(results['grid_code']) == [1, 2]
+
+        data[45, 0:180] = 3
+        data[135, 180:360] = 4
+
+        raster = tmp_path / 'raster2.img'
+        ArcGISRaster.FromNumpyArray(numpyArray=data, raster=raster, xLowerLeftCorner=-180, yLowerLeftCorner=-90, cellSize=1)
+        assert ArcGISRaster.ToNumpyArray(raster)[0].dtype == 'int16'
+        ArcGISRaster.ToLines(inputRaster=raster, outputFeatureClass=shp, backgroundValue='ZERO', field='Value', overwriteExisting=True)
+        table = ArcGISTable(str(shp))
+        assert table.GeometryType == 'MultiLineString'
+        results = table.Query(reportProgress=False)
+        assert sorted(results['grid_code']) == [3,4]
+
+
+    def test_ToPoints(self, tmp_path):
+        data = numpy.zeros((180,360), dtype='int32')
+        data[170, 200] = 3
+        data[45, 45] = 1
+        data[135, 60] = 2
+        data[12, 300] = 2
+
+        raster = tmp_path / 'raster1.img'
+        shp = tmp_path / 'features1.shp'
+        ArcGISRaster.FromNumpyArray(numpyArray=data, raster=raster, xLowerLeftCorner=-180, yLowerLeftCorner=-90, cellSize=1, noDataValue=0)
+        assert ArcGISRaster.ToNumpyArray(raster)[0].dtype == 'int32'
+        ArcGISRaster.ToPoints(inputRaster=raster, outputFeatureClass=shp, field='Value')
+        table = ArcGISTable(str(shp))
+        assert table.GeometryType == 'Point'
+        results = table.Query(reportProgress=False)
+        assert sorted(results['grid_code']) == [1, 2, 2, 3]
+
+
+    def test_ToPolygons(self, tmp_path):
+        GeoprocessorManager.InitializeGeoprocessor()
+        gp = GeoprocessorManager.GetWrappedGeoprocessor()
+
+        data = numpy.zeros((2000,2000), dtype='int8')
+        data[0:1000, 0:1000] = 1
+        data[1000:2000, 1000:2000] = 2
+        data[1100:1200, 100:200] = 3
+        data[1140:1160, 140:160] = 0
+
+        raster = tmp_path / 'raster1.img'
+        shp = tmp_path / 'features1.shp'
+        ArcGISRaster.FromNumpyArray(numpyArray=data, raster=raster, xLowerLeftCorner=-1000, yLowerLeftCorner=-1000, cellSize=1, noDataValue=0)
+        assert ArcGISRaster.ToNumpyArray(raster)[0].dtype == 'int8'
+        ArcGISRaster.ToPolygons(inputRaster=raster, outputFeatureClass=shp, simplify=False, field='Value')
+        gp.CalculateGeometryAttributes_management(str(shp), [['ShapeArea', 'AREA']])
+        table = ArcGISTable(str(shp))
+        assert table.GeometryType == 'MultiPolygon'
+        results = table.Query(reportProgress=False)
+        assert sorted(results['gridcode']) == [1, 2, 3]
+        assert sorted(results['ShapeArea']) == [9600, 1000000, 1000000]
+
+
+    def test_ToPolygonOutlines(self, tmp_path):
+        GeoprocessorManager.InitializeGeoprocessor()
+        gp = GeoprocessorManager.GetWrappedGeoprocessor()
+
+        data = numpy.zeros((2000,2000), dtype='int8')
+        data[0:1000, 0:1000] = 1
+        data[1000:2000, 1000:2000] = 2
+        data[1100:1200, 100:200] = 3
+        data[1140:1160, 140:160] = 0
+
+        raster = tmp_path / 'raster1.img'
+        shp = tmp_path / 'features1.shp'
+        ArcGISRaster.FromNumpyArray(numpyArray=data, raster=raster, xLowerLeftCorner=-1000, yLowerLeftCorner=-1000, cellSize=1, noDataValue=0)
+        assert ArcGISRaster.ToNumpyArray(raster)[0].dtype == 'int8'
+        ArcGISRaster.ToPolygonOutlines(inputRaster=raster, outputFeatureClass=shp, simplify=False, field='Value')
+        gp.CalculateGeometryAttributes_management(str(shp), [['ShapeLen', 'LENGTH']])
+        table = ArcGISTable(str(shp))
+        assert table.GeometryType == 'MultiLineString'
+        results = table.Query(reportProgress=False)
+        assert sorted(results['gridcode']) == [1, 2, 3, 3]
+        assert sorted(results['ShapeLen']) == [80, 400, 4000, 4000]
+
+
+    def test_ProjectClipAndOrExecuteMapAlgebra(self, tmp_path):
+
+        # Test clipping from coordinates we specify.
+
+        sr1 = Dataset.ConvertSpatialReference('proj4', '+proj=latlong +ellps=WGS84 +datum=WGS84 +no_defs', 'obj')
+        arcWKT1 = Dataset.ConvertSpatialReference('obj', sr1, 'arcgis')
+
+        data = numpy.zeros((180,360), dtype='float32')
+        data[0:90, 0:180] = 1
+        data[90:180, 0:180] = 2
+        data[0:90, 180:360] = 3
+
+        inputRaster = tmp_path / 'raster1.img'
+        outputRaster = tmp_path / 'output1.img'
+        ArcGISRaster.FromNumpyArray(numpyArray=data, raster=inputRaster, xLowerLeftCorner=-180, yLowerLeftCorner=-90, cellSize=1, noDataValue=0, coordinateSystem=arcWKT1)
+        assert ArcGISRaster.ToNumpyArray(inputRaster)[0].dtype == 'float32'
+
+        ArcGISRaster.ProjectClipAndOrExecuteMapAlgebra(inputRaster=inputRaster, outputRaster=outputRaster, clippingRectangle="-180 -90 0 0", overwriteExisting=True)
+        band = ArcGISRaster2(outputRaster).QueryDatasets(reportProgress=False)[0]
+        assert band.MinCoords['x', 0] == -180
+        assert band.MaxCoords['x', -1] == 0
+        assert band.MinCoords['y', 0] == -90
+        assert band.MaxCoords['y', -1] == 0
+        assert (band.Data[:] == 1).all()
+        del band
+
+        ArcGISRaster.ProjectClipAndOrExecuteMapAlgebra(inputRaster=inputRaster, outputRaster=outputRaster, clippingRectangle="-180 0 0 90", overwriteExisting=True)
+        band = ArcGISRaster2(outputRaster).QueryDatasets(reportProgress=False)[0]
+        assert band.MinCoords['x', 0] == -180
+        assert band.MaxCoords['x', -1] == 0
+        assert band.MinCoords['y', 0] == 0
+        assert band.MaxCoords['y', -1] == 90
+        assert (band.Data[:] == 2).all()
+        del band
+
+        ArcGISRaster.ProjectClipAndOrExecuteMapAlgebra(inputRaster=inputRaster, outputRaster=outputRaster, clippingRectangle="0 -90 180 0", overwriteExisting=True)
+        band = ArcGISRaster2(outputRaster).QueryDatasets(reportProgress=False)[0]
+        assert band.MinCoords['x', 0] == 0
+        assert band.MaxCoords['x', -1] == 180
+        assert band.MinCoords['y', 0] == -90
+        assert band.MaxCoords['y', -1] == 0
+        assert (band.Data[:] == 3).all()
+        del band
+
+        ArcGISRaster.ProjectClipAndOrExecuteMapAlgebra(inputRaster=inputRaster, outputRaster=outputRaster, clippingRectangle="0 0 180 90", overwriteExisting=True)
+        band = ArcGISRaster2(outputRaster).QueryDatasets(reportProgress=False)[0]
+        assert band.MinCoords['x', 0] == 0
+        assert band.MaxCoords['x', -1] == 180
+        assert band.MinCoords['y', 0] == 0
+        assert band.MaxCoords['y', -1] == 90
+        assert (band.Data[:] == band.NoDataValue).all()
+        del band
+
+        # Test clipping from a shapefile.
+
+        ws = ArcGISWorkspace(path=tmp_path,
+                             datasetType=ArcGISTable,
+                             pathParsingExpressions=[r'(?P<TableName>.+)'],
+                             queryableAttributes=(QueryableAttribute('TableName', 'Table name', UnicodeStringTypeMetadata()),))
+
+        table = ws.CreateTable('polygon1.shp', geometryType='MultiPolygon', spatialReference=sr1)
+        with table.OpenInsertCursor(reportProgress=False) as cursor:
+            geom = ws._ogr().CreateGeometryFromWkt('POLYGON((0 0, -10 0, -10 -5, 0 -5, 0 0))')
+            cursor.SetGeometry(geom)
+            cursor.SetValue('Id', 1)    # This field is autocreated by ArcGIS
+            cursor.InsertRow()
+
+        ArcGISRaster.ProjectClipAndOrExecuteMapAlgebra(inputRaster=inputRaster, outputRaster=outputRaster, clippingDataset=table.Path, overwriteExisting=True)
+
+        band = ArcGISRaster2(outputRaster).QueryDatasets(reportProgress=False)[0]
+        assert band.MinCoords['x', 0] == -10
+        assert band.MaxCoords['x', -1] == 0
+        assert band.MinCoords['y', 0] == -5
+        assert band.MaxCoords['y', -1] == 0
+        assert (band.Data[:] == 1).all()
+        del band

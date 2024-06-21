@@ -111,7 +111,7 @@ class ArcGISGeoDatasetTypeMetadata(StoredObjectTypeMetadata):
         
         if exists:
             d = gp.Describe(name)
-            isCorrectType = d is not None and hasattr(d, 'Extent') and isinstance(d.Extent, str) and len(d.Extent) > 0
+            isCorrectType = d is not None and hasattr(d, 'Extent') and d.Extent is not None
 
         # Log a debug message indicating what happened.
         
@@ -985,30 +985,32 @@ class ArcGISFieldTypeMetadata(StoredObjectTypeMetadata):
     def ValidateValue(self, value, variableName, methodLocals=None, argMetadata=None):
         (valueChanged, value) = super(ArcGISFieldTypeMetadata, self).ValidateValue(value, variableName, methodLocals, argMetadata)
         if value is not None and self.AllowedFieldTypes is not None and methodLocals is not None and argMetadata.ArcGISParameterDependencies is not None and len(argMetadata.ArcGISParameterDependencies) > 0 and methodLocals[argMetadata.ArcGISParameterDependencies[0]] is not None:
-            from ..DatabaseAccess.ArcGIS import ArcGIS91DatabaseConnection
-            conn = ArcGIS91DatabaseConnection()
-            fieldDataType = conn.GetFieldDataType(methodLocals[argMetadata.ArcGISParameterDependencies[0]], value)
-            if fieldDataType is not None and fieldDataType.lower() not in self.AllowedFieldTypes:
+            from ..Datasets.ArcGIS import ArcGISTable
+            table = ArcGISTable(methodLocals[argMetadata.ArcGISParameterDependencies[0]])
+            field = table.GetFieldByName(value)
+            if field is None:
+                _RaiseException(ValueError(_('The %(type)s %(value)s, specified for the %(variable)s, does not exist.') % {'type' : self.TypeDisplayName, 'value' : os.path.join(methodLocals[argMetadata.ArcGISParameterDependencies[0]], value), 'variable' : variableName}))
+            if field.DataType.lower() not in self.AllowedFieldTypes:
                 if len(self.AllowedFieldTypes) == 1:
-                    _RaiseException(ValueError(_('The %(type)s %(value)s, specified for the %(variable)s, has the data type \'%(dt)s\', but this function requires a %(type)s with the data type \'%(allowed)s\'. Please provide a %(type)s with data type \'%(allowed)s\'.') % {'type' : self.TypeDisplayName, 'value' : os.path.join(methodLocals[argMetadata.ArcGISParameterDependencies[0]], value), 'variable' : variableName, 'dt': fieldDataType, 'allowed': self.AllowedFieldTypes[0]}))
+                    _RaiseException(ValueError(_('The %(type)s %(value)s, specified for the %(variable)s, has the data type \'%(dt)s\', but this function requires a %(type)s with the data type \'%(allowed)s\'. Please provide a %(type)s with data type \'%(allowed)s\'.') % {'type' : self.TypeDisplayName, 'value' : os.path.join(methodLocals[argMetadata.ArcGISParameterDependencies[0]], value), 'variable' : variableName, 'dt': field.DataType, 'allowed': self.AllowedFieldTypes[0]}))
                 else:
-                    _RaiseException(ValueError(_('The %(type)s %(value)s, specified for the %(variable)s, has the data type \'%(dt)s\', but this function requires a %(type)s with one of the following data types: \'%(allowed)s\'. Please provide a %(type)s with an allowed data type.') % {'type' : self.TypeDisplayName, 'value' : os.path.join(methodLocals[argMetadata.ArcGISParameterDependencies[0]], value), 'variable' : variableName, 'dt': fieldDataType, 'allowed': str('\', \''.join(map(str, self.AllowedFieldTypes)))}))
+                    _RaiseException(ValueError(_('The %(type)s %(value)s, specified for the %(variable)s, has the data type \'%(dt)s\', but this function requires a %(type)s with one of the following data types: \'%(allowed)s\'. Please provide a %(type)s with an allowed data type.') % {'type' : self.TypeDisplayName, 'value' : os.path.join(methodLocals[argMetadata.ArcGISParameterDependencies[0]], value), 'variable' : variableName, 'dt': field.DataType, 'allowed': str('\', \''.join(map(str, self.AllowedFieldTypes)))}))
         return (valueChanged, value)
 
     @classmethod
     def Exists(cls, name, argMetadata=None, methodLocals=None):
         assert methodLocals is not None and argMetadata is not None and argMetadata.ArcGISParameterDependencies is not None and len(argMetadata.ArcGISParameterDependencies) == 1, 'ArcGISFieldTypeMetadata.Exists requires that methodLocals and argMetadata be provided, and that argMetadata.ArcGISParameterDependencies[0] be set to the parameter that specifies the field\'s table.'
-        from ..DatabaseAccess.ArcGIS import ArcGIS91DatabaseConnection
-        conn = ArcGIS91DatabaseConnection()
-        exists = conn.FieldExists(methodLocals[argMetadata.ArcGISParameterDependencies[0]], name)
-        return exists, exists
+        from ..Datasets.ArcGIS import ArcGISTable
+        table = ArcGISTable(methodLocals[argMetadata.ArcGISParameterDependencies[0]])
+        field = table.GetFieldByName(name)
+        return field is not None, field is not None
 
     @classmethod
     def Delete(cls, name, argMetadata=None, methodLocals=None):
         assert methodLocals is not None and argMetadata is not None and argMetadata.ArcGISParameterDependencies is not None and len(argMetadata.ArcGISParameterDependencies) == 1, 'ArcGISFieldTypeMetadata.Delete requires that methodLocals and argMetadata be provided, and that argMetadata.ArcGISParameterDependencies[0] be set to the parameter that specifies the field\'s table.'
-        from ..DatabaseAccess.ArcGIS import ArcGIS91DatabaseConnection
-        conn = ArcGIS91DatabaseConnection()
-        conn.DeleteField(methodLocals[argMetadata.ArcGISParameterDependencies[0]], name)
+        from ..Datasets.ArcGIS import ArcGISTable
+        table = ArcGISTable(methodLocals[argMetadata.ArcGISParameterDependencies[0]])
+        table.DeleteField(name, failIfDoesNotExist=False)
 
     @classmethod
     def Copy(cls, source, dest, overwriteExisting=False, argMetadata=None, methodLocals=None):
@@ -1057,7 +1059,7 @@ class EnvelopeTypeMetadata(UnicodeStringTypeMetadata):
     def __init__(self, canBeNone=False):
         super(EnvelopeTypeMetadata, self).__init__(minLength=1,
                                                    maxLength=2147483647,
-                                                   mustMatchRegEx=r'([-+]?[0-9]*\\.?[0-9]+([eE][-+]?[0-9]+)?)\\s+([-+]?[0-9]*\\.?[0-9]+([eE][-+]?[0-9]+)?)\\s+([-+]?[0-9]*\\.?[0-9]+([eE][-+]?[0-9]+)?)\\s+([-+]?[0-9]*\\.?[0-9]+([eE][-+]?[0-9]+)?)',
+                                                   mustMatchRegEx=r'([-+]?[0-9]*\.?[0-9]+([eE][-+]?[0-9]+)?)\s+([-+]?[0-9]*\.?[0-9]+([eE][-+]?[0-9]+)?)\s+([-+]?[0-9]*\.?[0-9]+([eE][-+]?[0-9]+)?)\s+([-+]?[0-9]*\.?[0-9]+([eE][-+]?[0-9]+)?)',
                                                    canBeNone=canBeNone,
                                                    arcGISType='ESRI.ArcGIS.Geoprocessing.GPEnvelopeTypeClass',
                                                    arcGISAssembly='ESRI.ArcGIS.Geoprocessing',
@@ -1147,7 +1149,7 @@ class PointTypeMetadata(UnicodeStringTypeMetadata):
     
     def __init__(self, canBeNone=False):
         super(PointTypeMetadata, self).__init__(minLength=1,
-                                                mustMatchRegEx=r'([-+]?[0-9]*\\.?[0-9]+([eE][-+]?[0-9]+)?)\\s+([-+]?[0-9]*\\.?[0-9]+([eE][-+]?[0-9]+)?)',
+                                                mustMatchRegEx=r'([-+]?[0-9]*\.?[0-9]+([eE][-+]?[0-9]+)?)\s+([-+]?[0-9]*\.?[0-9]+([eE][-+]?[0-9]+)?)',
                                                 canBeNone=canBeNone,
                                                 arcGISType='ESRI.ArcGIS.Geoprocessing.GPPointTypeClass',
                                                 arcGISAssembly='ESRI.ArcGIS.Geoprocessing',

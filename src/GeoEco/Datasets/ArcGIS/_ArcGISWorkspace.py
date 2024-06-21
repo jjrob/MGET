@@ -650,7 +650,7 @@ class ArcGISWorkspace(DatasetCollectionTree, Database):
 
             srString = Dataset.ConvertSpatialReference('Obj', spatialReference, 'ArcGIS')
 
-            gp.CreateFeatureClass_management(self._Path, tableName, geometryType, None, 'DISABLED', hasZ, srString, config_keyword, 0, 0, 0)
+            gp.CreateFeatureclass_management(self._Path, tableName, geometryType, None, 'DISABLED', hasZ, srString, config_keyword, 0, 0, 0)
 
         # If we're caching the workspace contents, clear the cache so that the
         # new table will be discovered if the workspace is queried again.
