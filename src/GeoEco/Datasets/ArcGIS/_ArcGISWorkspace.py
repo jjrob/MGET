@@ -43,7 +43,7 @@ class ArcGISWorkspace(DatasetCollectionTree, Database):
 
     CacheTree = property(_GetCacheTree, doc=DynamicDocString())
 
-    def __init__(self, path, datasetType, pathParsingExpressions=None, pathCreationExpressions=None, cacheTree=True, queryableAttributes=None, queryableAttributeValues=None, lazyPropertyValues=None, cacheDirectory=None):
+    def __init__(self, path, datasetType, pathParsingExpressions=None, pathCreationExpressions=None, cacheTree=False, queryableAttributes=None, queryableAttributeValues=None, lazyPropertyValues=None, cacheDirectory=None):
         self.__doc__.Obj.ValidateMethodInvocation()
 
         # Validate datasetType.
@@ -78,6 +78,13 @@ class ArcGISWorkspace(DatasetCollectionTree, Database):
         # Initialize the base class.
 
         super(ArcGISWorkspace, self).__init__(pathParsingExpressions, pathCreationExpressions, queryableAttributes=queryableAttributes, queryableAttributeValues=queryableAttributeValues, lazyPropertyValues=lazyPropertyValues, cacheDirectory=cacheDirectory)
+
+        # Set lazy properties for the Describe object's workspace properties.
+        # This allows us to implement certain hacks based on the workspace.
+
+        if d.DataType.lower() == 'workspace':
+            self.SetLazyPropertyValue('workspaceType', d.workspaceType)
+            self.SetLazyPropertyValue('workspaceFactoryProgID', d.workspaceFactoryProgID)
 
     def ToRasterCatalog(self, rasterCatalog, arcGISSpatialRefString, tQACoordType=None, tCoordFunction=None, managed=False, projectOnTheFly=False, overwriteExisting=False):
         # TODO: self.__doc__.Obj.ValidateMethodInvocation()
@@ -620,7 +627,7 @@ class ArcGISWorkspace(DatasetCollectionTree, Database):
             # ArcInfo table, rather than a dBase table (.dbf file). We
             # don't want that. Add an extension to the caller's table.
 
-            if os.path.splitext(tableName)[1].lower() != '.dbf' and os.path.isdir(self._Path) and gp.Describe(self._Path).DataType.lower() in ['workspace', 'folder']:
+            if os.path.splitext(tableName)[1].lower() != '.dbf' and os.path.isdir(self._Path) and gp.Describe(self._Path).DataType.lower() in ['workspace', 'folder'] and not self._Path.lower().endswith('.gdb'):
                 tableName = tableName + '.dbf'
 
             gp.CreateTable_management(self._Path, tableName, None, config_keyword)

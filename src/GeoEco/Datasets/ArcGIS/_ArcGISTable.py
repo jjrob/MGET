@@ -8,6 +8,7 @@
 # root of this project or https://opensource.org/license/bsd-3-clause for the
 # full license text.
 
+import datetime
 import os
 
 from ...ArcGIS import GeoprocessorManager
@@ -131,6 +132,19 @@ class ArcGISTable(Table, ArcGISCopyableTable):
             self._DisplayName = _('ArcGIS %(dt)s "%(path)s"') % {'dt': arcGISDataType, 'path': path}
         else:
             self._DisplayName = _('ArcGIS %(dt)s "%(path)s" of %(pdt)s "%(cp)s"') % {'dt': arcGISDataType, 'path': path, 'pdt': arcGISPhysicalDataType, 'cp': d.CatalogPath}
+
+        # Try to determine properties of the workspace that contains this
+        # table. This allows us to implement certain hacks based on the
+        # workspace.
+
+        workspacePath = os.path.dirname(d.CatalogPath)
+        try:
+            dWorkspace = gp.Describe(workspacePath)
+            if dWorkspace.DataType.lower() == 'workspace':
+                self.SetLazyPropertyValue('workspaceType', dWorkspace.workspaceType)
+                self.SetLazyPropertyValue('workspaceFactoryProgID', dWorkspace.workspaceFactoryProgID)
+        except:
+            pass
 
         # Get the rest of the lazy properties.
 
@@ -583,7 +597,20 @@ class _ArcPyDAReadableCursor(object):
     def _GetValue(self, field):
         if self._Table.HasOID and field == self._Table.OIDFieldName:
             return self._GetOID()
-        return self._Row[self._FieldIndex[field]]
+
+        value = self._Row[self._FieldIndex[field]]
+
+        # As of ArcGIS 3.2.2, file geodatabases do not support microsecond
+        # values of date times, but arcpy will sometimes return a datetime
+        # with microsecond set to 1. So if this value a datetime, and the
+        # we're reading from a file GDB, set the microsecond to zero.
+
+        if isinstance(value, datetime.datetime):
+            progID = self._Table.GetLazyPropertyValue('workspaceFactoryProgID')
+            if progID is not None and progID.startswith('esriDataSourcesGDB.FileGDBWorkspaceFactory'):
+                value = datetime.datetime(value.year, value.month, value.day, value.hour, value.minute, value.second)
+
+        return value
 
     def _GetOID(self):
         if 'OID@' in self._FieldIndex:
@@ -643,6 +670,15 @@ class _ArcPyDAWritableCursor(object):
             length = self._Table.GetFieldByName(field).Length
             if value >= 10**length or value <= -1 * 10**(length-1):
                 raise ValueError(_('Cannot set the value of field %(field)s of this %(singular) of %(dn)s to %(value)s because that value is outside of the allowed range of values for the field (%(r1)i to %(r2)i).') % {'singular': self._RowDescriptionSingular, 'dn': self._Table.DisplayName, 'field': field, 'value': repr(value), 'r1': -1 * 10**(length-1) + 1, 'r2': 10**length - 1})
+
+        # As of ArcGIS 3.2.2, file geodatabases do not support microsecond
+        # values of date times. If this value a datetime, and the we're
+        # writing to a file GDB, set the microsecond to zero.
+
+        if isinstance(value, datetime.datetime):
+            progID = self._Table.GetLazyPropertyValue('workspaceFactoryProgID')
+            if progID is not None and progID.startswith('esriDataSourcesGDB.FileGDBWorkspaceFactory'):
+                value = datetime.datetime(value.year, value.month, value.day, value.hour, value.minute, value.second)
 
         self._Row[self._FieldIndex[field]] = value
 
@@ -707,16 +743,30 @@ class _ArcPyDASelectCursor(_ArcPyDAReadableCursor, SelectCursor):
             else:
                 fields.append('SHAPE@')
 
-        # Open the cursor.
+        # Open the cursor. We do this with GetGeoprocessor() rather than
+        # GetWrappedGeoprocessor() so that the arcpy.da.SearchCursor object
+        # is not wrapped. Because that object has no explicit "close"
+        # function, the only way to ensure it is closed is for it to be
+        # destructed. Apparently, under certain scenarios, our wrapper may
+        # not be destructed for a while; or possibly we were leaking a
+        # reference to it (e.g. by logging it). In any case, the
+        # arcpy.da.SearchCursor instance was staying alive, which was keeping
+        # the cursor open, which was keeping transactions open and also
+        # preventing other cursors from being opened. So we gave up on
+        # wrapping the arcpy.da.SearchCursor. This also speeds things up.
 
         if orderBy is not None:
             orderBy = 'ORDER BY ' + orderBy
 
-        gp = GeoprocessorManager.GetWrappedGeoprocessor()
+        gp = GeoprocessorManager.GetGeoprocessor()  # Do not changed to GetWrappedGeoprocessor(); see above
         
         self._Row = None
         self._Cursor = gp.da.SearchCursor(self._Table._GetFullPath(), fields, where, sql_clause=(None, orderBy))
-        self._FieldIndex = dict(zip(self._Cursor.fields, range(len(self._Cursor.fields))))
+        try:
+            self._FieldIndex = dict(zip(self._Cursor.fields, range(len(self._Cursor.fields))))
+        except:
+            self._Cursor = None
+            raise
 
     def _Close(self):
         self._Row = None
@@ -759,16 +809,30 @@ class _ArcPyDAUpdateCursor(_ArcPyDAReadableCursor, _ArcPyDAWritableCursor, Updat
             else:
                 fields.append('SHAPE@')
 
-        # Open the cursor.
+        # Open the cursor. We do this with GetGeoprocessor() rather than
+        # GetWrappedGeoprocessor() so that the arcpy.da.UpdateCursor object
+        # is not wrapped. Because that object has no explicit "close"
+        # function, the only way to ensure it is closed is for it to be
+        # destructed. Apparently, under certain scenarios, our wrapper may
+        # not be destructed for a while; or possibly we were leaking a
+        # reference to it (e.g. by logging it). In any case, the
+        # arcpy.da.UpdateCursor instance was staying alive, which was keeping
+        # the cursor open, which was keeping transactions open and also
+        # preventing other cursors from being opened. So we gave up on
+        # wrapping the arcpy.da.UpdateCursor. This also speeds things up.
 
         if orderBy is not None:
             orderBy = 'ORDER BY ' + orderBy
         
-        gp = GeoprocessorManager.GetWrappedGeoprocessor()
+        gp = GeoprocessorManager.GetGeoprocessor()  # Do not changed to GetWrappedGeoprocessor(); see above
 
         self._Row = None
         self._Cursor = gp.da.UpdateCursor(self._Table._GetFullPath(), fields, where, sql_clause=(None, orderBy))
-        self._FieldIndex = dict(zip(self._Cursor.fields, range(len(self._Cursor.fields))))
+        try:
+            self._FieldIndex = dict(zip(self._Cursor.fields, range(len(self._Cursor.fields))))
+        except:
+            self._Cursor = None
+            raise
 
     def _Close(self):
         self._Row = None
@@ -819,17 +883,32 @@ class _ArcPyDAInsertCursor(_ArcPyDAWritableCursor, InsertCursor):
             else:
                 fields.append('SHAPE@')
 
-        # Open the cursor.
+        # Open the cursor. We do this with GetGeoprocessor() rather than
+        # GetWrappedGeoprocessor() so that the arcpy.da.InsertCursor object
+        # is not wrapped. Because that object has no explicit "close"
+        # function, the only way to ensure it is closed is for it to be
+        # destructed. Apparently, under certain scenarios, our wrapper may
+        # not be destructed for a while; or possibly we were leaking a
+        # reference to it (e.g. by logging it). In any case, the
+        # arcpy.da.InsertCursor instance was staying alive, which was keeping
+        # the cursor open, which was keeping transactions open and also
+        # preventing other cursors from being opened. So we gave up on
+        # wrapping the arcpy.da.InsertCursor. This also speeds things up.
         
-        gp = GeoprocessorManager.GetWrappedGeoprocessor()
+        gp = GeoprocessorManager.GetGeoprocessor()  # Do not changed to GetWrappedGeoprocessor(); see above
 
         self._Row = None
         self._Cursor = gp.da.InsertCursor(self._Table._GetFullPath(), fields)
-        self._FieldIndex = dict(zip(self._Cursor.fields, range(len(self._Cursor.fields))))
+        try:
+            self._FieldIndex = dict(zip(self._Cursor.fields, range(len(self._Cursor.fields))))
+        except:
+            self._Cursor = None
+            raise
 
     def _Close(self):
         self._Row = None
         self._Cursor = None
+        self._FieldIndex = None
         super(_ArcPyDAInsertCursor, self)._Close()
 
     def _SetValue(self, field, value):

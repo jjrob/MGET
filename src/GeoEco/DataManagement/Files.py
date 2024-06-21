@@ -713,7 +713,7 @@ class File(object):
         # preemptively, so we can check for and delete the existing table, if
         # desired by the caller.
 
-        if os.path.isdir(workspace) and not table.lower().endswith('.dbf'):
+        if os.path.isdir(workspace) and not workspace.lower().endswith('.gdb') and not table.lower().endswith('.dbf'):
             if table.find('.') >= 0:
                 newTable = table[:table.find('.')] + '.dbf'
                 Logger.Warning('When creating tables in the file system, the ArcGIS CreateTable tool ignores the extension you specify and always creates a dBASE table with the extension .dbf. It will create the table %(new)s even though you asked for %(old)s.' % {'new': newTable, 'old': table})
@@ -766,7 +766,7 @@ class File(object):
         # field if it exists; this is created by the Microsoft ODBC dBASE
         # driver, which ArcGIS could conceivably use in the future.
         
-        if os.path.isdir(workspace) and table.lower().endswith('.dbf'):
+        if os.path.isdir(workspace) and not workspace.lower().endswith('.gdb') and table.lower().endswith('.dbf'):
             tableObj = database.QueryDatasets(expression="TableName = '%s'" % table, reportProgress=False)[0]
             if tableObj.GetFieldByName('Field1') is not None:
                 tableObj.DeleteField('Field1')
@@ -1571,7 +1571,8 @@ AddArgumentMetadata(File.FindAndCreateArcGISTable, 'relativePathField',
     typeMetadata=UnicodeStringTypeMetadata(canBeNone=True),
     description=_(
 """Name of the field to receive paths of the files that were found, relative
-to the output table. For example, if the path to the table is::
+to the database or directory that contains the output table. For example, if
+the path to the table is::
 
     C:\\Data\\Files\\FoundFiles.dbf
 

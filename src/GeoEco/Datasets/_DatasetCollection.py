@@ -145,8 +145,6 @@ class DatasetCollection(CollectibleObject):
     def ImportDatasets(self, datasets, mode='Add', reportProgress=True, **options):
         self.__doc__.Obj.ValidateMethodInvocation()
 
-        # TODO: Test capabilities
-
         # If the caller provided an empty list, return now.
 
         if len(datasets) <= 0:

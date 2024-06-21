@@ -219,7 +219,7 @@ class GeoprocessorManager(object):
             Logger.RaiseException(ValueError(_('%(path)s exists but cannot be deleted because it is not a %(type)s.') % {'type': typeDisplayName, 'path': path}))
         try:
             gp = cls.GetWrappedGeoprocessor()
-            gp.Delete_Management(path)
+            gp.Delete_management(path)
         except:
             Logger.LogExceptionAsError(_('Could not delete %(type)s %(path)s.') % {'type': typeDisplayName, 'path': path})
             raise
@@ -250,7 +250,7 @@ class GeoprocessorManager(object):
             if 'featureclass' in correctTypes or 'shapefile' in correctTypes or 'featurelayer' in correctTypes:
                 gp.CopyFeatures_management(source, destination)
             else:
-                gp.Copy_Management(source, destination)
+                gp.Copy_management(source, destination)
         except:
             Logger.LogExceptionAsError(_('Could not copy %(type)s %(source)s to %(destination)s.') % {'type': typeDisplayName, 'source': source, 'destination': destination})
             raise
@@ -280,8 +280,8 @@ class GeoprocessorManager(object):
             if 'featureclass' in correctTypes or 'shapefile' in correctTypes or 'featurelayer' in correctTypes:
                 gp.CopyFeatures_management(source, destination)
             else:
-                gp.Copy_Management(source, destination)
-            gp.Delete_Management(source)
+                gp.Copy_management(source, destination)
+            gp.Delete_management(source)
         except:
             Logger.LogExceptionAsError(_('Could not move %(type)s %(source)s to %(destination)s.') % {'type': typeDisplayName, 'source': source, 'destination': destination})
             raise

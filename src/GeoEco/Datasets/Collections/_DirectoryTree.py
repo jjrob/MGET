@@ -34,7 +34,7 @@ class DirectoryTree(DatasetCollectionTree):
 
     CacheTree = property(_GetCacheTree, doc=DynamicDocString())
 
-    def __init__(self, path, datasetType, pathParsingExpressions=None, pathCreationExpressions=None, cacheTree=True, queryableAttributes=None, queryableAttributeValues=None, lazyPropertyValues=None, cacheDirectory=None):
+    def __init__(self, path, datasetType, pathParsingExpressions=None, pathCreationExpressions=None, cacheTree=False, queryableAttributes=None, queryableAttributeValues=None, lazyPropertyValues=None, cacheDirectory=None):
         self.__doc__.Obj.ValidateMethodInvocation()
 
         super(DirectoryTree, self).__init__(pathParsingExpressions, pathCreationExpressions, queryableAttributes=queryableAttributes, queryableAttributeValues=queryableAttributeValues, lazyPropertyValues=lazyPropertyValues, cacheDirectory=cacheDirectory)

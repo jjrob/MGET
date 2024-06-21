@@ -41,10 +41,10 @@ class ArcGISRaster(object):
 
         # This function used to perform some additional steps to workaround
         # some bugs in old versions of ArcGIS, but these are no longer
-        # necessary, so all we need to do is call gp.CopyRaster_Management().
+        # necessary, so all we need to do is call gp.CopyRaster_management().
 
         gp = GeoprocessorManager.GetWrappedGeoprocessor()
-        gp.CopyRaster_Management(sourceRaster, destinationRaster)
+        gp.CopyRaster_management(sourceRaster, destinationRaster)
 
     @classmethod
     def CopySilent(cls, sourceRaster, destinationRaster, overwriteExisting=False):
@@ -348,7 +348,7 @@ class ArcGISRaster(object):
                 insertCursor.InsertRow()
 
     @classmethod
-    def FindAndCreateTable(cls, workspace, database, table, rasterField, wildcard='*', searchTree=False, rasterType=None, relativePathField=None, basePath=None, populateExtentFields=False, parsedDateField=None, dateParsingExpression=None, unixTimeField=None, pathFieldsDataType='string', extentFieldsDataType='float', dateFieldsDataType='datetime', unixTimeFieldDataType='int32', maxPathLength=None, overwriteExisting=False):
+    def FindAndCreateTable(cls, workspace, database, table, rasterField, wildcard='*', searchTree=False, rasterType=None, relativePathField=None, basePath=None, populateExtentFields=False, parsedDateField=None, dateParsingExpression=None, unixTimeField=None, pathFieldsDataType='string', extentFieldsDataType='float64', dateFieldsDataType='datetime', unixTimeFieldDataType='int32', maxPathLength=None, overwriteExisting=False):
         cls.__doc__.Obj.ValidateMethodInvocation()
 
         # Perform additional validation.
@@ -408,7 +408,7 @@ class ArcGISRaster(object):
 
             # Create an insert cursor and fill the table.
 
-            cursor = tableObj.OpenInsertCursor(table)
+            cursor = tableObj.OpenInsertCursor()
             try:
                 cls.FindAndFillTable(workspace,
                                      cursor,
@@ -453,7 +453,7 @@ class ArcGISRaster(object):
         # preemptively, so we can check for and delete the existing table, if
         # desired by the caller.
 
-        if os.path.isdir(outputWorkspace) and not table.lower().endswith('.dbf'):
+        if os.path.isdir(outputWorkspace) and not outputWorkspace.lower().endswith('.gdb') and not table.lower().endswith('.dbf'):
             if table.find('.') >= 0:
                 newTable = table[:table.find('.')] + '.dbf'
                 Logger.Warning('When creating tables in the file system, the ArcGIS CreateTable tool ignores the extension you specify and always creates a dBASE table with the extension .dbf. It will create the table %(new)s even though you asked for %(old)s.' % {'new': newTable, 'old': table})
@@ -467,7 +467,7 @@ class ArcGISRaster(object):
         from ..Datasets import QueryableAttribute
         from ..Datasets.ArcGIS import ArcGISWorkspace, ArcGISTable
         
-        database = ArcGISWorkspace(path=workspace, 
+        database = ArcGISWorkspace(path=outputWorkspace, 
                                    datasetType=ArcGISTable,
                                    pathParsingExpressions=[r'(?P<TableName>.+)'], 
                                    queryableAttributes=(QueryableAttribute('TableName', _('Table name'), UnicodeStringTypeMetadata()),))
@@ -486,7 +486,7 @@ class ArcGISRaster(object):
                                        dateParsingExpression,
                                        unixTimeField,
                                        'string',
-                                       'float',
+                                       'float64',
                                        'datetime',
                                        'int32',
                                        maxPathLength,
@@ -499,7 +499,7 @@ class ArcGISRaster(object):
         # field if it exists; this is created by the Microsoft ODBC dBASE
         # driver, which ArcGIS could conceivably use in the future.
         
-        if os.path.isdir(workspace) and table.lower().endswith('.dbf'):
+        if os.path.isdir(outputWorkspace) and not outputWorkspace.lower().endswith('.gdb') and table.lower().endswith('.dbf'):
             tableObj = database.QueryDatasets(expression="TableName = '%s'" % table, reportProgress=False)[0]
             if tableObj.GetFieldByName('Field1') is not None:
                 tableObj.DeleteField('Field1')
@@ -661,9 +661,9 @@ class ArcGISRaster(object):
                 
             Logger.Debug(_('Projecting...'))
             if geographicTransformation is not None or registrationPoint is not None:
-                gp.ProjectRaster_Management(inputRaster, outputRaster, projectedCoordinateSystem, resamplingTechnique, projectedCellSize, geographicTransformation, registrationPoint)
+                gp.ProjectRaster_management(inputRaster, outputRaster, projectedCoordinateSystem, resamplingTechnique, projectedCellSize, geographicTransformation, registrationPoint)
             else:
-                gp.ProjectRaster_Management(inputRaster, outputRaster, projectedCoordinateSystem, resamplingTechnique, projectedCellSize)
+                gp.ProjectRaster_management(inputRaster, outputRaster, projectedCoordinateSystem, resamplingTechnique, projectedCellSize)
 
             inputRaster = outputRaster
 
@@ -684,7 +684,7 @@ class ArcGISRaster(object):
 
             # Clip it.
 
-            gp.Clip_Management(inputRaster, clippingRectangle, outputRaster)
+            gp.Clip_management(inputRaster, clippingRectangle, outputRaster)
             inputRaster = outputRaster
 
         # Execute map algebra, if requested.
@@ -718,7 +718,7 @@ class ArcGISRaster(object):
 
         if buildPyramids:
             Logger.Debug(_('Building pyramids...'))
-            gp.BuildPyramids_Management(outputRaster)
+            gp.BuildPyramids_management(outputRaster)
 
         # Return the path to the last raster we created in the temp
         # directory.
@@ -1680,7 +1680,8 @@ AddArgumentMetadata(ArcGISRaster.FindAndCreateArcGISTable, 'relativePathField',
     typeMetadata=UnicodeStringTypeMetadata(canBeNone=True),
     description=_(
 """Name of the field to receive paths of the rasters that were found, relative
-to the output table. For example, if the path to the table is::
+to the database or directory that contains the output table. For example, if
+the path to the table is::
 
     C:\\Data\\Rasters\\FoundRasters.dbf
 

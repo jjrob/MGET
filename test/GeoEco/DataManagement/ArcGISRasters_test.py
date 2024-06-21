@@ -7,15 +7,29 @@
 # root of this project or https://opensource.org/license/bsd-3-clause for the
 # full license text.
 
+import datetime
 import operator
 import os
 
 import numpy
+from pathlib import Path
 import pytest
 
 from GeoEco.Datasets import Dataset
 from GeoEco.DataManagement.ArcGISRasters import ArcGISRaster
 from GeoEco.Logging import Logger
+
+Logger.Initialize()
+
+
+def isArcPyInstalled():
+    success = False
+    try:
+        import arcpy
+        success = True
+    except:
+        pass
+    return success
 
 
 def generateExampleArrays(dtypes, shape, numUniqueIntegers):
@@ -90,6 +104,29 @@ def generateExampleRasters(tmp_path):
     return _generateExampleRasters
 
 
+def exampleRastersWithDatesList():
+    rasters = [['sst_20100102_123456.img', datetime.datetime(2010, 1, 2, 12, 34, 56)],
+               ['sst_20100304_123456.img', datetime.datetime(2010, 3, 4, 12, 34, 56)],
+               ['sst_20100506_123456.img', datetime.datetime(2010, 5, 6, 12, 34, 56)],
+               ['sst_20100708_123456.img', datetime.datetime(2010, 7, 8, 12, 34, 56)],
+               ['sst_20100910_123456.img', datetime.datetime(2010, 9, 10, 12, 34, 56)],
+               ['sst_20101112_123456.img', datetime.datetime(2010, 11, 12, 12, 34, 56)]]
+    return rasters
+
+
+@pytest.fixture
+def exampleRastersWithDatesPath(tmp_path):
+    rasters = [tmp_path / p[0] for p in exampleRastersWithDatesList()]
+    for rasterPath in rasters:
+        ArcGISRaster.FromNumpyArray(numpyArray=numpy.zeros((180,360)),
+                                    raster=str(rasterPath),
+                                    xLowerLeftCorner=-180,
+                                    yLowerLeftCorner=-90,
+                                    cellSize=1)
+    return tmp_path
+
+
+@pytest.mark.skipif(not isArcPyInstalled(), reason='ArcGIS arcpy module is not installed')
 class TestArcGISRaster():
 
     def test_FromNumpyArray_all_dtypes(self, generateExampleRasters):
@@ -154,3 +191,312 @@ class TestArcGISRaster():
 
         rastersDir, exampleRasters = generateExampleRasters(extensionsAndDTypes, numUniqueIntegers=4)
 
+
+    def test_Delete(self, generateExampleRasters):
+        extensionsAndDTypes = {'.img': ['int8',],
+                               '.tif': ['int8'],
+                               '': ['int32']}  # ArcInfo Binary Grid a.k.a Esri Grid
+
+        rastersDir, exampleRasters = generateExampleRasters(extensionsAndDTypes)
+
+        for extension in exampleRasters:
+            for dtype in exampleRasters[extension]:
+                for arrayType in exampleRasters[extension][dtype]:
+                    rasterPath, numpyArray, noDataValue = exampleRasters[extension][dtype][arrayType]
+
+                    assert extension != '' and rasterPath.is_file() or extension == '' and rasterPath.is_dir()
+                    ArcGISRaster.Delete(rasterPath)
+                    assert not rasterPath.is_file() and not rasterPath.is_dir()
+
+
+    def test_Copy(self, generateExampleRasters):
+        extensionsAndDTypes = {'.img': ['int16',],
+                               '.tif': ['int16'],
+                               '': ['float32']}  # ArcInfo Binary Grid a.k.a Esri Grid
+
+        rastersDir, exampleRasters = generateExampleRasters(extensionsAndDTypes)
+
+        for extension in exampleRasters:
+            for dtype in exampleRasters[extension]:
+                for arrayType in exampleRasters[extension][dtype]:
+                    rasterPath, numpyArray, noDataValue = exampleRasters[extension][dtype][arrayType]
+
+                    assert extension != '' and rasterPath.is_file() or extension == '' and rasterPath.is_dir()
+                    destRasterPath = Path(f'{rasterPath.parent}_copies') / rasterPath.name
+                    ArcGISRaster.Copy(rasterPath, destRasterPath)
+                    assert extension != '' and destRasterPath.is_file() or extension == '' and destRasterPath.is_dir()
+
+                    # Test overwrite
+
+                    ArcGISRaster.Copy(rasterPath, destRasterPath, overwriteExisting=True)
+
+                    # Test that overwriteExisting=False fails
+
+                    with pytest.raises(ValueError, match='.*already exists.*'):
+                        ArcGISRaster.Copy(rasterPath, destRasterPath)
+
+
+    def test_Move(self, generateExampleRasters):
+        extensionsAndDTypes = {'.img': ['int32',],
+                               '.tif': ['int32'],
+                               '': ['float32']}  # ArcInfo Binary Grid a.k.a Esri Grid
+
+        rastersDir, exampleRasters = generateExampleRasters(extensionsAndDTypes)
+
+        for extension in exampleRasters:
+            for dtype in exampleRasters[extension]:
+                for arrayType in exampleRasters[extension][dtype]:
+                    rasterPath, numpyArray, noDataValue = exampleRasters[extension][dtype][arrayType]
+
+                    assert extension != '' and rasterPath.is_file() or extension == '' and rasterPath.is_dir()
+                    destRasterPath = Path(f'{rasterPath.parent}_copies') / rasterPath.name
+                    ArcGISRaster.Move(rasterPath, destRasterPath)
+                    assert not rasterPath.is_file() and not rasterPath.is_dir()
+                    assert extension != '' and destRasterPath.is_file() or extension == '' and destRasterPath.is_dir()
+
+
+    def test_Move_overwrite(self, generateExampleRasters):
+        extensionsAndDTypes = {'.img': ['int32',],
+                               '.tif': ['int32'],
+                               '': ['float32']}  # ArcInfo Binary Grid a.k.a Esri Grid
+
+        rastersDir, exampleRasters = generateExampleRasters(extensionsAndDTypes)
+
+        for extension in exampleRasters:
+            for dtype in exampleRasters[extension]:
+                for arrayType in exampleRasters[extension][dtype]:
+                    rasterPath, numpyArray, noDataValue = exampleRasters[extension][dtype][arrayType]
+
+                    assert extension != '' and rasterPath.is_file() or extension == '' and rasterPath.is_dir()
+                    destRasterPath = Path(f'{rasterPath.parent}_copies') / rasterPath.name
+                    ArcGISRaster.Copy(rasterPath, destRasterPath)
+                    with pytest.raises(ValueError, match='.*already exists.*'):
+                        ArcGISRaster.Move(rasterPath, destRasterPath)
+                    ArcGISRaster.Move(rasterPath, destRasterPath, overwriteExisting=True)
+                    assert not rasterPath.is_file() and not rasterPath.is_dir()
+                    assert extension != '' and destRasterPath.is_file() or extension == '' and destRasterPath.is_dir()
+
+
+    def test_FindAndCreateArcGISTable_filegdb(self, generateExampleRasters, tmp_path):
+
+        # Create a file geodatabase.
+
+        from GeoEco.ArcGIS import GeoprocessorManager
+
+        GeoprocessorManager.InitializeGeoprocessor()
+        gp = GeoprocessorManager.GetWrappedGeoprocessor()
+
+        gdbPath = tmp_path / 'Temp.gdb'
+        gp.CreateFileGDB_management(str(gdbPath.parent), gdbPath.name)
+
+        # Define an ArcGISWorkspace for the file GDB. We'll use this to
+        # examine the tables we create there.
+
+        from GeoEco.Datasets import QueryableAttribute
+        from GeoEco.Datasets.ArcGIS import ArcGISWorkspace, ArcGISTable
+        from GeoEco.Types import UnicodeStringTypeMetadata
+
+        ws = ArcGISWorkspace(path=gdbPath,
+                             datasetType=ArcGISTable,
+                             pathParsingExpressions=[r'(?P<TableName>.+)'],
+                             queryableAttributes=(QueryableAttribute('TableName', 'Table name', UnicodeStringTypeMetadata()),))
+
+        # Generate some rasters.
+
+        extensionsAndDTypes = {'.img': ['int8', 'uint8', 'int16', 'uint16', 'int32', 'uint32', 'float32', 'float64'],
+                               '.tif': ['int8', 'uint8', 'int16', 'uint16', 'int32', 'uint32', 'float32', 'float64'],
+                               '': ['int32', 'float32']}  # ArcInfo Binary Grid a.k.a Esri Grid
+
+        rastersDir, exampleRasters = generateExampleRasters(extensionsAndDTypes)
+
+        # Find at the root level without recursion: zero rasters.
+
+        expectedCount = 0
+
+        ArcGISRaster.FindAndCreateArcGISTable(inputWorkspace=rastersDir,
+                                              outputWorkspace=gdbPath,
+                                              table='Table1')
+        assert ws.QueryDatasets("TableName = 'Table1'", reportProgress=False)[0].GetRowCount() == expectedCount
+
+        # Test that we can overwrite a table.
+
+        ArcGISRaster.FindAndCreateArcGISTable(inputWorkspace=rastersDir,
+                                              outputWorkspace=gdbPath,
+                                              table='Table1',
+                                              overwriteExisting=True)
+
+        # Test that overwriteExisting=False fails
+
+        with pytest.raises(ValueError, match='.*already exists.*'):
+            ArcGISRaster.FindAndCreateArcGISTable(inputWorkspace=rastersDir,
+                                                  outputWorkspace=gdbPath,
+                                                  table='Table1')
+
+        # Find at the root level with recursion: all the rasters.
+
+        expectedCount = 0
+        for extension in exampleRasters:
+            for dtype in exampleRasters[extension]:
+                for arrayType in exampleRasters[extension][dtype]:
+                    expectedCount += 1
+        assert expectedCount > 0
+
+        ArcGISRaster.FindAndCreateArcGISTable(inputWorkspace=rastersDir,
+                                              outputWorkspace=gdbPath,
+                                              table='Table2',
+                                              searchTree=True)
+        assert ws.QueryDatasets("TableName = 'Table2'", reportProgress=False)[0].GetRowCount() == expectedCount
+
+        # Find at the root level with recursion: all starting with 'int32'
+
+        expectedCount = 0
+        for extension in exampleRasters:
+            for dtype in exampleRasters[extension]:
+                for arrayType in exampleRasters[extension][dtype]:
+                    if dtype.startswith('int32'):
+                        expectedCount += 1
+        assert expectedCount > 0
+
+        ArcGISRaster.FindAndCreateArcGISTable(inputWorkspace=rastersDir,
+                                              outputWorkspace=gdbPath,
+                                              table='Table3',
+                                              wildcard="int32*",
+                                              searchTree=True)
+        assert ws.QueryDatasets("TableName = 'Table3'", reportProgress=False)[0].GetRowCount() == expectedCount
+
+        # Find at the root level with recursion: rasterType = 'IMG'
+
+        expectedCount = 0
+        for extension in exampleRasters:
+            for dtype in exampleRasters[extension]:
+                for arrayType in exampleRasters[extension][dtype]:
+                    if extension == '.img':
+                        expectedCount += 1
+        assert expectedCount > 0
+
+        ArcGISRaster.FindAndCreateArcGISTable(inputWorkspace=rastersDir,
+                                              outputWorkspace=gdbPath,
+                                              table='Table4',
+                                              searchTree=True,
+                                              rasterType='IMG')
+        assert ws.QueryDatasets("TableName = 'Table4'", reportProgress=False)[0].GetRowCount() == expectedCount
+
+        # Find at the root level with recursion: rasterType = 'TIF'
+
+        expectedCount = 0
+        for extension in exampleRasters:
+            for dtype in exampleRasters[extension]:
+                for arrayType in exampleRasters[extension][dtype]:
+                    if extension == '.tif':
+                        expectedCount += 1
+        assert expectedCount > 0
+
+        ArcGISRaster.FindAndCreateArcGISTable(inputWorkspace=rastersDir,
+                                              outputWorkspace=gdbPath,
+                                              table='Table5',
+                                              searchTree=True,
+                                              rasterType='TIF')
+        assert ws.QueryDatasets("TableName = 'Table5'", reportProgress=False)[0].GetRowCount() == expectedCount
+
+        # Find at the root level with recursion: rasterType = 'GRID'
+
+        expectedCount = 0
+        for extension in exampleRasters:
+            for dtype in exampleRasters[extension]:
+                for arrayType in exampleRasters[extension][dtype]:
+                    if extension == '':
+                        expectedCount += 1
+        assert expectedCount > 0
+
+        ArcGISRaster.FindAndCreateArcGISTable(inputWorkspace=rastersDir,
+                                              outputWorkspace=gdbPath,
+                                              table='Table6',
+                                              searchTree=True,
+                                              rasterType='GRID')
+        assert ws.QueryDatasets("TableName = 'Table6'", reportProgress=False)[0].GetRowCount() == expectedCount
+
+        # Extent fields being populated correctly
+
+        expectedCount = 0
+        for extension in exampleRasters:
+            for dtype in exampleRasters[extension]:
+                for arrayType in exampleRasters[extension][dtype]:
+                    expectedCount += 1
+        assert expectedCount > 0
+
+        ArcGISRaster.FindAndCreateArcGISTable(inputWorkspace=rastersDir,
+                                              outputWorkspace=gdbPath,
+                                              table='Table7',
+                                              searchTree=True,
+                                              populateExtentFields=True)
+        table = ws.QueryDatasets("TableName = 'Table7'", reportProgress=False)[0]
+        results = table.Query(orderBy='Image ASC')
+
+        assert len(results['XMin']) == expectedCount
+        assert all([results['XMin'][i] == -180 for i in range(expectedCount)])
+        assert len(results['YMin']) == expectedCount
+        assert all([results['YMin'][i] == -90 for i in range(expectedCount)])
+        assert len(results['XMax']) == expectedCount
+        assert all([results['XMax'][i] == 180 for i in range(expectedCount)])
+        assert len(results['YMax']) == expectedCount
+        assert all([results['YMax'][i] == 90 for i in range(expectedCount)])
+
+        # Relative path being populated correctly
+
+        rasterPaths = []
+        for extension in exampleRasters:
+            for dtype in exampleRasters[extension]:
+                for arrayType in exampleRasters[extension][dtype]:
+                    rasterPaths.append(exampleRasters[extension][dtype][arrayType][0])
+        assert len(rasterPaths) > 0
+        rasterPaths.sort()
+
+        ArcGISRaster.FindAndCreateArcGISTable(inputWorkspace=rastersDir,
+                                              outputWorkspace=gdbPath,
+                                              table='Table8',
+                                              searchTree=True,
+                                              relativePathField='RelativePath')
+        table = ws.QueryDatasets("TableName = 'Table8'", reportProgress=False)[0]
+        results = table.Query(orderBy='Image ASC')
+
+        for i, p in enumerate(rasterPaths):
+            assert results['Image'][i] == str(p)
+            assert results['RelativePath'][i] == os.path.relpath(p, ws.Path)
+
+
+    def test_FindAndCreateArcGISTable_ParseDates(self, exampleRastersWithDatesPath):
+
+        # Create a file geodatabase.
+
+        from GeoEco.ArcGIS import GeoprocessorManager
+
+        GeoprocessorManager.InitializeGeoprocessor()
+        gp = GeoprocessorManager.GetWrappedGeoprocessor()
+
+        gdbPath = exampleRastersWithDatesPath / 'Temp.gdb'
+        gp.CreateFileGDB_management(str(gdbPath.parent), gdbPath.name)
+
+        # Define an ArcGISWorkspace for the file GDB. We'll use this to
+        # examine the tables we create there.
+
+        from GeoEco.Datasets import QueryableAttribute
+        from GeoEco.Datasets.ArcGIS import ArcGISWorkspace, ArcGISTable
+        from GeoEco.Types import UnicodeStringTypeMetadata
+
+        ws = ArcGISWorkspace(path=gdbPath,
+                             datasetType=ArcGISTable,
+                             pathParsingExpressions=[r'(?P<TableName>.+)'],
+                             queryableAttributes=(QueryableAttribute('TableName', 'Table name', UnicodeStringTypeMetadata()),))
+
+        # Find rasters.
+
+        ArcGISRaster.FindAndCreateArcGISTable(inputWorkspace=exampleRastersWithDatesPath,
+                                              outputWorkspace=gdbPath,
+                                              table='Table1',
+                                              parsedDateField='ParsedDate',
+                                              dateParsingExpression='%Y%m%d_%H%M%S')
+        table = ws.QueryDatasets("TableName = 'Table1'", reportProgress=False)[0]
+        results = table.Query(orderBy='Image ASC')
+        expectedDates = [expectedDate for [p, expectedDate] in exampleRastersWithDatesList()]
+
+        assert all([results['ParsedDate'][i] == expectedDates[i] for i in range(len(expectedDates))])

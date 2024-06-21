@@ -669,13 +669,13 @@ class GDALDataset(FileDatasetCollection):
                                         statistics = destDataset._GDALRasterBand.GetStatistics(False, True)
                                     except Exception as e:
                                         gdal.ErrorReset()
-                                        raise RuntimeError(_('Failed to calculate the statistics for band %(band)i of Geospatial Data Abstraction Library (GDAL) dataset "%(path)s" (created with the GDAL %(driver)s driver). The GDAL GetStatistics function failed and reported %(e)s: %(msg)s.') % {'band': i+1, 'path': path, 'driver': driver.LongName, 'e': e.__class__.__name__, 'msg': e})
+                                        Logger.LogExceptionAsWarning(_('Failed to calculate the statistics for band %(band)i of Geospatial Data Abstraction Library (GDAL) dataset "%(path)s" (created with the GDAL %(driver)s driver).') % {'band': i+1, 'path': path, 'driver': driver.LongName})
 
                                     try:
                                         destDataset._GDALRasterBand.GetDefaultHistogram()
                                     except Exception as e:
                                         gdal.ErrorReset()
-                                        raise RuntimeError(_('Failed to calculate the histogram for band %(band)i of Geospatial Data Abstraction Library (GDAL) dataset "%(path)s" (created with the GDAL %(driver)s driver). The GDAL GetDefaultHistogram function failed and reported %(e)s: %(msg)s.') % {'band': i+1, 'path': path, 'driver': driver.LongName, 'e': e.__class__.__name__, 'msg': e})
+                                        Logger.LogExceptionAsWarning(_('Failed to calculate the histogram for band %(band)i of Geospatial Data Abstraction Library (GDAL) dataset "%(path)s" (created with the GDAL %(driver)s driver).') % {'band': i+1, 'path': path, 'driver': driver.LongName})
                                 else:
                                     cls._LogDebug(_('%(class)s 0x%(id)08X: Not calculating statistics for band %(band)i because all of the cells are NoData.') % {'class': cls.__name__, 'id': id(destDataset), 'band': i+1})
 
