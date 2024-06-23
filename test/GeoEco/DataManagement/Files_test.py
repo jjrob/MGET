@@ -114,7 +114,7 @@ class TestFiles():
         File.DeleteTable(table, 'File')     # Doesn't fail if files don't exist
 
 
-    def test_FileAndCreateTable(self, exampleFilesPath):
+    def test_FindAndCreateTable(self, exampleFilesPath):
         db = SQLiteDatabase(':memory:')
 
         # Without recursion; root level has just .txt files
@@ -171,7 +171,7 @@ class TestFiles():
         assert all([results['RelativePath'][i] == str(relativePaths[i]) for i in range(len(relativePaths))])
 
 
-    def test_FileAndCreateTable_ParseDates(self, exampleFilesWithDatesPath):
+    def test_FindAndCreateTable_ParseDates(self, exampleFilesWithDatesPath):
         db = SQLiteDatabase(':memory:')
 
         File.FindAndCreateTable(directory=str(exampleFilesWithDatesPath), database=db, table='Table5', fileField='File', parsedDateField='ParsedDate', dateParsingExpression='%Y%m%d_%H%M%S')

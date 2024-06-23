@@ -35,7 +35,25 @@ in."""))
 
 AddPropertyMetadata(DatasetCollectionTree.PathParsingExpressions,
     typeMetadata=ListTypeMetadata(elementType=UnicodeStringTypeMetadata(minLength=1), minLength=1, canBeNone=True),
-    shortDescription=_('List of regular expressions used for finding datasets in the tree and parsing queryable attribute values from their paths. One expression per path level.'))
+    shortDescription=_(
+"""List of regular expressions used for finding datasets in the tree and
+parsing queryable attribute values from their paths. One expression per
+path level. Use Python :py:ref:`re-syntax`.
+
+Queryable attributes are represented by "named groups" in the regular
+expressions. For example, if your collection is an ArcGIS geodatabase that
+contains feature classes and tables that you want to query by name, you could
+provide ``[r'(?P<TableName>.+)']`` for this parameter. This defines a single
+path level (because the list has one element), which contains a single
+queryable attribute (because there is one named group), which is named
+``TableName``, which must be at least one character long (because ``.+`` means
+"one or more characters"). Then, for `queryableAttributes`, provide
+``(QueryableAttribute('TableName', 'Table name', UnicodeStringTypeMetadata()),)``.
+Finally, when calling 
+:func:`~GeoEco.Datasets.Collections.DatasetCollectionTree.QueryDatasets`, use
+an `expression` like ``"TableName = 'Foo'"``.
+
+"""))
 
 AddPropertyMetadata(DatasetCollectionTree.PathCreationExpressions,
     typeMetadata=ListTypeMetadata(elementType=UnicodeStringTypeMetadata(minLength=1), minLength=1, canBeNone=True),
