@@ -499,7 +499,7 @@ class MatlabDependency(Dependency):
 # does logging and conversion.
 
 with open(os.path.join(os.path.dirname(__file__), '_Matlab', 'MatlabFunctions.txt'), 'rt') as f:
-    MatlabDependency._MatlabFunctions = [funcName.strip() for funcName in f.read().strip().split('\n')]
+    MatlabDependency._MatlabFunctions = [funcName.strip() for funcName in f.read().strip().split('\n') if not funcName.startswith('#')]
 
 for funcName in MatlabDependency._MatlabFunctions:
     globals()[funcName] = MatlabDependency._UninitializedWrapper

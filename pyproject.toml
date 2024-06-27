@@ -46,6 +46,7 @@ version_file = "src/GeoEco/_version.py"
 [tool.setuptools.package-data]
 "GeoEco.ArcToolbox" = ["Marine Geospatial Ecology Tools.atbx"]
 "GeoEco.Configuration" = ["Logging.ini"]
+"GeoEco.Matlab._Matlab" = ["_Matlab.ctf"]
 
 [tool.pytest.ini_options]
 addopts = [
