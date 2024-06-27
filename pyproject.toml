@@ -29,6 +29,7 @@ dependencies = [
     "gdal",
     "lxml",
     "numpy",
+    "packaging",
     "pyparsing",
     "scikit-fmm",
     "scipy",

@@ -8,6 +8,7 @@
 # root of this project or https://opensource.org/license/bsd-3-clause for the
 # full license text.
 
+import contextlib
 import os
 
 from ...DynamicDocString import DynamicDocString
@@ -373,8 +374,29 @@ class GDALDataset(FileDatasetCollection):
         # of this writing, my understanding is that the only driver that uses
         # this option is GTiff. But there is no harm in setting it regardless
         # of what driver we will use.
+        #
+        # An added complication here is that older versions of GDAL do not
+        # have the config_options context manager. So we define an
+        # _OptionalContextManager that allows us to use it if it exists.
 
-        with gdal.config_options({'ESRI_XML_PAM': 'TRUE'}):
+        class _OptionalContextManager:
+            def __init__(self, context_manager=None):
+                self.context_manager = context_manager
+
+            def __enter__(self):
+                if self.context_manager:
+                    return self.context_manager.__enter__()
+
+            def __exit__(self, exc_type, exc_val, exc_tb):
+                if self.context_manager:
+                    return self.context_manager.__exit__(exc_type, exc_val, exc_tb)
+
+        if hasattr(gdal, 'config_options'):
+            context = _OptionalContextManager(gdal.config_options({'ESRI_XML_PAM': 'TRUE'}))
+        else:
+            context = _OptionalContextManager()
+
+        with context:
 
             # If the caller did not specify a GDALDriverName in the
             # options, try to guess a driver name from the path's
