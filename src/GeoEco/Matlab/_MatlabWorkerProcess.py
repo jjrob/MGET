@@ -1,0 +1,419 @@
+# Matlab/_MatlabWorkerProcess.py - Defines MatlabWorkerProcess, a class that
+# hosts MatlabFunctions in a child process and proxies calls to it, so that
+# MATLAB can be hosted in a different process and thereby avoid shared library
+# conflicts (a.k.a "DLL Hell") with other software hosted in the parent
+# process, such as ArcGIS's arcpy library.
+#
+# Copyright (C) 2024 Jason J. Roberts
+#
+# This file is part of Marine Geospatial Ecology Tools (MGET) and is released
+# under the terms of the 3-Clause BSD License. See the LICENSE file at the
+# root of this project or https://opensource.org/license/bsd-3-clause for the
+# full license text.
+
+from dataclasses import dataclass
+import logging
+import multiprocessing
+import multiprocessing.shared_memory
+import os
+import queue
+import sys
+import time
+import traceback
+import types
+
+from ..DynamicDocString import DynamicDocString
+from ..Internationalization import _
+from ..Logging import Logger
+from ._MatlabFunctions import MatlabFunctions
+
+
+@dataclass
+class _SharedNumpyArray:
+    name: str
+    dtype: str
+    shape: tuple
+    sharedMemory: object = None
+
+
+class MatlabWorkerProcess(object):
+    __doc__ = DynamicDocString()
+
+    def __init__(self, startTimeout=10.):
+        #self.__doc__.Obj.ValidateMethodInvocation()    TODO
+
+        self._StartTimeout = startTimeout
+        self._State = 'STOPPED'
+        self._WorkerProcess = None
+        self._InputQueue = None
+        self._OutputQueue = None
+        self._MatlabFunctions = None
+
+        # Enumerate the GeoEco functions implemented in MATLAB by the
+        # GeoEco.Matlab._Matlab module.
+
+        with open(os.path.join(os.path.dirname(__file__), '_Matlab', 'MatlabFunctions.txt'), 'rt') as f:
+            self._MatlabFunctions = [funcName.strip() for funcName in f.read().strip().split('\n') if not funcName.startswith('#')]
+
+        # For each MATLAB function implemented in GeoEco.Matlab._Matlab,
+        # create a wrapper that calls the worker process and bind it as an
+        # instance method.
+
+        for funcName in self._MatlabFunctions:
+            Logger.Debug('%(class)s 0x%(id)016X: Binding instance method %(funcName)s.', {'class': self.__class__.__name__, 'id': id(self), 'funcName': funcName})
+            self._DefineWrapperFunction(funcName)
+
+    def _DefineWrapperFunction(self, funcName):
+
+        # Define the wrapper function.
+
+        def wrapper(self, *args, **kwargs):
+
+            # If necessary, start the worker process.
+
+            if self._State != 'READY':
+                self._Start()
+
+            # Copy any numpy arrays in args and kwargs to shared memory.
+
+            newArgs = MatlabWorkerProcess._NumpyArraysToSHM(args)
+            try:
+                newKWargs = MatlabWorkerProcess._NumpyArraysToSHM(kwargs)
+
+                # Instruct the worker process to call the MATLAB function. If
+                # this fails, unlink the shared memory objects. Otherwise the
+                # worker process will do it, once it is finished with them.
+
+                try:
+                    self._InputQueue.put((funcName, newArgs, newKWargs), block=False, timeout=10.)
+                except Exception as e:
+                    MatlabWorkerProcess._CloseAndUnlinkSHM(newKWargs)
+                    raise RuntimeError(_('Failed to put a message into the input queue of MATLAB worker process %(pid)i. The queue did not become available after 10 seconds of waiting. This may indicate the system is excessively busy, or there may be a bug in this tool. If you suspect the latter, please contact the tool\'s developer for assistance.') % {'pid': self._WorkerProcess.pid})
+            except:
+                MatlabWorkerProcess._CloseAndUnlinkSHM(newArgs)
+                raise
+
+            # Wait for the function to complete. Use timeout=None, because the
+            # function may take a very long time.
+
+            message = self._WaitForMessage(['RESULT', 'EXCEPTION'], timeout=None)
+
+            if message is None:
+                if self._WorkerProcess.exitcode is not None:
+                    raise RuntimeError(_('MATLAB worker process %(pid)s unexpectedly exited with exit code %(exitcode)i. If this problem keeps happening, please contact the developer of this tool for assistance.') % {'pid': self._WorkerProcess.pid, 'exitcode': self._WorkerProcess.exitcode })
+                raise RuntimeError(_('MATLAB worker process %(pid)s did not respond within %(timeout)s seconds of being started. Verify that the system is not overloaded by other processes. If the system seems idle and this problem keeps happening, please contact the developer of this tool for assistance.') % {'pid': self._WorkerProcess.pid, 'timeout': self._StartTimeout})
+
+            if isinstance(message, (list, tuple)) and len(message) == 2 and message[0] == 'EXCEPTION':
+                raise message[1]
+
+            elif not isinstance(message, (list, tuple)) or len(message) != 2 or message[0] != 'RESULT':
+                raise RuntimeError(_('MATLAB worker process %(pid)s responded with unknown message %(message)r after being started. Please contact the developer of this tool for assistance.') % {'pid': self._WorkerProcess.pid, 'message': message})
+
+            # Extract any returned numpy arrays from shared memory.
+
+            try:
+                result = MatlabWorkerProcess._SHMToNumpyArrays(message[1], copy=True)
+            finally:
+                MatlabWorkerProcess._CloseAndUnlinkSHM(message[1])
+
+            # Return successfully.
+
+            return result
+
+        # Bind the wrapper to ourselves as an instance method.
+
+        setattr(self, funcName, types.MethodType(wrapper, self))
+
+    def _Start(self):
+        Logger.Debug('%(class)s 0x%(id)016X: _Start() called.', {'class': self.__class__.__name__, 'id': id(self)})
+
+        if self._State != 'STOPPED':
+            raise RuntimeError('MatlabWorkerProcess._Start() called while in state %s. This method should only be called while in state STOPPED.' % self._State)
+
+        # Allocate queues for sending input to the worker process and
+        # receiving output from it.
+
+        try:
+            ctx = multiprocessing.get_context('spawn')    # VERY IMPORTANT: we want to 'spawn' a new process, not fork. Otherwise we'll have the shared object conflicts we're trying to avoid, among other problems.
+
+            self._InputQueue = ctx.Queue(maxsize=100)     # maxsizes chosen to be larger than ever reasonably expected, but low enough to have a chance of avoiding running out of memory if a bug prevents prompt dequeueing 
+            self._OutputQueue = ctx.Queue(maxsize=10000)
+
+            # Create and start the worker process.
+
+            self._WorkerProcess = ctx.Process(target=MatlabWorkerProcess._Worker, args=(self._InputQueue, self._OutputQueue), daemon=True)
+            self._WorkerProcess.start()
+
+        except:
+            self._InputQueue = None
+            self._OutputQueue = None
+            self._WorkerProcess = None
+            raise
+
+        self._State = 'STARTED'
+
+        Logger.Debug('%(class)s 0x%(id)016X: PID %(pid)i started.', {'class': self.__class__.__name__, 'id': id(self), 'pid': self._WorkerProcess.pid})
+
+        # Wait up to 10 seconds until it is ready.
+
+        message = self._WaitForMessage(['READY', 'EXCEPTION'], timeout=10.)
+
+        if message is None:
+            if self._WorkerProcess.exitcode is not None:
+                raise RuntimeError(_('MATLAB worker process %(pid)s unexpectedly exited with exit code %(exitcode)i. If this problem keeps happening, please contact the developer of this tool for assistance.') % {'pid': self._WorkerProcess.pid, 'exitcode': self._WorkerProcess.exitcode })
+            raise RuntimeError(_('MATLAB worker process %(pid)s did not respond within %(timeout)s seconds of being started. Verify that the system is not overloaded by other processes. If the system seems idle and this problem keeps happening, please contact the developer of this tool for assistance.') % {'pid': self._WorkerProcess.pid, 'timeout': self._StartTimeout})
+
+        if isinstance(message, (list, tuple)) and len(message) == 2 and message[0] == 'EXCEPTION':
+            Logger.Error(_('MATLAB worker process %(pid)s failed while trying to initialize MATLAB. Please review the preceding and following log messages for more information.') % {'pid': self._WorkerProcess.pid})
+            raise message[1]
+
+        if message != 'READY':
+            raise RuntimeError(_('MATLAB worker process %(pid)s responded with unknown message %(message)r after being started. Please contact the developer of this tool for assistance.') % {'pid': self._WorkerProcess.pid, 'message': message})
+
+        self._State = 'READY'
+
+    def _WaitForMessage(self, desiredMessages, timeout):
+        started = time.perf_counter()
+        while self._WorkerProcess.exitcode is None and (timeout is None or time.perf_counter() - started < timeout):
+            try:
+                message = self._OutputQueue.get(timeout=1)   # Wait at a shorter interval than timeout, so we will notice if the worker exits.
+            except queue.Empty:
+                pass
+            else:
+                if message in desiredMessages or isinstance(message, (tuple, list)) and len(message) > 0 and message[0] in desiredMessages:
+                    return message
+                elif isinstance(message, (tuple, list)) and len(message) > 0 and message[0] == 'LOG':
+                    logging.getLogger('GeoEco').log(message[1], message[2] if message[1] > logging.DEBUG else 'MATLAB worker process %i: %s' % (self._WorkerProcess.pid, message[2]))
+                else:
+                    logging.getLogger('GeoEco').warning(_('Received an unexpected message MATLAB worker process %(pid)s. This may indicate a programming error in this tool. The message will be ignored. The message was: %(msg)r') % {'pid': self._WorkerProcess.pid, 'msg': message})
+        return None
+
+    def Stop(self, timeout=5.):
+        #self.__doc__.Obj.ValidateMethodInvocation()    TODO
+
+        if self._State not in ['STARTED', 'READY']:
+            Logger.Debug('%(class)s 0x%(id)016X: Stop() called while in state %(state)s. There is no process to stop.', {'class': self.__class__.__name__, 'id': id(self), 'state': self._State})
+            return
+
+        Logger.Debug('%(class)s 0x%(id)016X: Stop() called.', {'class': self.__class__.__name__, 'id': id(self)})
+
+        try:
+            self._InputQueue.put('STOP', block=False, timeout=timeout)
+        except Exception as e:
+            Logger.LogExceptionAsWarning(_('Failed to put the message "STOP" into the input queue of MATLAB worker process %(pid)i. You may need to stop the process manually.') % {'pid': self._WorkerProcess.pid})
+            return
+
+        Logger.Debug('%(class)s 0x%(id)016X: STOP message sent; waiting for process %(pid)i to exit.', {'class': self.__class__.__name__, 'id': id(self), 'pid': self._WorkerProcess.pid})
+
+        started = time.perf_counter()
+
+        while self._WorkerProcess.exitcode is None and (timeout is None or time.perf_counter() - started < timeout):
+            while not self._OutputQueue.empty() and time.perf_counter() - started < 0.250:
+                try:
+                    self._OutputQueue.get_nowait()
+                except:
+                    pass
+            time.sleep(0.250)
+
+        if self._WorkerProcess.exitcode is None:
+            Logger.Warning(_('Failed to stop MATLAB worker process %(pid)i after trying for %(timeout)s seconds. You may need to stop the process manually.') % {'pid': self._WorkerProcess.pid, 'timeout': timeout})
+        else:
+            Logger.Debug('%(class)s 0x%(id)016X: PID %(pid)i exited with code %(exitcode)s.', {'class': self.__class__.__name__, 'id': id(self), 'pid': self._WorkerProcess.pid, 'exitcode': self._WorkerProcess.exitcode})
+
+        self._State = 'STOPPED'
+        self._InputQueue = None
+        self._OutputQueue = None
+        self._WorkerProcess = None
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        self.Stop()
+        return False  # Ensure any exceptions are propagated
+
+    def __del__(self):
+
+        # Do not try to call self.Stop() here. self.Stop() calls
+        # self._InputQueue.put(), which seems to cause Python to deadlock when
+        # Python is shutting down, for reasons I don't understand. Plus, under
+        # normal operation, __del__() is called by the garbage collector after
+        # an unpredictable delay, making it an unreliable way to control the
+        # lifetime of the worker process. Instead, use the context manager
+        # protocol (a.k.a. the "with" statement), or call self.Stop()
+        # explicitly from a try/finally block.
+
+        pass
+
+    @staticmethod
+    def _NumpyArraysToSHM(value):
+
+        # If the value is a list, tuple, or dict, process every item with it.
+
+        if isinstance(value, list):
+            return [MatlabWorkerProcess._NumpyArraysToSHM(item) for item in value]
+
+        if isinstance(value, tuple):
+            return tuple([MatlabWorkerProcess._NumpyArraysToSHM(item) for item in value])
+
+        if isinstance(value, dict):
+            return {k: MatlabWorkerProcess._NumpyArraysToSHM(v) for k, v in value.items()}
+
+        # If it is a numpy array, store it in shared memory and replace it
+        # with a _SharedNumpyArray object.
+
+        import numpy
+
+        if isinstance(value, numpy.ndarray):
+            return MatlabWorkerProcess._StoreNumpyArrayInSHM(value)
+
+        # If we got to here, it is not a list, tuple, dict, or numpy array.
+        # Return it as-is.
+
+        return value
+
+    @staticmethod
+    def _StoreNumpyArrayInSHM(a):
+        import numpy
+        shm = multiprocessing.shared_memory.SharedMemory(create=True, size=a.nbytes)
+        try:
+            b = numpy.ndarray(a.shape, dtype=a.dtype, buffer=shm.buf)
+            b[:] = a[:]
+        except:
+            shm.unlink()   # Delete shared memory if we fail to copy the array; python documentation states shm.unlink() can be called before shm.close()
+            raise
+        finally:
+            shm.close()
+        return _SharedNumpyArray(name=shm.name, dtype=a.dtype, shape=a.shape)
+
+    @staticmethod
+    def _SHMToNumpyArrays(value, copy):
+
+        # If the value is a list, tuple, or dict, process every item with it.
+
+        if isinstance(value, list):
+            return [MatlabWorkerProcess._SHMToNumpyArrays(item, copy=copy) for item in value]
+
+        if isinstance(value, tuple):
+            return tuple([MatlabWorkerProcess._SHMToNumpyArrays(item, copy=copy) for item in value])
+
+        if isinstance(value, dict):
+            return {k: MatlabWorkerProcess._SHMToNumpyArrays(v, copy=copy) for k, v in value.items()}
+
+        # If it is a _SharedNumpyArray, construct a numpy array for it.
+
+        if isinstance(value, _SharedNumpyArray):
+            return MatlabWorkerProcess._GetNumpyArrayFromSHM(value, copy=copy)
+
+        # If we got to here, it is not a list, tuple, dict, or numpy array.
+        # Return it as-is.
+
+        return value
+
+    @staticmethod
+    def _GetNumpyArrayFromSHM(sharedNumpyArray, copy):
+        import numpy
+        sharedNumpyArray.sharedMemory = multiprocessing.shared_memory.SharedMemory(name=sharedNumpyArray.name)
+        try:
+            a = numpy.ndarray(sharedNumpyArray.shape, dtype=sharedNumpyArray.dtype, buffer=sharedNumpyArray.sharedMemory.buf)
+            if not copy:
+                return a
+            b = numpy.zeros(sharedNumpyArray.shape, dtype=sharedNumpyArray.dtype)   # I'm not 100% confident copy.deepcopy() will allocate a new buffer, so I'm explicitly creating a new array and copying its values
+            b[:] = a[:]
+            return b
+        except:
+            sharedNumpyArray.sharedMemory.close()
+            sharedNumpyArray.sharedMemory = None
+            raise
+
+    @staticmethod
+    def _CloseSHM(value):
+
+        # If the value is a list, tuple, or dict, process every item with it.
+
+        if isinstance(value, (list, tuple, dict)):
+            for item in value:
+                MatlabWorkerProcess._CloseSHM(item)
+
+        elif isinstance(value, dict):
+            for key in value:
+                MatlabWorkerProcess._CloseSHM(value[key])
+
+        # If it is a _SharedNumpyArray, close the shared_memory.
+
+        elif isinstance(value, _SharedNumpyArray) and value.sharedMemory is not None:
+            value.sharedMemory.close()
+            value.sharedMemory = None
+
+    @staticmethod
+    def _CloseAndUnlinkSHM(value):
+
+        # If the value is a list, tuple, or dict, process every item with it.
+
+        if isinstance(value, (list, tuple, dict)):
+            for item in value:
+                MatlabWorkerProcess._CloseAndUnlinkSHM(item)
+
+        elif isinstance(value, dict):
+            for key in value:
+                MatlabWorkerProcess._CloseAndUnlinkSHM(value[key])
+
+        # If it is a _SharedNumpyArray, unlink the shared_memory.
+
+        elif isinstance(value, _SharedNumpyArray):
+            if value.sharedMemory is None:
+                value.sharedMemory = multiprocessing.shared_memory.SharedMemory(name=value.name)
+            value.sharedMemory.close()
+            value.sharedMemory.unlink()
+            value.sharedMemory = None
+
+    @staticmethod
+    def _Worker(inputQueue, outputQueue):
+
+        # Initialize MatlabFunctions and import numpy
+
+        try:
+            MatlabFunctions.Initialize(loggingQueue=outputQueue)
+            import numpy
+        except Exception as e:
+            MatlabWorkerProcess._ReportWorkerException(e, outputQueue)
+            return
+
+        # Tell the parent process we're ready.
+
+        outputQueue.put('READY')
+
+        # Now loop, servicing requests to call methods of MatlabFunctions
+        # until we're told to stop.
+
+        for funcName, args, kwargs in iter(inputQueue.get, 'STOP'):
+            try:
+                try:
+                    func = getattr(MatlabFunctions, funcName)
+                    newArgs = MatlabWorkerProcess._SHMToNumpyArrays(args, copy=False)
+                    newKWargs = MatlabWorkerProcess._SHMToNumpyArrays(kwargs, copy=False)
+                    result = func(*newArgs, **newKWargs)
+                finally:
+                    MatlabWorkerProcess._CloseAndUnlinkSHM(args)
+                    MatlabWorkerProcess._CloseAndUnlinkSHM(kwargs)
+                result = MatlabWorkerProcess._NumpyArraysToSHM(result)
+
+            except Exception as e:
+                MatlabWorkerProcess._ReportWorkerException(e, outputQueue)
+
+            else:
+                outputQueue.put(('RESULT', result))
+
+    @staticmethod
+    def _ReportWorkerException(e, outputQueue):
+        excType, excValue, excTraceback = sys.exc_info()
+        stackTrace = ''.join(traceback.format_exception(excType, excValue, excTraceback))
+        outputQueue.put(('LOG', logging.DEBUG, stackTrace))
+        outputQueue.put(('EXCEPTION', e))
+
+
+#################################################################################
+# This module is not meant to be imported directly. Import GeoEco.Matlab instead.
+#################################################################################
+
+__all__ = []

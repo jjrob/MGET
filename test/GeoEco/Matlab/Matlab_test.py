@@ -15,13 +15,13 @@ import numpy
 import pytest
 
 from GeoEco.Logging import Logger
-import GeoEco.Matlab
+from GeoEco.Matlab import MatlabDependency, MatlabWorkerProcess
 
 Logger.Initialize()
 
 
 def isMatlabInstalled():
-    d = GeoEco.Matlab.MatlabDependency()
+    d = MatlabDependency()
     try:
         d.Initialize()
     except:
@@ -34,64 +34,75 @@ class TestMatlab():
 
     def test_None(self):
         with pytest.raises(TypeError, match='.*None cannot be passed to MATLAB.*'):
-            GeoEco.Matlab.TestParameterType(None)
+            with MatlabWorkerProcess() as matlab:
+                matlab.TestParameterType(None)
 
     def test_float(self):
-        for input in [0.0, 1.0, -1.0, float('nan'), float('inf'), sys.float_info.min, sys.float_info.max]:
-            output = GeoEco.Matlab.TestParameterType(input)
-            self._OutputEqualsInput(input, output)
+        with MatlabWorkerProcess() as matlab:
+            for input in [0.0, 1.0, -1.0, float('nan'), float('inf'), sys.float_info.min, sys.float_info.max]:
+                output = matlab.TestParameterType(input)
+                self._OutputEqualsInput(input, output)
 
     def test_int(self):
-        for input in [0, 1, -1, 2**31 - 1, 0 - 2**31, 2**63 - 1, 0 - 2**63]:
-            output = GeoEco.Matlab.TestParameterType(input)
-            self._OutputEqualsInput(input, output)
+        with MatlabWorkerProcess() as matlab:
+            for input in [0, 1, -1, 2**31 - 1, 0 - 2**31, 2**63 - 1, 0 - 2**63]:
+                output = matlab.TestParameterType(input)
+                self._OutputEqualsInput(input, output)
 
     def test_bool(self):
-        for input in [False, True]:
-            output = GeoEco.Matlab.TestParameterType(input)
-            self._OutputEqualsInput(input, output)
+        with MatlabWorkerProcess() as matlab:
+            for input in [False, True]:
+                output = matlab.TestParameterType(input)
+                self._OutputEqualsInput(input, output)
 
     def test_str(self):
-        for input in ['hello', '', ' ', 'a'*65535]:
-            output = GeoEco.Matlab.TestParameterType(input)
-            self._OutputEqualsInput(input, output)
+        with MatlabWorkerProcess() as matlab:
+            for input in ['hello', '', ' ', 'a'*65535]:
+                output = matlab.TestParameterType(input)
+                self._OutputEqualsInput(input, output)
 
     def test_dict(self):
-        for input in [{}, {'a':'b'}, {'a': 'b', 'c':'d'}, {'a': 1., 'b': 2, 'c': True, 'd': ''}, {'a': {'b': 'c', 'd': {'a': 1., 'b': 2, 'c': True, 'd': ''}}}]:
-            output = GeoEco.Matlab.TestParameterType(input)
-            self._OutputEqualsInput(input, output)
+        with MatlabWorkerProcess() as matlab:
+            for input in [{}, {'a':'b'}, {'a': 'b', 'c':'d'}, {'a': 1., 'b': 2, 'c': True, 'd': ''}, {'a': {'b': 'c', 'd': {'a': 1., 'b': 2, 'c': True, 'd': ''}}}]:
+                output = matlab.TestParameterType(input)
+                self._OutputEqualsInput(input, output)
 
-        with pytest.raises(ValueError, match='.*invalid field for MATLAB struct.*'):  # Only string keys are supported
-            GeoEco.Matlab.TestParameterType({1:2})
+            with pytest.raises(ValueError, match='.*invalid field for MATLAB struct.*'):  # Only string keys are supported
+                matlab.TestParameterType({1:2})
 
     def test_tuple(self):
-        for input in [(), (0.0,), (1,), (True,), ('hello',), (0.0, 1, True, 'hello'), (0.0, 1, True, 'hello', (0.0, 1, True, 'hello', ('foo', 'bar')), ('baz',))]:
-            output = GeoEco.Matlab.TestParameterType(input)
-            self._OutputEqualsInput(input, output)
+        with MatlabWorkerProcess() as matlab:
+            for input in [(), (0.0,), (1,), (True,), ('hello',), (0.0, 1, True, 'hello'), (0.0, 1, True, 'hello', (0.0, 1, True, 'hello', ('foo', 'bar')), ('baz',))]:
+                output = matlab.TestParameterType(input)
+                self._OutputEqualsInput(input, output)
 
     def test_list(self):
-        for input in [[], [0.0,], [1,], [True,], ['hello',], [0.0, 1, True, 'hello'], [0.0, 1, True, 'hello', [0.0, 1, True, 'hello', ['foo', 'bar']], ['baz',]]]:
-            output = GeoEco.Matlab.TestParameterType(input)
-            self._OutputEqualsInput(input, output)
+        with MatlabWorkerProcess() as matlab:
+            for input in [[], [0.0,], [1,], [True,], ['hello',], [0.0, 1, True, 'hello'], [0.0, 1, True, 'hello', [0.0, 1, True, 'hello', ['foo', 'bar']], ['baz',]]]:
+                output = matlab.TestParameterType(input)
+                self._OutputEqualsInput(input, output)
 
     def test_set(self):
-        for input in [set(), set((0.0,)), set((1,)), set((True,)), set(('hello',)), set((0.0, 1, True, 'hello'))]:
-            output = GeoEco.Matlab.TestParameterType(input)
-            self._OutputEqualsInput(input, output)
+        with MatlabWorkerProcess() as matlab:
+            for input in [set(), set((0.0,)), set((1,)), set((True,)), set(('hello',)), set((0.0, 1, True, 'hello'))]:
+                output = matlab.TestParameterType(input)
+                self._OutputEqualsInput(input, output)
 
     def test_numpy_arrays(self):
-        for dtype in ['int8', 'uint8', 'int16', 'uint16', 'int32', 'uint32', 'int64', 'uint64', 'float32', 'float64']:
-            for shape in [(2,3), (2,3,4), (2,3,4,5), (4096, 8192)]:
-                input = numpy.arange(math.prod(shape), dtype=dtype).reshape(shape)
-                output = GeoEco.Matlab.TestParameterType(input)
-                self._OutputEqualsInput(input, output)
+        with MatlabWorkerProcess() as matlab:
+            for dtype in ['int8', 'uint8', 'int16', 'uint16', 'int32', 'uint32', 'int64', 'uint64', 'float32', 'float64']:
+                for shape in [(2,3), (2,3,4), (2,3,4,5), (4096, 8192)]:
+                    input = numpy.arange(math.prod(shape), dtype=dtype).reshape(shape)
+                    output = matlab.TestParameterType(input)
+                    self._OutputEqualsInput(input, output)
 
     def test_numpy_large_arrays(self):
-        for dtype in ['float32', 'float64']:
-            for shape in [(4096, 8192), (1024, 2048, 16)]:
-                input = numpy.arange(math.prod(shape), dtype=dtype).reshape(shape)
-                output = GeoEco.Matlab.TestParameterType(input)
-                self._OutputEqualsInput(input, output)
+        with MatlabWorkerProcess() as matlab:
+            for dtype in ['float32', 'float64']:
+                for shape in [(4096, 8192), (1024, 2048, 16)]:
+                    input = numpy.arange(math.prod(shape), dtype=dtype).reshape(shape)
+                    output = matlab.TestParameterType(input)
+                    self._OutputEqualsInput(input, output)
 
     # Helper functions
 
