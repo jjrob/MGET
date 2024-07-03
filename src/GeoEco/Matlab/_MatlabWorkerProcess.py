@@ -39,10 +39,10 @@ class _SharedNumpyArray:
 class MatlabWorkerProcess(object):
     __doc__ = DynamicDocString()
 
-    def __init__(self, startTimeout=10.):
+    def __init__(self, timeout=30.):
         #self.__doc__.Obj.ValidateMethodInvocation()    TODO
 
-        self._StartTimeout = startTimeout
+        self._Timeout = timeout
         self._State = 'STOPPED'
         self._WorkerProcess = None
         self._InputQueue = None
@@ -74,24 +74,76 @@ class MatlabWorkerProcess(object):
             if self._State != 'READY':
                 self._Start()
 
-            # Copy any numpy arrays in args and kwargs to shared memory.
+            Logger.Debug('%(class)s 0x%(id)016X: Calling function %(funcName)s in worker process %(pid)s.', {'class': self.__class__.__name__, 'id': id(self), 'funcName': funcName, 'pid': self._WorkerProcess.pid})
 
-            newArgs = MatlabWorkerProcess._NumpyArraysToSHM(args)
+            # IMPORTANT NOTE:
+            #
+            # MatlabWorkerProcess uses
+            # multiprocessing.shared_memory.SharedMemory to pass numpy arrays
+            # to the worker process and receive them back.
+            # https://docs.python.org/3/library/multiprocessing.shared_memory.html
+            # implies that a shared memory block is not destroyed until some
+            # process calls unlink() on it. This is true on Linux but is not
+            # true on Windows. See the comments under
+            # https://stackoverflow.com/a/74194875. unlink() actually doesn't
+            # do anything on Windows, and in order to keep the shared memory
+            # block allocated, it is necessary to keep a SharedMemory
+            # instance alive in at least one process.
+            #
+            # The implication of this is: to work on Windows, we cannot adopt
+            # a design whereby one process (either the parent or worker)
+            # allocates a SharedMemory and calls close() but not unlink(),
+            # then passes its name to the other process, which eventually
+            # calls close() and then unlink() to destroy the shared memory
+            # block. Instead, after the first process passes the SharedMemory
+            # name to the other process, it waits for a message back before
+            # closing it. It is unfortunate that the Python documentation does
+            # not match the actual behavior on Windows, and that we have to 
+            # employ this overly complicated design.
+            #
+            # First, copy any numpy arrays in args and kwargs to shared
+            # memory. Then tell the worker process to call the MATLAB
+            # function. If copying the arrays or enqueuing the message fails,
+            # close and unlink the shared memory instances.
+
+            sharedMemoryInstances = []    # _NumpyArraysToSHM populates this with SharedMemory instances we will close after the worker messages us.
+
             try:
-                newKWargs = MatlabWorkerProcess._NumpyArraysToSHM(kwargs)
-
-                # Instruct the worker process to call the MATLAB function. If
-                # this fails, unlink the shared memory objects. Otherwise the
-                # worker process will do it, once it is finished with them.
-
+                newArgs = MatlabWorkerProcess._NumpyArraysToSHM(args, sharedMemoryInstances)
+                newKWargs = MatlabWorkerProcess._NumpyArraysToSHM(kwargs, sharedMemoryInstances)
                 try:
-                    self._InputQueue.put((funcName, newArgs, newKWargs), block=False, timeout=10.)
+                    self._InputQueue.put((funcName, newArgs, newKWargs), block=False, timeout=self._Timeout)
                 except Exception as e:
-                    MatlabWorkerProcess._CloseAndUnlinkSHM(newKWargs)
-                    raise RuntimeError(_('Failed to put a message into the input queue of MATLAB worker process %(pid)i. The queue did not become available after 10 seconds of waiting. This may indicate the system is excessively busy, or there may be a bug in this tool. If you suspect the latter, please contact the tool\'s developer for assistance.') % {'pid': self._WorkerProcess.pid})
+                    raise RuntimeError(_('Failed to put a message into the input queue of MATLAB worker process %(pid)i. The queue did not become available after %(timeout)s seconds of waiting. This may indicate the system is excessively busy, or there may be a bug in this tool. If you suspect the latter, please contact the tool\'s developer for assistance.') % {'pid': self._WorkerProcess.pid, 'timeout': self._Timeout})
             except:
-                MatlabWorkerProcess._CloseAndUnlinkSHM(newArgs)
+                while len(sharedMemoryInstances) > 0:
+                    sharedMemoryInstances[0].close()
+                    sharedMemoryInstances[0].unlink()
+                    del sharedMemoryInstances[0]
                 raise
+
+            # Wait for the worker process to tell us it has received arguments
+            # and intialized its shared memory instances. Once that is done,
+            # close our instances but but do not unlink them. We rely on the
+            # worker process to unlink them.
+
+            try:
+                message = self._WaitForMessage(['EXECUTING'], timeout=self._Timeout)
+
+                if message is None:
+                    if self._WorkerProcess.exitcode is not None:
+                        raise RuntimeError(_('MATLAB worker process %(pid)s unexpectedly exited with exit code %(exitcode)i. If this problem keeps happening, please contact the developer of this tool for assistance.') % {'pid': self._WorkerProcess.pid, 'exitcode': self._WorkerProcess.exitcode })
+                    raise RuntimeError(_('MATLAB worker process %(pid)s did not respond within %(timeout)s seconds. Verify that the system is not overloaded by other processes. If the system seems idle and this problem keeps happening, please contact the developer of this tool for assistance.') % {'pid': self._WorkerProcess.pid, 'timeout': self._Timeout})
+
+                if isinstance(message, (list, tuple)) and len(message) == 2 and message[0] == 'EXCEPTION':
+                    raise message[1]
+
+                if message != 'EXECUTING':
+                    raise RuntimeError(_('MATLAB worker process %(pid)s responded with unknown message %(message)r. If this problem keeps happening, please contact the developer of this tool for assistance.') % {'pid': self._WorkerProcess.pid, 'message': message})
+            finally:
+                while len(sharedMemoryInstances) > 0:
+                    sharedMemoryInstances[0].close()
+                    del sharedMemoryInstances[0]
 
             # Wait for the function to complete. Use timeout=None, because the
             # function may take a very long time.
@@ -99,15 +151,13 @@ class MatlabWorkerProcess(object):
             message = self._WaitForMessage(['RESULT', 'EXCEPTION'], timeout=None)
 
             if message is None:
-                if self._WorkerProcess.exitcode is not None:
-                    raise RuntimeError(_('MATLAB worker process %(pid)s unexpectedly exited with exit code %(exitcode)i. If this problem keeps happening, please contact the developer of this tool for assistance.') % {'pid': self._WorkerProcess.pid, 'exitcode': self._WorkerProcess.exitcode })
-                raise RuntimeError(_('MATLAB worker process %(pid)s did not respond within %(timeout)s seconds of being started. Verify that the system is not overloaded by other processes. If the system seems idle and this problem keeps happening, please contact the developer of this tool for assistance.') % {'pid': self._WorkerProcess.pid, 'timeout': self._StartTimeout})
+                raise RuntimeError(_('MATLAB worker process %(pid)s unexpectedly exited with exit code %(exitcode)i. If this problem keeps happening, please contact the developer of this tool for assistance.') % {'pid': self._WorkerProcess.pid, 'exitcode': self._WorkerProcess.exitcode })
 
             if isinstance(message, (list, tuple)) and len(message) == 2 and message[0] == 'EXCEPTION':
                 raise message[1]
 
-            elif not isinstance(message, (list, tuple)) or len(message) != 2 or message[0] != 'RESULT':
-                raise RuntimeError(_('MATLAB worker process %(pid)s responded with unknown message %(message)r after being started. Please contact the developer of this tool for assistance.') % {'pid': self._WorkerProcess.pid, 'message': message})
+            if not isinstance(message, (list, tuple)) or len(message) != 2 or message[0] != 'RESULT':
+                raise RuntimeError(_('MATLAB worker process %(pid)s responded with unknown message %(message)r. If this problem keeps happening, please contact the developer of this tool for assistance.') % {'pid': self._WorkerProcess.pid, 'message': message})
 
             # Extract any returned numpy arrays from shared memory.
 
@@ -115,6 +165,13 @@ class MatlabWorkerProcess(object):
                 result = MatlabWorkerProcess._SHMToNumpyArrays(message[1], copy=True)
             finally:
                 MatlabWorkerProcess._CloseAndUnlinkSHM(message[1])
+
+            # Tell the worker process that we received the result.
+
+            try:
+                self._InputQueue.put('RECEIVED', block=False, timeout=self._Timeout)
+            except Exception as e:
+                raise RuntimeError(_('Failed to put a message into the input queue of MATLAB worker process %(pid)i. The queue did not become available after %(timeout)s seconds of waiting. This may indicate the system is excessively busy, or there may be a bug in this tool. If you suspect the latter, please contact the tool\'s developer for assistance.') % {'pid': self._WorkerProcess.pid, 'timeout': self._Timeout})
 
             # Return successfully.
 
@@ -152,16 +209,16 @@ class MatlabWorkerProcess(object):
 
         self._State = 'STARTED'
 
-        Logger.Debug('%(class)s 0x%(id)016X: PID %(pid)i started.', {'class': self.__class__.__name__, 'id': id(self), 'pid': self._WorkerProcess.pid})
+        Logger.Debug('%(class)s 0x%(id)016X: Worker process %(pid)i started.', {'class': self.__class__.__name__, 'id': id(self), 'pid': self._WorkerProcess.pid})
 
-        # Wait up to 10 seconds until it is ready.
+        # Wait up to self._Timeout seconds until it is ready.
 
-        message = self._WaitForMessage(['READY', 'EXCEPTION'], timeout=10.)
+        message = self._WaitForMessage(['READY', 'EXCEPTION'], timeout=self._Timeout)
 
         if message is None:
             if self._WorkerProcess.exitcode is not None:
                 raise RuntimeError(_('MATLAB worker process %(pid)s unexpectedly exited with exit code %(exitcode)i. If this problem keeps happening, please contact the developer of this tool for assistance.') % {'pid': self._WorkerProcess.pid, 'exitcode': self._WorkerProcess.exitcode })
-            raise RuntimeError(_('MATLAB worker process %(pid)s did not respond within %(timeout)s seconds of being started. Verify that the system is not overloaded by other processes. If the system seems idle and this problem keeps happening, please contact the developer of this tool for assistance.') % {'pid': self._WorkerProcess.pid, 'timeout': self._StartTimeout})
+            raise RuntimeError(_('MATLAB worker process %(pid)s did not respond within %(timeout)s seconds of being started. Verify that the system is not overloaded by other processes. If the system seems idle and this problem keeps happening, please contact the developer of this tool for assistance.') % {'pid': self._WorkerProcess.pid, 'timeout': self._Timeout})
 
         if isinstance(message, (list, tuple)) and len(message) == 2 and message[0] == 'EXCEPTION':
             Logger.Error(_('MATLAB worker process %(pid)s failed while trying to initialize MATLAB. Please review the preceding and following log messages for more information.') % {'pid': self._WorkerProcess.pid})
@@ -218,7 +275,7 @@ class MatlabWorkerProcess(object):
         if self._WorkerProcess.exitcode is None:
             Logger.Warning(_('Failed to stop MATLAB worker process %(pid)i after trying for %(timeout)s seconds. You may need to stop the process manually.') % {'pid': self._WorkerProcess.pid, 'timeout': timeout})
         else:
-            Logger.Debug('%(class)s 0x%(id)016X: PID %(pid)i exited with code %(exitcode)s.', {'class': self.__class__.__name__, 'id': id(self), 'pid': self._WorkerProcess.pid, 'exitcode': self._WorkerProcess.exitcode})
+            Logger.Debug('%(class)s 0x%(id)016X: Worker process %(pid)i exited with code %(exitcode)s.', {'class': self.__class__.__name__, 'id': id(self), 'pid': self._WorkerProcess.pid, 'exitcode': self._WorkerProcess.exitcode})
 
         self._State = 'STOPPED'
         self._InputQueue = None
@@ -246,18 +303,18 @@ class MatlabWorkerProcess(object):
         pass
 
     @staticmethod
-    def _NumpyArraysToSHM(value):
+    def _NumpyArraysToSHM(value, sharedMemoryInstances):
 
         # If the value is a list, tuple, or dict, process every item with it.
 
         if isinstance(value, list):
-            return [MatlabWorkerProcess._NumpyArraysToSHM(item) for item in value]
+            return [MatlabWorkerProcess._NumpyArraysToSHM(item, sharedMemoryInstances) for item in value]
 
         if isinstance(value, tuple):
-            return tuple([MatlabWorkerProcess._NumpyArraysToSHM(item) for item in value])
+            return tuple([MatlabWorkerProcess._NumpyArraysToSHM(item, sharedMemoryInstances) for item in value])
 
         if isinstance(value, dict):
-            return {k: MatlabWorkerProcess._NumpyArraysToSHM(v) for k, v in value.items()}
+            return {k: MatlabWorkerProcess._NumpyArraysToSHM(v, sharedMemoryInstances) for k, v in value.items()}
 
         # If it is a numpy array, store it in shared memory and replace it
         # with a _SharedNumpyArray object.
@@ -265,7 +322,7 @@ class MatlabWorkerProcess(object):
         import numpy
 
         if isinstance(value, numpy.ndarray):
-            return MatlabWorkerProcess._StoreNumpyArrayInSHM(value)
+            return MatlabWorkerProcess._StoreNumpyArrayInSHM(value, sharedMemoryInstances)
 
         # If we got to here, it is not a list, tuple, dict, or numpy array.
         # Return it as-is.
@@ -273,17 +330,12 @@ class MatlabWorkerProcess(object):
         return value
 
     @staticmethod
-    def _StoreNumpyArrayInSHM(a):
+    def _StoreNumpyArrayInSHM(a, sharedMemoryInstances):
         import numpy
         shm = multiprocessing.shared_memory.SharedMemory(create=True, size=a.nbytes)
-        try:
-            b = numpy.ndarray(a.shape, dtype=a.dtype, buffer=shm.buf)
-            b[:] = a[:]
-        except:
-            shm.unlink()   # Delete shared memory if we fail to copy the array; python documentation states shm.unlink() can be called before shm.close()
-            raise
-        finally:
-            shm.close()
+        sharedMemoryInstances.append(shm)
+        b = numpy.ndarray(a.shape, dtype=a.dtype, buffer=shm.buf)
+        b[:] = a[:]
         return _SharedNumpyArray(name=shm.name, dtype=a.dtype, shape=a.shape)
 
     @staticmethod
@@ -392,17 +444,28 @@ class MatlabWorkerProcess(object):
                     func = getattr(MatlabFunctions, funcName)
                     newArgs = MatlabWorkerProcess._SHMToNumpyArrays(args, copy=False)
                     newKWargs = MatlabWorkerProcess._SHMToNumpyArrays(kwargs, copy=False)
+                    outputQueue.put('EXECUTING')
                     result = func(*newArgs, **newKWargs)
                 finally:
                     MatlabWorkerProcess._CloseAndUnlinkSHM(args)
                     MatlabWorkerProcess._CloseAndUnlinkSHM(kwargs)
-                result = MatlabWorkerProcess._NumpyArraysToSHM(result)
+
+                sharedMemoryInstances = []
+                result = MatlabWorkerProcess._NumpyArraysToSHM(result, sharedMemoryInstances)
+
+                outputQueue.put(('RESULT', result))
+                message = inputQueue.get()
+
+                while len(sharedMemoryInstances) > 0:
+                    sharedMemoryInstances[0].close()
+                    sharedMemoryInstances[0].unlink()
+                    del sharedMemoryInstances[0]
+
+                if message != 'RECEIVED':
+                    raise RuntimeError(_('The MATLAB worker process %(pid)s received an unexpected message %(message)r from the parent process. If this problem keeps happening, please contact the developer of this tool for assistance.') % {'pid': os.getpid(), 'message': message})
 
             except Exception as e:
                 MatlabWorkerProcess._ReportWorkerException(e, outputQueue)
-
-            else:
-                outputQueue.put(('RESULT', result))
 
     @staticmethod
     def _ReportWorkerException(e, outputQueue):
