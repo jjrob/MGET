@@ -44,6 +44,7 @@ class MatlabDependency(Dependency):
 
     @classmethod
     def FindMatlab(cls, setPath=False, loggingQueue=None):
+        cls.__doc__.Obj.ValidateMethodInvocation()
 
         # We require numpy. Make sure it is available.
 
@@ -147,7 +148,7 @@ class MatlabDependency(Dependency):
 
         # If we fell through to here, we did not find MATLAB.
 
-        raise SoftwareNotInstalledError(_('This tool requires that MATLAB 2024a or the MATLAB Runtime 2024a be installed. The MATLAB Runtime is free and may be downloaded https://www.mathworks.com/help/compiler/install-the-matlab-runtime.html. Please follow the installation instructions carefully.'))
+        raise SoftwareNotInstalledError(_('This tool requires that MATLAB 2024a or the MATLAB Runtime 2024a be installed. The MATLAB Runtime is free and may be downloaded from https://www.mathworks.com/help/compiler/install-the-matlab-runtime.html. Please follow the installation instructions carefully. Version 2024a must be used; other versions will not work. MATLAB Runtime allows multiple versions can be installed at the same time.'))
 
     @staticmethod
     def _Log(level, msg, loggingQueue):

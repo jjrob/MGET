@@ -21,8 +21,9 @@ from ..Metadata import AddModuleMetadata
 
 AddModuleMetadata(shortDescription=_('Classes that wrap GeoEco functions written in MATLAB and expose them as Python functions.'))
 
-#from . import _MatlabDependencyMetadata     # TODO
-#from . import _MatlabFunctionsMetadata
+from . import _MatlabDependencyMetadata
+from . import _MatlabFunctionsMetadata
+from . import _MatlabWorkerProcessMetadata
 
 
 ###############################################################################

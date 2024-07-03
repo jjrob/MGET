@@ -40,7 +40,7 @@ class MatlabWorkerProcess(object):
     __doc__ = DynamicDocString()
 
     def __init__(self, timeout=30.):
-        #self.__doc__.Obj.ValidateMethodInvocation()    TODO
+        self.__doc__.Obj.ValidateMethodInvocation()
 
         self._Timeout = timeout
         self._State = 'STOPPED'
@@ -245,8 +245,8 @@ class MatlabWorkerProcess(object):
                     logging.getLogger('GeoEco').warning(_('Received an unexpected message MATLAB worker process %(pid)s. This may indicate a programming error in this tool. The message will be ignored. The message was: %(msg)r') % {'pid': self._WorkerProcess.pid, 'msg': message})
         return None
 
-    def Stop(self, timeout=5.):
-        #self.__doc__.Obj.ValidateMethodInvocation()    TODO
+    def Stop(self, timeout=30.):
+        self.__doc__.Obj.ValidateMethodInvocation()
 
         if self._State not in ['STARTED', 'READY']:
             Logger.Debug('%(class)s 0x%(id)016X: Stop() called while in state %(state)s. There is no process to stop.', {'class': self.__class__.__name__, 'id': id(self), 'state': self._State})

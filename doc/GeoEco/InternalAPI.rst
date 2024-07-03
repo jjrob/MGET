@@ -38,6 +38,7 @@ software frameworks. See also the :mod:`GeoEco.Datasets` module.
     :recursive:
 
     GeoEco.ArcGIS
+    GeoEco.Matlab
 
 Utilities 
 ---------

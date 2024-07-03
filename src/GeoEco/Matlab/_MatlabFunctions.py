@@ -31,7 +31,7 @@ class MatlabFunctions(object):
 
     @classmethod
     def Initialize(cls, loggingQueue=None):
-        # cls.__doc__.Obj.ValidateMethodInvocation()    # TODO
+        cls.__doc__.Obj.ValidateMethodInvocation()
 
         # If we've already been initialized, return immediately.
 
