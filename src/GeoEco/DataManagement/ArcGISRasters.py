@@ -578,7 +578,7 @@ class ArcGISRaster(object):
 
                 grid = ArcGISRaster2.GetRasterBand(raster, band)
 
-                return grids[0].Data[:], grids[0].NoDataValue
+                return grid.Data[:], grid.NoDataValue
             except:
                 Logger.LogExceptionAsError()
                 raise
