@@ -15,6 +15,12 @@ else
     A2 = A;
 end
 
+% inpaint_nans requires double precision. If A is single, change to double.
+
+if isa(A, 'single')
+  A2 = double(A2);
+end
+
 % Call inpaint_nans. If maxHoleSize was provided, only fill holes up to
 % that size with what inpaint_nans returns (leave the others as NaN).
 
@@ -48,9 +54,47 @@ if ~isnan(maxValue)
     B = min(B, B*0 + maxValue);
 end
 
+% Switch back to single precision, if A was given as single precision.
+
+if isa(A, 'single')
+  B = single(B);
 end
 
+end
+
+
 function B=inpaint_nans(A,method)
+% inpaint_nans version 1.1.0.0 published 13 Aug 2012
+% https://www.mathworks.com/matlabcentral/fileexchange/4551-inpaint_nans
+%
+% Thanks to John D'Errico for the remaining code in this file, to which the
+% following license statement applies:
+%
+% Copyright (c) 2009, John D'Errico
+% All rights reserved.
+% 
+% Redistribution and use in source and binary forms, with or without
+% modification, are permitted provided that the following conditions are
+% met:
+% 
+%     * Redistributions of source code must retain the above copyright
+%       notice, this list of conditions and the following disclaimer.
+%     * Redistributions in binary form must reproduce the above copyright
+%       notice, this list of conditions and the following disclaimer in
+%       the documentation and/or other materials provided with the distribution
+% 
+% THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
+% AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+% IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
+% ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT OWNER OR CONTRIBUTORS BE
+% LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
+% CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF
+% SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
+% INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN
+% CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
+% ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
+% POSSIBILITY OF SUCH DAMAGE.
+%
 % INPAINT_NANS: in-paints over nans in an array
 % usage: B=INPAINT_NANS(A)          % default method
 % usage: B=INPAINT_NANS(A,method)   % specify method used
@@ -103,6 +147,9 @@ function B=inpaint_nans(A,method)
 %         This method will also be least able to
 %         interpolate accurately for smooth surfaces.
 %         Extrapolation behavior is linear.
+%
+%         Note: method 2 has problems in 1-d, so this
+%         method is disabled for vector inputs.
 %         
 %       method == 3 --+ See method 0, but uses del^4 for
 %         the interpolating operator. This may result
@@ -184,33 +231,49 @@ switch method
   % The same as method == 1, except only work on those
   % elements which are NaN, or at least touch a NaN.
   
-  % horizontal and vertical neighbors only
-  talks_to = [-1 0;0 -1;1 0;0 1];
-  neighbors_list=identify_neighbors(n,m,nan_list,talks_to);
-  
-  % list of all nodes we have identified
-  all_list=[nan_list;neighbors_list];
-  
-  % generate sparse array with second partials on row
-  % variable for each element in either list, but only
-  % for those nodes which have a row index > 1 or < n
-  L = find((all_list(:,2) > 1) & (all_list(:,2) < n)); 
-  nl=length(L);
-  if nl>0
-    fda=sparse(repmat(all_list(L,1),1,3), ...
-      repmat(all_list(L,1),1,3)+repmat([-1 0 1],nl,1), ...
-      repmat([1 -2 1],nl,1),nm,nm);
+  % is it 1-d or 2-d?
+  if (m == 1) || (n == 1)
+    % really a 1-d case
+    work_list = nan_list(:,1);
+    work_list = unique([work_list;work_list - 1;work_list + 1]);
+    work_list(work_list <= 1) = [];
+    work_list(work_list >= nm) = [];
+    nw = numel(work_list);
+    
+    u = (1:nw)';
+    fda = sparse(repmat(u,1,3),bsxfun(@plus,work_list,-1:1), ...
+      repmat([1 -2 1],nw,1),nw,nm);
   else
-    fda=spalloc(n*m,n*m,size(all_list,1)*5);
-  end
-  
-  % 2nd partials on column index
-  L = find((all_list(:,3) > 1) & (all_list(:,3) < m)); 
-  nl=length(L);
-  if nl>0
-    fda=fda+sparse(repmat(all_list(L,1),1,3), ...
-      repmat(all_list(L,1),1,3)+repmat([-n 0 n],nl,1), ...
-      repmat([1 -2 1],nl,1),nm,nm);
+    % a 2-d case
+    
+    % horizontal and vertical neighbors only
+    talks_to = [-1 0;0 -1;1 0;0 1];
+    neighbors_list=identify_neighbors(n,m,nan_list,talks_to);
+    
+    % list of all nodes we have identified
+    all_list=[nan_list;neighbors_list];
+    
+    % generate sparse array with second partials on row
+    % variable for each element in either list, but only
+    % for those nodes which have a row index > 1 or < n
+    L = find((all_list(:,2) > 1) & (all_list(:,2) < n));
+    nl=length(L);
+    if nl>0
+      fda=sparse(repmat(all_list(L,1),1,3), ...
+        repmat(all_list(L,1),1,3)+repmat([-1 0 1],nl,1), ...
+        repmat([1 -2 1],nl,1),nm,nm);
+    else
+      fda=spalloc(n*m,n*m,size(all_list,1)*5);
+    end
+    
+    % 2nd partials on column index
+    L = find((all_list(:,3) > 1) & (all_list(:,3) < m));
+    nl=length(L);
+    if nl>0
+      fda=fda+sparse(repmat(all_list(L,1),1,3), ...
+        repmat(all_list(L,1),1,3)+repmat([-n 0 n],nl,1), ...
+        repmat([1 -2 1],nl,1),nm,nm);
+    end
   end
   
   % eliminate knowns
@@ -228,20 +291,31 @@ switch method
 
   % Build sparse matrix approximating del^2 for
   % every element in A.
-  % Compute finite difference for second partials
-  % on row variable first
-  [i,j]=ndgrid(2:(n-1),1:m);
-  ind=i(:)+(j(:)-1)*n;
-  np=(n-2)*m;
-  fda=sparse(repmat(ind,1,3),[ind-1,ind,ind+1], ...
-      repmat([1 -2 1],np,1),n*m,n*m);
   
-  % now second partials on column variable
-  [i,j]=ndgrid(1:n,2:(m-1));
-  ind=i(:)+(j(:)-1)*n;
-  np=n*(m-2);
-  fda=fda+sparse(repmat(ind,1,3),[ind-n,ind,ind+n], ...
+  % is it 1-d or 2-d?
+  if (m == 1) || (n == 1)
+    % a 1-d case
+    u = (1:(nm-2))';
+    fda = sparse(repmat(u,1,3),bsxfun(@plus,u,0:2), ...
+      repmat([1 -2 1],nm-2,1),nm-2,nm);
+  else
+    % a 2-d case
+    
+    % Compute finite difference for second partials
+    % on row variable first
+    [i,j]=ndgrid(2:(n-1),1:m);
+    ind=i(:)+(j(:)-1)*n;
+    np=(n-2)*m;
+    fda=sparse(repmat(ind,1,3),[ind-1,ind,ind+1], ...
+      repmat([1 -2 1],np,1),n*m,n*m);
+    
+    % now second partials on column variable
+    [i,j]=ndgrid(1:n,2:(m-1));
+    ind=i(:)+(j(:)-1)*n;
+    np=n*(m-2);
+    fda=fda+sparse(repmat(ind,1,3),[ind-n,ind,ind+n], ...
       repmat([1 -2 1],np,1),nm,nm);
+  end
   
   % eliminate knowns
   rhs=-fda(:,known_list)*A(known_list);
@@ -257,47 +331,57 @@ switch method
   % generate sparse array with second partials on row
   % variable for each nan element, only for those nodes
   % which have a row index > 1 or < n
-  L = find((nan_list(:,2) > 1) & (nan_list(:,2) < n)); 
-  nl=length(L);
-  if nl>0
-    fda=sparse(repmat(nan_list(L,1),1,3), ...
-      repmat(nan_list(L,1),1,3)+repmat([-1 0 1],nl,1), ...
-      repmat([1 -2 1],nl,1),n*m,n*m);
+  
+  % is it 1-d or 2-d?
+  if (m == 1) || (n == 1)
+    % really just a 1-d case
+    error('Method 2 has problems for vector input. Please use another method.')
+    
   else
-    fda=spalloc(n*m,n*m,size(nan_list,1)*5);
+    % a 2-d case
+    L = find((nan_list(:,2) > 1) & (nan_list(:,2) < n));
+    nl=length(L);
+    if nl>0
+      fda=sparse(repmat(nan_list(L,1),1,3), ...
+        repmat(nan_list(L,1),1,3)+repmat([-1 0 1],nl,1), ...
+        repmat([1 -2 1],nl,1),n*m,n*m);
+    else
+      fda=spalloc(n*m,n*m,size(nan_list,1)*5);
+    end
+    
+    % 2nd partials on column index
+    L = find((nan_list(:,3) > 1) & (nan_list(:,3) < m));
+    nl=length(L);
+    if nl>0
+      fda=fda+sparse(repmat(nan_list(L,1),1,3), ...
+        repmat(nan_list(L,1),1,3)+repmat([-n 0 n],nl,1), ...
+        repmat([1 -2 1],nl,1),n*m,n*m);
+    end
+    
+    % fix boundary conditions at extreme corners
+    % of the array in case there were nans there
+    if ismember(1,nan_list(:,1))
+      fda(1,[1 2 n+1])=[-2 1 1];
+    end
+    if ismember(n,nan_list(:,1))
+      fda(n,[n, n-1,n+n])=[-2 1 1];
+    end
+    if ismember(nm-n+1,nan_list(:,1))
+      fda(nm-n+1,[nm-n+1,nm-n+2,nm-n])=[-2 1 1];
+    end
+    if ismember(nm,nan_list(:,1))
+      fda(nm,[nm,nm-1,nm-n])=[-2 1 1];
+    end
+    
+    % eliminate knowns
+    rhs=-fda(:,known_list)*A(known_list);
+    
+    % and solve...
+    B=A;
+    k=nan_list(:,1);
+    B(k)=fda(k,k)\rhs(k);
+    
   end
-  
-  % 2nd partials on column index
-  L = find((nan_list(:,3) > 1) & (nan_list(:,3) < m)); 
-  nl=length(L);
-  if nl>0
-    fda=fda+sparse(repmat(nan_list(L,1),1,3), ...
-      repmat(nan_list(L,1),1,3)+repmat([-n 0 n],nl,1), ...
-      repmat([1 -2 1],nl,1),n*m,n*m);
-  end
-  
-  % fix boundary conditions at extreme corners
-  % of the array in case there were nans there
-  if ismember(1,nan_list(:,1))
-    fda(1,[1 2 n+1])=[-2 1 1];
-  end
-  if ismember(n,nan_list(:,1))
-    fda(n,[n, n-1,n+n])=[-2 1 1];
-  end
-  if ismember(nm-n+1,nan_list(:,1))
-    fda(nm-n+1,[nm-n+1,nm-n+2,nm-n])=[-2 1 1];
-  end
-  if ismember(nm,nan_list(:,1))
-    fda(nm,[nm,nm-1,nm-n])=[-2 1 1];
-  end
-  
-  % eliminate knowns
-  rhs=-fda(:,known_list)*A(known_list);
-  
-  % and solve...
-  B=A;
-  k=nan_list(:,1);
-  B(k)=fda(k,k)\rhs(k);
   
  case 3
   % The same as method == 0, except uses del^4 as the
@@ -501,7 +585,7 @@ end
 % all done, make sure that B is the same shape as
 % A was when we came in.
 B=reshape(B,n,m);
-end
+
 
 % ====================================================
 %      end of main function
@@ -544,9 +628,9 @@ if ~isempty(nan_list)
   
   nn=zeros(nan_count*talk_count,2);
   j=[1,nan_count];
-  for i=1:talk_count
+  for i2=1:talk_count
     nn(j(1):j(2),:)=nan_list(:,2:3) + ...
-        repmat(talks_to(i,:),nan_count,1);
+        repmat(talks_to(i2,:),nan_count,1);
     j=j+nan_count;
   end
   
@@ -566,5 +650,6 @@ if ~isempty(nan_list)
   
 else
   neighbors_list=[];
+end
 end
 end

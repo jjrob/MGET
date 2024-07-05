@@ -12,6 +12,8 @@
 # across several files.
 
 from ._FastMarchingDistanceGrid import FastMarchingDistanceGrid
+from ._GridSlice import GridSlice
+from ._InpaintedGrid import InpaintedGrid
 from ._RotatedGlobalGrid import RotatedGlobalGrid
 from ._WindFetchGrid import WindFetchGrid
 
@@ -26,6 +28,8 @@ from ...Metadata import AddModuleMetadata
 AddModuleMetadata(shortDescription=_(':class:`~GeoEco.Datasets.Grid`\\ s and :class:`~GeoEco.Datasets.DatasetCollection`\\ s that transform :class:`~GeoEco.Datasets.Grid`\\ s and :class:`~GeoEco.Datasets.DatasetCollection`\\ s, lazily if possible.'))
 
 from . import _FastMarchingDistanceGridMetadata
+from . import _GridSliceMetadata
+from . import _InpaintedGridMetadata
 from . import _RotatedGlobalGridMetadata
 from . import _WindFetchGridMetadata
 
@@ -35,5 +39,7 @@ from . import _WindFetchGridMetadata
 ###############################################################################
 
 __all__ = ['FastMarchingDistanceGrid',
+           'GridSlice',
+           'InpaintedGrid',
            'RotatedGlobalGrid',
            'WindFetchGrid']

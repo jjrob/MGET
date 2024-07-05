@@ -39,8 +39,7 @@ class TestFMDG():
         # Load the study area raster and get the first band as a
         # GDALRasterGrid.
 
-        dataset = GDALDataset(str(medSeaStudyAreaRasterPath))
-        grid = dataset.QueryDatasets(reportProgress=False)[0]
+        grid = GDALDataset.GetRasterBand(str(medSeaStudyAreaRasterPath))
 
         # This band uses an int32 data type and has values of 0 for land and 1
         # for water. Every cell has data. First, extract the band's data as a
@@ -62,19 +61,10 @@ class TestFMDG():
 
         wfGrid = WindFetchGrid(numpyGrid, directions=directions)
 
-        # We want to write the WindFetchGrid out as a raster with GDAL.
-        # Construct a DirectoryTree that we can import it into. Note that
-        # because we are just going to import this single raster, we can
-        # specify the destination file name in pathCreationExpressions, and
-        # not have to define a QueryableAttribute that gives the file name.
+        # Write the WindFetchGrid out as a raster with GDAL. This isn't really
+        # necessary for testing WindFetchGrid, but helps test GDALDataset.
 
-        dirTree = DirectoryTree(path=str(tmp_path),
-                                datasetType=GDALDataset,
-                                pathCreationExpressions=['WindFetch.img'])
-
-        # Import the grid into the DirectoryTree.
-
-        dirTree.ImportDatasets([wfGrid], mode='Replace', calculateStatistics=True)
+        grid = GDALDataset.WriteRaster(str(tmp_path / 'WindFetch.img'), wfGrid, overwriteExisting=True, calculateStatistics=True)
 
         assert (tmp_path / 'WindFetch.img').is_file()
 

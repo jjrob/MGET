@@ -37,7 +37,7 @@ mFiles = glob.glob(os.path.join(packageDir, '*.m'))
 # Execute the Matlab Compiler from the command line
 
 mFilesStr = '[' + ','.join(['"' + f + '"' for f in mFiles]) + ']'
-command = f'try compiler.build.pythonPackage({mFilesStr}, "PackageName", "GeoEco.Matlab._Matlab", "Verbose", "on"); catch; end; quit'
+command = f'compiler.build.pythonPackage({mFilesStr}, "PackageName", "GeoEco.Matlab._Matlab", "Verbose", "on"); quit'
 args = [matlabPath, '-nodesktop', '-nosplash', '-r', command]
 
 print(f'Executing: {" ".join(args)}')

@@ -12,8 +12,10 @@ from ...Internationalization import _
 from ...Metadata import *
 from ...Types import *
 
+from .. import Grid
 from ..Collections import FileDatasetCollection
 from ._GDALDataset import GDALDataset
+from ._GDALRasterBand import GDALRasterBand
 
 
 ###############################################################################
@@ -102,6 +104,125 @@ AddArgumentMetadata(GDALDataset.__init__, 'cacheDirectory',
 AddResultMetadata(GDALDataset.__init__, 'gdalDataset',
     typeMetadata=ClassInstanceTypeMetadata(cls=GDALDataset),
     description=_(':class:`%s` instance.') % GDALDataset.__name__)
+
+# Public method: GetRasterBand
+
+AddMethodMetadata(GDALDataset.GetRasterBand,
+    shortDescription=_('Opens a GDAL dataset and returns a :class:`GDALRasterBand` for the specified band.'),
+    longDescription=_(
+"""This is a convenience function that is equivalent to:
+
+.. code-block:: python
+
+    from GeoEco.Datasets.GDAL import GDALDataset
+
+    dataset = GDALDataset(path, updatable=updatable, decompressedFileToReturn=decompressedFileToReturn, displayName=displayName, cacheDirectory=cacheDirectory)
+    try:
+        grids = dataset.QueryDatasets('Band = %i' % band, reportProgress=False)
+        if len(grids) <= 0:
+            raise ValueError(_('Cannot retrieve band %(band)i from %(dn)s. The band does not exist.') % {'band': band, 'dn': dataset.DisplayName})
+        gdalRasterBand = grids[0]
+    finally:
+        dataset.Close()
+
+    # Now do something with the gdalRasterBand object...
+"""))
+
+AddArgumentMetadata(GDALDataset.GetRasterBand, 'cls',
+    typeMetadata=ClassOrClassInstanceTypeMetadata(cls=GDALDataset),
+    description=_(':class:`%s` or an instance of it.') % GDALDataset.__name__)
+
+AddArgumentMetadata(GDALDataset.GetRasterBand, 'path', 
+    typeMetadata=UnicodeStringTypeMetadata(),
+    description=_(
+"""Full path to the dataset to open. If the path points to compressed file, it
+will be decompressed automatically. If a cache directory is provided, it will
+be checked first for an existing decompressed file. If none is found the file
+will be decompressed there. If the compressed file is an archive (e.g. .zip or
+.tar), you must also specify a decompressed file to return."""))
+
+CopyArgumentMetadata(GDALDataset.__init__, 'updatable', GDALDataset.GetRasterBand, 'updatable')
+CopyArgumentMetadata(GDALDataset.__init__, 'decompressedFileToReturn', GDALDataset.GetRasterBand, 'decompressedFileToReturn')
+CopyArgumentMetadata(GDALDataset.__init__, 'displayName', GDALDataset.GetRasterBand, 'displayName')
+CopyArgumentMetadata(GDALDataset.__init__, 'cacheDirectory', GDALDataset.GetRasterBand, 'cacheDirectory')
+
+AddResultMetadata(GDALDataset.GetRasterBand, 'gdalRasterBand',
+    typeMetadata=ClassInstanceTypeMetadata(cls=GDALRasterBand),
+    description=_(':class:`%s` instance.') % GDALRasterBand.__name__)
+
+# Public method: WriteRaster
+
+AddMethodMetadata(GDALDataset.WriteRaster,
+    shortDescription=_('Writes a :class:`~GeoEco.Datasets.Grid` out as a GDAL raster dataset.'),
+    longDescription=_(
+"""This is a convenience function that is equivalent to:
+
+.. code-block:: python
+
+    from GeoEco.Datasets.Collections import DirectoryTree
+    from GeoEco.Datasets.GDAL import GDALDataset
+
+    dirTree = DirectoryTree(path=os.path.dirname(path),
+                            datasetType=GDALDataset,
+                            pathCreationExpressions=[os.path.basename(path)])
+
+    dirTree.ImportDatasets(datasets=[grid], 
+                           mode='Replace' if overwriteExisting else 'Add',
+                           reportProgress=False,
+                           options=options)
+"""))
+
+CopyArgumentMetadata(GDALDataset.GetRasterBand, 'cls', GDALDataset.WriteRaster, 'cls')
+
+AddArgumentMetadata(GDALDataset.WriteRaster, 'path', 
+    typeMetadata=UnicodeStringTypeMetadata(),
+    description=_('Full path to the dataset to write.'))
+
+AddArgumentMetadata(GDALDataset.WriteRaster, 'grid', 
+    typeMetadata=ClassInstanceTypeMetadata(cls=Grid),
+    description=_(':class:`~GeoEco.Datasets.Grid` to write. It must be two dimensional.'))
+
+AddArgumentMetadata(GDALDataset.WriteRaster, 'overwriteExisting', 
+    typeMetadata=BooleanTypeMetadata(),
+    description=_('If True and `path` exists, it will be overwritten. If False and `path` exists, an error will be raised.'))
+
+AddArgumentMetadata(GDALDataset.WriteRaster, 'options',
+    typeMetadata=DictionaryTypeMetadata(keyType=ClassInstanceTypeMetadata(cls=str), valueType=AnyObjectTypeMetadata(canBeNone=False)),
+    description=_(
+"""Additional options, which can include:
+
+* ``'blockSize'`` (:py:class:`int`) - Number of bytes to read at a time from the
+  grid and write to the raster. The default is 32*1024*1024 bytes (32 MB).
+
+* ``'calculateStatistics'`` (:py:class:`bool`) - If True, statistics and a
+  histogram will be calculated using GDAL and written along with the raster in
+  the appropriate format. Depending on the raster's format, the statistics and
+  histogram may be present in the raster file itself, or a "sidecar" file with
+  the extension ``.aux.xml``.
+
+* ``'gdalCreateOptions'`` (:py:class:`list` of :py:class:`str`) - List of
+  options to be passed to :py:meth:`osgeo.gdal.Driver.Create` to create the
+  raster.
+
+* ``'gdalDriverName'`` (:py:class:`str`) - GDAL driver name to use, to be passed
+  to :py:func:`osgeo.gdal.GetDriverByName` to retrieve the driver.
+
+* ``'overviewResamplingMethod'`` (:py:class:`str`) and ``'overviewList'``
+  (:py:class:`list` of :py:class:`int`) - The resampling method and list of
+  overview levels (decimation factors) to use to build overviews (known as
+  "pyramids" in ArcGIS terminology) using
+  :py:meth:`osgeo.gdal.Dataset.BuildOverviews`. Both must be specified.
+
+* ``'useArcGISSpatialReference'`` (:py:class:`bool`) - If True, the
+  ArcGIS-compatible WKT string will be used when defining the raster's spatial
+  reference. Additionally, the ``FORCETOPESTRING=YES`` creation option will be
+  set if the output is ERDAS Imagine (.img) format.
+
+* ``'useUnscaledData'`` (:py:class:`bool`) - If True and `grid` has a scaling
+  equation, the underlying unscaled data will be written out, rather than the
+  scaled data that are normally of interest.
+
+"""))
 
 
 ########################################################################################

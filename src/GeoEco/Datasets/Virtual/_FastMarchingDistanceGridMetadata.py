@@ -51,7 +51,7 @@ edge, and will be positive for outside cells and negative for inside cells. If
 you instead want the distances for inside cells to zero throughout the
 feature, set `minDist` to zero.
 
-Example:
+Example usage:
 
 .. code-block:: python
 
@@ -149,7 +149,7 @@ AddArgumentMetadata(FastMarchingDistanceGrid.__init__, 'self',
 
 AddArgumentMetadata(FastMarchingDistanceGrid.__init__, 'grid',
     typeMetadata=ClassInstanceTypeMetadata(cls=Grid),
-    description=_('class:`~GeoEco.Datasets.Grid` for which distances should be computed. Typically, it has 2 dimensions. If it has 3 or 4 dimensions, distances will be computed for each 2D slice.'))
+    description=_(':class:`~GeoEco.Datasets.Grid` for which distances should be computed. Typically, it has 2 dimensions. If it has 3 or 4 dimensions, distances will be computed for each 2D slice.'))
 
 AddArgumentMetadata(FastMarchingDistanceGrid.__init__, 'minDist',
     typeMetadata=FastMarchingDistanceGrid.MinDist.__doc__.Obj.Type,

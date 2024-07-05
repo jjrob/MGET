@@ -764,6 +764,28 @@ class GDALDataset(FileDatasetCollection):
                     cls._LogWarning(_('Failed to delete the partially-created dataset "%(path)s" using the GDAL %(driver)s driver. The driver\'s Delete function failed with %(e)s: %(msg)s') % {'path': path, 'driver': driver.LongName, 'e': e.__class__.__name__, 'msg': e})
                 raise
 
+    @classmethod
+    def GetRasterBand(cls, path, band=1, updatable=False, decompressedFileToReturn=None, displayName=None, cacheDirectory=None):
+        dataset = GDALDataset(path, updatable=updatable, decompressedFileToReturn=decompressedFileToReturn, displayName=displayName, cacheDirectory=cacheDirectory)
+        try:
+            grids = dataset.QueryDatasets('Band = %i' % band, reportProgress=False)
+            if len(grids) <= 0:
+                raise ValueError(_('Cannot retrieve band %(band)i from %(dn)s. The band does not exist.') % {'band': band, 'dn': dataset.DisplayName})
+            return grids[0]
+        finally:
+            dataset.Close()
+
+    @classmethod
+    def WriteRaster(cls, path, grid, overwriteExisting=False, **options):
+        dirTree = DirectoryTree(path=os.path.dirname(path),
+                                datasetType=GDALDataset,
+                                pathCreationExpressions=[os.path.basename(path)])
+
+        dirTree.ImportDatasets(datasets=[grid], 
+                               mode='Replace' if overwriteExisting else 'Add',
+                               reportProgress=False,
+                               options=options)
+
 
 ########################################################################################
 # This module is not meant to be imported directly. Import GeoEco.Datasets.GDAL instead.
