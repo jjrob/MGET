@@ -116,14 +116,11 @@ AddMethodMetadata(GDALDataset.GetRasterBand,
 
     from GeoEco.Datasets.GDAL import GDALDataset
 
-    dataset = GDALDataset(path, updatable=updatable, decompressedFileToReturn=decompressedFileToReturn, displayName=displayName, cacheDirectory=cacheDirectory)
-    try:
+    with GDALDataset(path, updatable=updatable, decompressedFileToReturn=decompressedFileToReturn, displayName=displayName, cacheDirectory=cacheDirectory) as dataset:
         grids = dataset.QueryDatasets('Band = %i' % band, reportProgress=False)
         if len(grids) <= 0:
             raise ValueError(_('Cannot retrieve band %(band)i from %(dn)s. The band does not exist.') % {'band': band, 'dn': dataset.DisplayName})
         gdalRasterBand = grids[0]
-    finally:
-        dataset.Close()
 
     # Now do something with the gdalRasterBand object...
 """))
@@ -141,6 +138,10 @@ be checked first for an existing decompressed file. If none is found the file
 will be decompressed there. If the compressed file is an archive (e.g. .zip or
 .tar), you must also specify a decompressed file to return."""))
 
+AddArgumentMetadata(GDALDataset.GetRasterBand, 'band', 
+    typeMetadata=IntegerTypeMetadata(minValue=1),
+    description=_('The band to get.'))
+
 CopyArgumentMetadata(GDALDataset.__init__, 'updatable', GDALDataset.GetRasterBand, 'updatable')
 CopyArgumentMetadata(GDALDataset.__init__, 'decompressedFileToReturn', GDALDataset.GetRasterBand, 'decompressedFileToReturn')
 CopyArgumentMetadata(GDALDataset.__init__, 'displayName', GDALDataset.GetRasterBand, 'displayName')
@@ -150,10 +151,10 @@ AddResultMetadata(GDALDataset.GetRasterBand, 'gdalRasterBand',
     typeMetadata=ClassInstanceTypeMetadata(cls=GDALRasterBand),
     description=_(':class:`%s` instance.') % GDALRasterBand.__name__)
 
-# Public method: WriteRaster
+# Public method: CreateRaster
 
-AddMethodMetadata(GDALDataset.WriteRaster,
-    shortDescription=_('Writes a :class:`~GeoEco.Datasets.Grid` out as a GDAL raster dataset.'),
+AddMethodMetadata(GDALDataset.CreateRaster,
+    shortDescription=_('Creates a GDAL raster dataset from a :class:`~GeoEco.Datasets.Grid`.'),
     longDescription=_(
 """This is a convenience function that is equivalent to:
 
@@ -172,21 +173,21 @@ AddMethodMetadata(GDALDataset.WriteRaster,
                            options=options)
 """))
 
-CopyArgumentMetadata(GDALDataset.GetRasterBand, 'cls', GDALDataset.WriteRaster, 'cls')
+CopyArgumentMetadata(GDALDataset.GetRasterBand, 'cls', GDALDataset.CreateRaster, 'cls')
 
-AddArgumentMetadata(GDALDataset.WriteRaster, 'path', 
+AddArgumentMetadata(GDALDataset.CreateRaster, 'path', 
     typeMetadata=UnicodeStringTypeMetadata(),
-    description=_('Full path to the dataset to write.'))
+    description=_('Path to the GDAL raster dataset to create.'))
 
-AddArgumentMetadata(GDALDataset.WriteRaster, 'grid', 
+AddArgumentMetadata(GDALDataset.CreateRaster, 'grid', 
     typeMetadata=ClassInstanceTypeMetadata(cls=Grid),
-    description=_(':class:`~GeoEco.Datasets.Grid` to write. It must be two dimensional.'))
+    description=_(':class:`~GeoEco.Datasets.Grid` to write to the raster. It must be two dimensional.'))
 
-AddArgumentMetadata(GDALDataset.WriteRaster, 'overwriteExisting', 
+AddArgumentMetadata(GDALDataset.CreateRaster, 'overwriteExisting', 
     typeMetadata=BooleanTypeMetadata(),
     description=_('If True and `path` exists, it will be overwritten. If False and `path` exists, an error will be raised.'))
 
-AddArgumentMetadata(GDALDataset.WriteRaster, 'options',
+AddArgumentMetadata(GDALDataset.CreateRaster, 'options',
     typeMetadata=DictionaryTypeMetadata(keyType=ClassInstanceTypeMetadata(cls=str), valueType=AnyObjectTypeMetadata(canBeNone=False)),
     description=_(
 """Additional options, which can include:

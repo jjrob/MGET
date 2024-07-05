@@ -551,21 +551,16 @@ class ArcGISRaster(object):
                                  cornerCoords=(yLowerLeftCorner + cellSize/2, xLowerLeftCorner + cellSize/2), 
                                  unscaledNoDataValue=noDataValue)
 
-                # Define an ArcGISWorkspace for the caller's raster and import
-                # the NumpyGrid into it.
+                # Create the raster.
 
-                from ..Datasets.ArcGIS import ArcGISWorkspace, ArcGISRaster as ArcGISRaster2
+                from ..Datasets.ArcGIS import ArcGISRaster as ArcGISRaster2
 
-                ws = ArcGISWorkspace(path=os.path.dirname(raster), 
-                                     datasetType=ArcGISRaster2, 
-                                     pathCreationExpressions=[os.path.basename(raster)])
-
-                ws.ImportDatasets([grid],
-                                  mode='Replace' if overwriteExisting else 'Add',
-                                  reportProgress=False,
-                                  calculateStatistics=calculateStatistics,
-                                  buildPyramids=buildPyramids,
-                                  buildRAT=buildRAT)
+                ArcGISRaster2.CreateRaster(path=raster, 
+                                           grid=grid, 
+                                           overwriteExisting=overwriteExisting, 
+                                           calculateStatistics=calculateStatistics,
+                                           buildPyramids=buildPyramids,
+                                           buildRAT=buildRAT)
             except:
                 Logger.LogExceptionAsError()
                 raise
@@ -581,10 +576,7 @@ class ArcGISRaster(object):
             try:
                 from ..Datasets.ArcGIS import ArcGISRaster as ArcGISRaster2
 
-                rasterObj = ArcGISRaster2(raster)
-                grids = rasterObj.QueryDatasets('Band = %i' % band, reportProgress=False)
-                if len(grids) <= 0:
-                    raise ValueError(_('The raster %(raster)s does not have a band number %(band)i.') % {'raster': raster, 'band': band})
+                grid = ArcGISRaster2.GetRasterBand(raster, band)
 
                 return grids[0].Data[:], grids[0].NoDataValue
             except:
@@ -863,10 +855,14 @@ class ArcGISRaster(object):
             # regions, do it now.
 
             if interpolationMethod is not None:
-                from ..SpatialAnalysis.Interpolation import Interpolator
-                infilledRaster = os.path.join(tempDir.Path, 'infilled.img')
-                Interpolator.InpaintArcGISRaster(projectedRaster, infilledRaster, interpolationMethod, maxHoleSize, minValue=minValue, maxValue=maxValue)
-                projectedRaster = infilledRaster
+                from ..Datasets.ArcGIS import ArcGISRaster as ArcGISRaster2
+                from ..Datasets.Virtual import InpaintedGrid
+
+                grid = ArcGISRaster2.GetRasterBand(projectedRaster)
+                grid = InpaintedGrid(grid, method=interpolationMethod, maxHoleSize=maxHoleSize, minValue=minValue, maxValue=maxValue)
+                inpaintedRaster = os.path.join(tempDir.Path, 'inpainted.img')
+                ArcGISRaster2.CreateRaster(inpaintedRaster, grid)
+                projectedRaster = inpaintedRaster
 
             # We are about to use gp.sa.ExtractByMask to extract a raster of the
             # desired extent from the projected raster in the temp directory.

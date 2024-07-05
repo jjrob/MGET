@@ -489,6 +489,31 @@ class ArcGISRaster(DatasetCollection):
         if progressReporter is not None:
             progressReporter.ReportProgress(reinitializeArcGISProgressor=True)
 
+    @classmethod
+    def GetRasterBand(cls, path, band=1, decompressedFileToReturn=None, cacheDirectory=None):
+        cls.__doc__.Obj.ValidateMethodInvocation()
+
+        with ArcGISRaster(path, decompressedFileToReturn=decompressedFileToReturn, cacheDirectory=cacheDirectory) as dataset:
+            grids = dataset.QueryDatasets('Band = %i' % band, reportProgress=False)
+            if len(grids) <= 0:
+                raise ValueError(_('Cannot retrieve band %(band)i from %(dn)s. The band does not exist.') % {'band': band, 'dn': dataset.DisplayName})
+            return grids[0]
+
+    @classmethod
+    def CreateRaster(cls, path, grid, overwriteExisting=False, **options):
+        cls.__doc__.Obj.ValidateMethodInvocation()
+
+        from . import ArcGISWorkspace
+
+        ws = ArcGISWorkspace(path=os.path.dirname(path),
+                             datasetType=ArcGISRaster,
+                             pathCreationExpressions=[os.path.basename(path)])
+
+        ws.ImportDatasets(datasets=[grid], 
+                          mode='Replace' if overwriteExisting else 'Add',
+                          reportProgress=False,
+                          options=options)
+
 
 ##########################################################################################
 # This module is not meant to be imported directly. Import GeoEco.Datasets.ArcGIS instead.

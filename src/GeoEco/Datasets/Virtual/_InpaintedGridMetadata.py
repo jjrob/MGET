@@ -55,7 +55,7 @@ Example usage:
 
     # Write the output raster.
 
-    GDALDataset.WriteRaster('/home/jason/inpaint_test/GSMChl_2006160_filled.img', grid)
+    GDALDataset.CreateRaster('/home/jason/inpaint_test/GSMChl_2006160_filled.img', grid)
 """))
 
 # Constructor

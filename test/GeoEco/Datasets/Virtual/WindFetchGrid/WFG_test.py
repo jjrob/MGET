@@ -64,7 +64,7 @@ class TestFMDG():
         # Write the WindFetchGrid out as a raster with GDAL. This isn't really
         # necessary for testing WindFetchGrid, but helps test GDALDataset.
 
-        grid = GDALDataset.WriteRaster(str(tmp_path / 'WindFetch.img'), wfGrid, overwriteExisting=True, calculateStatistics=True)
+        grid = GDALDataset.CreateRaster(str(tmp_path / 'WindFetch.img'), wfGrid, overwriteExisting=True, calculateStatistics=True)
 
         assert (tmp_path / 'WindFetch.img').is_file()
 

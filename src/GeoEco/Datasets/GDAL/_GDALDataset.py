@@ -766,17 +766,18 @@ class GDALDataset(FileDatasetCollection):
 
     @classmethod
     def GetRasterBand(cls, path, band=1, updatable=False, decompressedFileToReturn=None, displayName=None, cacheDirectory=None):
-        dataset = GDALDataset(path, updatable=updatable, decompressedFileToReturn=decompressedFileToReturn, displayName=displayName, cacheDirectory=cacheDirectory)
-        try:
+        cls.__doc__.Obj.ValidateMethodInvocation()
+
+        with GDALDataset(path, updatable=updatable, decompressedFileToReturn=decompressedFileToReturn, displayName=displayName, cacheDirectory=cacheDirectory) as dataset:
             grids = dataset.QueryDatasets('Band = %i' % band, reportProgress=False)
             if len(grids) <= 0:
                 raise ValueError(_('Cannot retrieve band %(band)i from %(dn)s. The band does not exist.') % {'band': band, 'dn': dataset.DisplayName})
             return grids[0]
-        finally:
-            dataset.Close()
 
     @classmethod
-    def WriteRaster(cls, path, grid, overwriteExisting=False, **options):
+    def CreateRaster(cls, path, grid, overwriteExisting=False, **options):
+        cls.__doc__.Obj.ValidateMethodInvocation()
+
         dirTree = DirectoryTree(path=os.path.dirname(path),
                                 datasetType=GDALDataset,
                                 pathCreationExpressions=[os.path.basename(path)])
