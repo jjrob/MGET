@@ -761,31 +761,46 @@ class ArcGISRaster(object):
             if csWithoutName != icsWithoutName:
                 Logger.Debug(_('The template raster\'s coordinate system is not the same as the input raster\'s. Setting gp.env.extent to the extent of the template in the input raster\'s coordinate system.'))
 
+                # Transform all of the cells along the bottom, top, left, and
+                # right edges of the template raster to the input raster's
+                # coordinate system, and pick edge value that is the most
+                # extreme along each of the four sides.
+
                 from ..Datasets import Dataset
+                from ..Datasets.ArcGIS import ArcGISRaster as ArcGISRaster2
 
                 ogr = Dataset._osr()
                 inputSR = Dataset.ConvertSpatialReference('ArcGIS', inputCoordinateSystem, 'Obj')
                 templateSR = Dataset.ConvertSpatialReference('ArcGIS', coordinateSystem, 'Obj')
                 transformer = Dataset._osr().CoordinateTransformation(templateSR, inputSR)
+                templateRasterBand = ArcGISRaster2.GetRasterBand(templateRaster)
 
-                [templateLeft, templateBottom, templateRight, templateTop] = EnvelopeTypeMetadata.ParseFromArcGISString(extent)
+                bottom = min([transformer.TransformPoint(x, templateRasterBand.MinCoords['y',0])[1] for x in templateRasterBand.CenterCoords['x']])
+                top = max([transformer.TransformPoint(x, templateRasterBand.MaxCoords['y',-1])[1] for x in templateRasterBand.CenterCoords['x']])
 
-                minTemplateLeft = min(transformer.TransformPoint(templateLeft, templateBottom)[0], transformer.TransformPoint(templateLeft, templateTop)[0])
-                maxTemplateRight = max(transformer.TransformPoint(templateRight, templateBottom)[0], transformer.TransformPoint(templateRight, templateTop)[0])
-                minTemplateBottom = min(transformer.TransformPoint(templateLeft, templateBottom)[1], transformer.TransformPoint(templateRight, templateBottom)[1])
-                maxTemplateTop = max(transformer.TransformPoint(templateLeft, templateTop)[1], transformer.TransformPoint(templateRight, templateTop)[1])
+                def zeroTo360(x):
+                    if inputSR.IsGeographic():
+                        return x if x >= 0 else x + 360.
+                    return x
 
-                # If the template raster spans the left or right edge of the
-                # input raster, Project Raster will fail to project all of it.
+                left = min([zeroTo360(transformer.TransformPoint(templateRasterBand.MinCoords['x',0], y)[0]) for y in templateRasterBand.CenterCoords['y']])
+                right = max([zeroTo360(transformer.TransformPoint(templateRasterBand.MaxCoords['x',-1], y)[0]) for y in templateRasterBand.CenterCoords['y']])
 
-                [inputLeft, inputBottom, inputRight, inputTop] = EnvelopeTypeMetadata.ParseFromArcGISString(inputExtent)
+                # If the inputSR is a geographic coordinate system, adjust the
+                # coordinates to be on a -180 to +180 system if possible.
 
-                # if minTemplateLeft < inputLeft:
-                #     raise ValueError(_('The input raster %(input)s cannot be projected to the template raster %(template)s because the template raster extends beyond the left edge of the input raster. Please extend the left edge of the input raster and try again. If the input raster is global, it may be necessary to "rotate" it longitudinally so that its left edge does not occur within the template raster\'s extent.') % {'input': inputRaster, 'template': templateRaster})
-                # elif maxTemplateRight > inputRight:
-                #     raise ValueError(_('The input raster %(input)s cannot be projected to the template raster %(template)s because the template raster extends beyond the right edge of the input raster. Please extend the left edge of the input raster and try again. If the input raster is global, it may be necessary to "rotate" it longitudinally so that its right edge does not occur within the template raster\'s extent.') % {'input': inputRaster, 'template': templateRaster})
+                if right > 360.:    # This should not happen
+                    left -= 360.
+                    right -= 360.
 
-                clipToInputExtent = '%r %r %r %r' % (minTemplateLeft, minTemplateBottom, maxTemplateRight, maxTemplateTop)
+                if left >= right:
+                    left -= 360.
+
+                if left >= 180 and right >= 180:
+                    left -= 360.
+                    right -= 360.
+
+                clipToInputExtent = '%r %r %r %r' % (left, bottom, right, top)
             else:
                 clipToInputExtent = extent
             
@@ -877,7 +892,6 @@ class ArcGISRaster(object):
                 oldOutputCoordinateSystem = gp.env.outputCoordinateSystem
                 gp.env.outputCoordinateSystem = coordinateSystem
                 try:
-                    maskRaster = os.path.join(tempDir.Path, 'constant.img')
                     maskRaster = gp.sa.CreateConstantRaster(0, 'INTEGER', cellSize, extent)    # No need to save it
                 finally:
                     gp.env.outputCoordinateSystem = oldOutputCoordinateSystem
