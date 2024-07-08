@@ -758,169 +758,207 @@ class ArcGISRaster(object):
             icsWithoutName = re.sub(r"projcs\['[^']+'", "projcs[''", inputCoordinateSystem.lower())
             icsWithoutName = re.sub(r"geogcs\['[^']+'", "geogcs[''", icsWithoutName)
 
-            if csWithoutName != icsWithoutName:
-                Logger.Debug(_('The template raster\'s coordinate system is not the same as the input raster\'s. Setting gp.env.extent to the extent of the template in the input raster\'s coordinate system.'))
-
-                # Transform all of the cells along the bottom, top, left, and
-                # right edges of the template raster to the input raster's
-                # coordinate system, and pick edge value that is the most
-                # extreme along each of the four sides.
-
-                from ..Datasets import Dataset
-                from ..Datasets.ArcGIS import ArcGISRaster as ArcGISRaster2
-
-                ogr = Dataset._osr()
-                inputSR = Dataset.ConvertSpatialReference('ArcGIS', inputCoordinateSystem, 'Obj')
-                templateSR = Dataset.ConvertSpatialReference('ArcGIS', coordinateSystem, 'Obj')
-                transformer = Dataset._osr().CoordinateTransformation(templateSR, inputSR)
-                templateRasterBand = ArcGISRaster2.GetRasterBand(templateRaster)
-
-                bottom = min([transformer.TransformPoint(x, templateRasterBand.MinCoords['y',0])[1] for x in templateRasterBand.CenterCoords['x']])
-                top = max([transformer.TransformPoint(x, templateRasterBand.MaxCoords['y',-1])[1] for x in templateRasterBand.CenterCoords['x']])
-
-                def zeroTo360(x):
-                    if inputSR.IsGeographic():
-                        return x if x >= 0 else x + 360.
-                    return x
-
-                left = min([zeroTo360(transformer.TransformPoint(templateRasterBand.MinCoords['x',0], y)[0]) for y in templateRasterBand.CenterCoords['y']])
-                right = max([zeroTo360(transformer.TransformPoint(templateRasterBand.MaxCoords['x',-1], y)[0]) for y in templateRasterBand.CenterCoords['y']])
-
-                # If the inputSR is a geographic coordinate system, adjust the
-                # coordinates to be on a -180 to +180 system if possible.
-
-                if right > 360.:    # This should not happen
-                    left -= 360.
-                    right -= 360.
-
-                if left >= right:
-                    left -= 360.
-
-                if left >= 180 and right >= 180:
-                    left -= 360.
-                    right -= 360.
-
-                clipToInputExtent = '%r %r %r %r' % (left, bottom, right, top)
-            else:
-                clipToInputExtent = extent
-            
-            # Unfortunately Project Raster will not necessarily create a
-            # raster that has exactly the desired extent. It may be one cell
-            # larger or smaller in any of the four directions. Different
-            # versions of ArcGIS seem to work differently in this respect.
-            #
-            # To deal with this annoyance, we will expand the extent in all
-            # four directions by 10 cells--guaranteeing that we have a raster
-            # that is larger than the desired extent--and then use
-            # gp.sa.ExtractByMask to obtain a raster of the desired extent.
-            #
-            # We use 10 cells rather than 1 cell because of a different
-            # problem: if the caller requested that we interpolate values for
-            # NoData cells, the most accurate values can be obtained if each
-            # NoData region is completely surrounded by cells with data. In
-            # the event that the template raster extent bisects a NoData
-            # region, the 10 cell buffer increases the chance that we will
-            # interpolate that region using cells from both sides of the
-            # extent line: the side that is within the template extent and
-            # also the side that is outside the extent but within the buffer.
-            #
-            # Update: Dec 2016: It appears that ArcGIS 10.1 cannot handle
-            # setting the extent. Special case the 10 cell buffer to ArcGIS
-            # 10.2 and later.
-            #
-            # Update: June 2017: There is a bug, or at least an odd and
-            # undesirable behavior in ProjectRaster that occurs when the
-            # output cell size is larger than that of the input raster. In
-            # this situation we would expect the values for the (larger)
-            # output cells to be obtained from the (smaller) input cells that
-            # surround the center of the output cells. But it appears that the
-            # output values are taken from a different location, such as the
-            # upper left of the output cell. To work around this, I changed
-            # the code to use the Resample tool instead, which does not
-            # exhibit this behavior.
-
-            from ..Directories import TemporaryDirectory
+            from .Directories import TemporaryDirectory
             tempDir = TemporaryDirectory()
 
-            [left, bottom, right, top] = EnvelopeTypeMetadata.ParseFromArcGISString(clipToInputExtent)
-            oldExtent = gp.env.extent
-            gp.env.extent = '%r %r %r %r' % (left - inputCellSize*10, bottom - inputCellSize*10, right + inputCellSize*10, top + inputCellSize*10)
-
             try:
-                oldSnapRaster = gp.env.snapRaster
-                gp.env.snapRaster = templateRaster
+                if csWithoutName != icsWithoutName:
+                    Logger.Debug(_('The template raster\'s coordinate system is not the same as the input raster\'s. Setting gp.env.extent to the extent of the template in the input raster\'s coordinate system.'))
+
+                    # Transform all of the cells along the bottom, top, left, and
+                    # right edges of the template raster to the input raster's
+                    # coordinate system, and pick edge value that is the most
+                    # extreme along each of the four sides.
+
+                    from ..Datasets import Dataset
+                    from ..Datasets.ArcGIS import ArcGISRaster as ArcGISRaster2
+
+                    ogr = Dataset._osr()
+                    inputSR = Dataset.ConvertSpatialReference('ArcGIS', inputCoordinateSystem, 'Obj')
+                    templateSR = Dataset.ConvertSpatialReference('ArcGIS', coordinateSystem, 'Obj')
+                    transformer = Dataset._osr().CoordinateTransformation(templateSR, inputSR)
+                    templateRasterBand = ArcGISRaster2.GetRasterBand(templateRaster)
+
+                    bottom = min([transformer.TransformPoint(x, templateRasterBand.MinCoords['y',0])[1] for x in templateRasterBand.CenterCoords['x']])
+                    top = max([transformer.TransformPoint(x, templateRasterBand.MaxCoords['y',-1])[1] for x in templateRasterBand.CenterCoords['x']])
+
+                    def zeroTo360(x):
+                        if inputSR.IsGeographic():
+                            return x if x >= 0 else x + 360.
+                        return x
+
+                    left = min([zeroTo360(transformer.TransformPoint(templateRasterBand.MinCoords['x',0], y)[0]) for y in templateRasterBand.CenterCoords['y']])
+                    right = max([zeroTo360(transformer.TransformPoint(templateRasterBand.MaxCoords['x',-1], y)[0]) for y in templateRasterBand.CenterCoords['y']])
+
+                    # If the inputSR is a geographic coordinate system, adjust the
+                    # left and right coordinates to be on a -180 to +180 system
+                    # if possible.
+
+                    if inputSR.IsGeographic():
+                        if right > 360.:    # This should not happen
+                            left -= 360.
+                            right -= 360.
+
+                        if left >= right:
+                            left -= 360.
+
+                        if left >= 180 and right >= 180:
+                            left -= 360.
+                            right -= 360.
+
+                        # If the left and right coordinates span the 180th
+                        # meridian but the input raster uses a -180 to +180
+                        # extent, ArcGIS won't be able to handle the
+                        # reprojection (at least my experiments with ArcGIS
+                        # Pro 3.2.2 failed.) To work around this, rotate the
+                        # input raster by 180 degrees. Note: this logic does
+                        # not test whether the input raster spans
+                        # exactly -180 to +180. If it does not, this approach
+                        # might not work, but we will try it anyway.
+
+                        from ..Datasets.Virtual import RotatedGlobalGrid
+
+                        if inputExtent.XMax - inputExtent.XMin == 360 and inputExtent.XMin < 0 and right > inputExtent.XMax:
+                            inputRasterBand = ArcGISRaster2.GetRasterBand(inputRaster)
+                            rotatedGrid = RotatedGlobalGrid(inputRasterBand, 180.)
+                            Logger.Debug(_('Rotating the input raster by +180 degrees, so its extent encloses the template raster.'))
+                            rotatedInputRaster = os.path.join(tempDir.Path, 'rotated.img')
+                            ArcGISRaster2.CreateRaster(rotatedInputRaster, rotatedGrid)
+                            inputRaster = rotatedInputRaster
+
+                        # Similarly, if the left and right coordinates span
+                        # the Prime Meridian and the input raster uses a 0 to
+                        # 360 extent, the same problem can happen. In this
+                        # case, we rotate the input raster by -180 degrees.
+
+                        elif inputExtent.XMax - inputExtent.XMin == 360 and inputExtent.XMin >= 0 and left < inputExtent.XMin:
+                            inputRasterBand = ArcGISRaster2.GetRasterBand(inputRaster)
+                            rotatedGrid = RotatedGlobalGrid(inputRasterBand, -180.)
+                            Logger.Debug(_('Rotating the input raster by -180 degrees, so its extent encloses the template raster.'))
+                            rotatedInputRaster = os.path.join(tempDir.Path, 'rotated.img')
+                            ArcGISRaster2.CreateRaster(rotatedInputRaster, rotatedGrid)
+                            inputRaster = rotatedInputRaster
+
+                    clipToInputExtent = '%r %r %r %r' % (left, bottom, right, top)
+                else:
+                    clipToInputExtent = extent
+                
+                # Unfortunately Project Raster will not necessarily create a
+                # raster that has exactly the desired extent. It may be one cell
+                # larger or smaller in any of the four directions. Different
+                # versions of ArcGIS seem to work differently in this respect.
+                #
+                # To deal with this annoyance, we will expand the extent in all
+                # four directions by 10 cells--guaranteeing that we have a raster
+                # that is larger than the desired extent--and then use
+                # gp.sa.ExtractByMask to obtain a raster of the desired extent.
+                #
+                # We use 10 cells rather than 1 cell because of a different
+                # problem: if the caller requested that we interpolate values for
+                # NoData cells, the most accurate values can be obtained if each
+                # NoData region is completely surrounded by cells with data. In
+                # the event that the template raster extent bisects a NoData
+                # region, the 10 cell buffer increases the chance that we will
+                # interpolate that region using cells from both sides of the
+                # extent line: the side that is within the template extent and
+                # also the side that is outside the extent but within the buffer.
+                #
+                # Update: Dec 2016: It appears that ArcGIS 10.1 cannot handle
+                # setting the extent. Special case the 10 cell buffer to ArcGIS
+                # 10.2 and later.
+                #
+                # Update: June 2017: There is a bug, or at least an odd and
+                # undesirable behavior in ProjectRaster that occurs when the
+                # output cell size is larger than that of the input raster. In
+                # this situation we would expect the values for the (larger)
+                # output cells to be obtained from the (smaller) input cells that
+                # surround the center of the output cells. But it appears that the
+                # output values are taken from a different location, such as the
+                # upper left of the output cell. To work around this, I changed
+                # the code to use the Resample tool instead, which does not
+                # exhibit this behavior.
+
+                [left, bottom, right, top] = EnvelopeTypeMetadata.ParseFromArcGISString(clipToInputExtent)
+                oldExtent = gp.env.extent
+                gp.env.extent = '%r %r %r %r' % (left - inputCellSize*10, bottom - inputCellSize*10, right + inputCellSize*10, top + inputCellSize*10)
+
                 try:
+                    oldSnapRaster = gp.env.snapRaster
+                    gp.env.snapRaster = templateRaster
+                    try:
+                        oldOutputCoordinateSystem = gp.env.outputCoordinateSystem
+                        gp.env.outputCoordinateSystem = coordinateSystem
+                        try:
+                            projectedRaster = os.path.join(tempDir.Path, 'projected.img')
+                            gp.Resample_management(inputRaster, projectedRaster, cellSize, resamplingTechnique)
+                        finally:
+                            gp.env.outputCoordinateSystem = oldOutputCoordinateSystem
+                    finally:
+                        gp.env.snapRaster = oldSnapRaster
+
+                # Reset the Extent ArcGIS environment variable to what it was
+                # before.
+                
+                finally:
+                    gp.env.extent = oldExtent
+
+                # If the caller requested that we interpolate values for NoData
+                # regions, do it now.
+
+                if interpolationMethod is not None:
+                    from ..Datasets.ArcGIS import ArcGISRaster as ArcGISRaster2
+                    from ..Datasets.Virtual import InpaintedGrid
+
+                    grid = ArcGISRaster2.GetRasterBand(projectedRaster)
+                    grid = InpaintedGrid(grid, method=interpolationMethod, maxHoleSize=maxHoleSize, minValue=minValue, maxValue=maxValue)
+                    inpaintedRaster = os.path.join(tempDir.Path, 'inpainted.img')
+                    ArcGISRaster2.CreateRaster(inpaintedRaster, grid)
+                    projectedRaster = inpaintedRaster
+
+                # We are about to use gp.sa.ExtractByMask to extract a raster of the
+                # desired extent from the projected raster in the temp directory.
+                # But gp.sa.ExtractByMask also has a side effect that we might not
+                # want: it sets cells that are NoData in the mask to NoData in
+                # the output raster. If the caller did not request that to happen
+                # (using the template raster as the mask), create a constant
+                # raster that has the same coordinate system, extent, and cell
+                # size as the template raster. We'll use it instead.
+
+                if not mask:
                     oldOutputCoordinateSystem = gp.env.outputCoordinateSystem
                     gp.env.outputCoordinateSystem = coordinateSystem
                     try:
-                        projectedRaster = os.path.join(tempDir.Path, 'projected.img')
-                        gp.Resample_management(inputRaster, projectedRaster, cellSize, resamplingTechnique)
+                        maskRaster = gp.sa.CreateConstantRaster(0, 'INTEGER', cellSize, extent)    # No need to save it
                     finally:
                         gp.env.outputCoordinateSystem = oldOutputCoordinateSystem
-                finally:
-                    gp.env.snapRaster = oldSnapRaster
 
-            # Reset the Extent ArcGIS environment variable to what it was
-            # before.
-            
+                    # For safety, verify that the output raster has the
+                    # expected number of columns and rows.
+                    
+                    d2 = gp.Describe(maskRaster)
+                    if d2.Width != d.Width or d2.Height != d.Height:
+                        raise RuntimeError(_('Programming error in this tool: the constant raster does not have the same number of rows or columns as the template raster. Please contact the author of this tool for assistance.'))
+
+                else:
+                    maskRaster = templateRaster
+
+                # Extract the raster.
+
+                extractedRaster = gp.sa.ExtractByMask(projectedRaster, maskRaster)
+                extractedRaster.save(outputRaster)
+
+                # Safety check: validate that the output raster has the same
+                # extent as the template.
+
+                outputExtent = gp.Describe(outputRaster).Extent
+                [templateLeft, templateBottom, templateRight, templateTop] = EnvelopeTypeMetadata.ParseFromArcGISString(extent)
+                [outputLeft, outputBottom, outputRight, outputTop] = EnvelopeTypeMetadata.ParseFromArcGISString(outputExtent)
+
+                if abs(outputLeft/templateLeft - 1) > 0.000001 or abs(outputBottom/templateBottom - 1) > 0.000001 or abs(outputRight/templateRight - 1) > 0.000001 or abs(outputTop/templateTop - 1) > 0.000001:
+                    raise RuntimeError(_('The extent of the output raster %(output)s (%(ol)g, %(ob)g, %(or)g, %(ot)g) does not match the extent of the template raster %(template)s (%(tl)g, %(tb)g, %(tr)g, %(tt)g). This should not happen and indicates there may be a bug in this tool or ArcGIS. Please contact the author of this tool for assistance.') % {'output': outputRaster, 'template': templateRaster, 'ol': outputLeft, 'ob': outputBottom, 'or': outputRight, 'ot': outputTop, 'tl': templateLeft, 'tb': templateBottom, 'tr': templateRight, 'tt': templateTop})
+
             finally:
-                gp.env.extent = oldExtent
-
-            # If the caller requested that we interpolate values for NoData
-            # regions, do it now.
-
-            if interpolationMethod is not None:
-                from ..Datasets.ArcGIS import ArcGISRaster as ArcGISRaster2
-                from ..Datasets.Virtual import InpaintedGrid
-
-                grid = ArcGISRaster2.GetRasterBand(projectedRaster)
-                grid = InpaintedGrid(grid, method=interpolationMethod, maxHoleSize=maxHoleSize, minValue=minValue, maxValue=maxValue)
-                inpaintedRaster = os.path.join(tempDir.Path, 'inpainted.img')
-                ArcGISRaster2.CreateRaster(inpaintedRaster, grid)
-                projectedRaster = inpaintedRaster
-
-            # We are about to use gp.sa.ExtractByMask to extract a raster of the
-            # desired extent from the projected raster in the temp directory.
-            # But gp.sa.ExtractByMask also has a side effect that we might not
-            # want: it sets cells that are NoData in the mask to NoData in
-            # the output raster. If the caller did not request that to happen
-            # (using the template raster as the mask), create a constant
-            # raster that has the same coordinate system, extent, and cell
-            # size as the template raster. We'll use it instead.
-
-            if not mask:
-                oldOutputCoordinateSystem = gp.env.outputCoordinateSystem
-                gp.env.outputCoordinateSystem = coordinateSystem
-                try:
-                    maskRaster = gp.sa.CreateConstantRaster(0, 'INTEGER', cellSize, extent)    # No need to save it
-                finally:
-                    gp.env.outputCoordinateSystem = oldOutputCoordinateSystem
-
-                # For safety, verify that the output raster has the
-                # expected number of columns and rows.
-                
-                d2 = gp.Describe(maskRaster)
-                if d2.Width != d.Width or d2.Height != d.Height:
-                    raise RuntimeError(_('Programming error in this tool: the constant raster does not have the same number of rows or columns as the template raster. Please contact the author of this tool for assistance.'))
-
-            else:
-                maskRaster = templateRaster
-
-            # Extract the raster.
-
-            extractedRaster = sa.ExtractByMask(projectedRaster, maskRaster)
-            extractedRaster.save(outputRaster)
-
-            # Safety check: validate that the output raster has the same
-            # extent as the template.
-
-            outputExtent = gp.Describe(outputRaster).Extent
-            [templateLeft, templateBottom, templateRight, templateTop] = EnvelopeTypeMetadata.ParseFromArcGISString(extent)
-            [outputLeft, outputBottom, outputRight, outputTop] = EnvelopeTypeMetadata.ParseFromArcGISString(outputExtent)
-
-            if abs(outputLeft/templateLeft - 1) > 0.000001 or abs(outputBottom/templateBottom - 1) > 0.000001 or abs(outputRight/templateRight - 1) > 0.000001 or abs(outputTop/templateTop - 1) > 0.000001:
-                raise RuntimeError(_('The extent of the output raster %(output)s (%(ol)g, %(ob)g, %(or)g, %(ot)g) does not match the extent of the template raster %(template)s (%(tl)g, %(tb)g, %(tr)g, %(tt)g). This should not happen and indicates there may be a bug in this tool or ArcGIS. Please contact the author of this tool for assistance.') % {'output': outputRaster, 'template': templateRaster, 'ol': outputLeft, 'ob': outputBottom, 'or': outputRight, 'ot': outputTop, 'tl': templateLeft, 'tb': templateBottom, 'tr': templateRight, 'tt': templateTop})
-
+                del tempDir
         except:
             Logger.LogExceptionAsError()
             raise
