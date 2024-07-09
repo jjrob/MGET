@@ -648,10 +648,8 @@ class ArcGISRaster(object):
         # Project the raster, if requested.
         
         if projectedCoordinateSystem is not None:
-            outputRaster = None
-            while outputRaster is None or '-' in outputRaster:      # Python mktemp can generate a name that includes a - character, which is illegal in ArcInfo Binary Grid names.
-                outputRaster = tempfile.mktemp(dir=tempDir)
-                
+            outputRaster = tempfile.mktemp(suffix='.img', dir=tempDir)
+
             Logger.Debug(_('Projecting...'))
             if geographicTransformation is not None or registrationPoint is not None:
                 gp.ProjectRaster_management(inputRaster, outputRaster, projectedCoordinateSystem, resamplingTechnique, projectedCellSize, geographicTransformation, registrationPoint)
@@ -663,9 +661,7 @@ class ArcGISRaster(object):
         # Clip the raster, if requested.
 
         if clippingDataset is not None or clippingRectangle is not None:
-            outputRaster = None
-            while outputRaster is None or '-' in outputRaster:      # Python mktemp can generate a name that includes a - character, which is illegal in ArcInfo Binary Grid names.
-                outputRaster = tempfile.mktemp(dir=tempDir)
+            outputRaster = tempfile.mktemp(suffix='.img', dir=tempDir)
 
             Logger.Debug(_('Clipping...'))
 
@@ -680,32 +676,26 @@ class ArcGISRaster(object):
             gp.Clip_management(inputRaster, clippingRectangle, outputRaster)
             inputRaster = outputRaster
 
-        # Execute map algebra, if requested.
+        # Evaluate the map algebra expression, if requested.
 
         if mapAlgebraExpression is not None:
+            outputRaster = tempfile.mktemp(suffix='.img', dir=tempDir)
 
-            # Replace all occurences of the string "inputRaster" in
-            # the mapAlgebraExpression with the value of the
-            # inputRaster variable.
+            Logger.Debug(_('Evaluating map algebra expression: %(expr)s') % {'expr': mapAlgebraExpression})
 
-            if GeoprocessorManager.GetArcGISMajorVersion() >= 10:
-                (mapAlgebraExpressionToExecute, numberOfReplacements) = re.subn(r'(?<!\w)(inputRaster)(?=$|\W)', lambda s: ' [' + inputRaster + '] ', mapAlgebraExpression)
-            else:
-                (mapAlgebraExpressionToExecute, numberOfReplacements) = re.subn(r'(?<!\w)(inputRaster)(?=$|\W)', lambda s: ' ' + inputRaster + ' ', mapAlgebraExpression)
-            if numberOfReplacements <= 0:
-                Logger.RaiseException(ValueError(_('The map algebra expression must include the case-sensitive string "inputRaster".')))
-            if len(mapAlgebraExpressionToExecute) > 4000:
-                Logger.RaiseException(ValueError(_('The map algebra expression is too long. It must be no longer than 4000 characters.')))
+            from arcpy.sa import *
 
-            # Execute the map algebra expression.
-            
-            Logger.Debug(_('Executing map algebra...'))
+            try:
+                outputRasterObject = eval(mapAlgebraExpression)
+            except:
+                Logger.Error(_('Failed to evaluate map algebra expression: %(expr)s') % {'expr': mapAlgebraExpression})
+                raise
 
-            outputRaster = None
-            while outputRaster is None or '-' in outputRaster:      # Python mktemp can generate a name that includes a - character, which is illegal in ArcInfo Binary Grid names.
-                outputRaster = tempfile.mktemp(dir=tempDir)
-
-            # TODO: Implement this
+            try:
+                outputRasterObject.save(outputRaster)
+            except:
+                Logger.Error(_('The raster resulting from map algebra expression "%(expr)s" could not be saved to file %()') % {'expr': mapAlgebraExpression})
+                raise
 
         # Build pyramids, if requested.
 
