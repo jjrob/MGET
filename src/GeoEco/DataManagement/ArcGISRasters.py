@@ -19,7 +19,6 @@ from ..Logging import Logger
 from ..Types import EnvelopeTypeMetadata
 
 
-
 class ArcGISRaster(object):
     __doc__ = DynamicDocString()
 
@@ -683,10 +682,13 @@ class ArcGISRaster(object):
 
             Logger.Debug(_('Evaluating map algebra expression: %(expr)s') % {'expr': mapAlgebraExpression})
 
-            from arcpy.sa import *
+            import arcpy.sa
+
+            _globals = dict(arcpy.sa.__dict__)                      # Duplicate the arcpy.sa module dictionary, which contains all the Spatial Analyst functions
+            _globals['inputRaster'] = arcpy.sa.Raster(inputRaster)  # Add a Raster object for our inputRaster to the dictionary
 
             try:
-                outputRasterObject = eval(mapAlgebraExpression)
+                outputRasterObject = eval(mapAlgebraExpression, _globals)   # Pass our custom dictionary for globals
             except:
                 Logger.Error(_('Failed to evaluate map algebra expression: %(expr)s') % {'expr': mapAlgebraExpression})
                 raise

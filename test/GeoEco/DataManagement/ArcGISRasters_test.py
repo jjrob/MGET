@@ -758,3 +758,18 @@ class TestArcGISRaster():
         assert band.MaxCoords['y', -1] == 0
         assert (band.Data[:] == 1).all()
         del band
+
+        # Test map algebra.
+
+        rng = numpy.random.default_rng(12345)
+        data = rng.random((180,360), dtype='float64') * 2 - 1
+        inputRaster = tmp_path / 'mapalg_raster.img'
+        outputRaster = tmp_path / 'mapalg_raster_output.img'
+        ArcGISRaster.FromNumpyArray(numpyArray=data, raster=inputRaster, xLowerLeftCorner=-180, yLowerLeftCorner=-90, cellSize=1)
+
+        ArcGISRaster.ProjectClipAndOrExecuteMapAlgebra(inputRaster=inputRaster, outputRaster=outputRaster, mapAlgebraExpression='Con(inputRaster < 0, -999, inputRaster * 2)', overwriteExisting=True)
+
+        result, noDataValue = ArcGISRaster.ToNumpyArray(outputRaster)
+        assert data.shape == result.shape
+        assert ((data < 0) == (result == -999)).all()
+        assert numpy.allclose(data[data >= 0] * 2, result[data >= 0])
