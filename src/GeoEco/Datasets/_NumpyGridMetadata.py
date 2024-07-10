@@ -58,7 +58,7 @@ AddArgumentMetadata(NumpyGrid.__init__, 'displayName',
 
 AddArgumentMetadata(NumpyGrid.__init__, 'spatialReference',
     typeMetadata=AnyObjectTypeMetadata(canBeNone=True),
-    description=_('Spatial reference of the requested type as an OSR `SpatialReference <https://gdal.org/api/python/spatial_ref_api.html#osgeo.osr.SpatialReference>`_ instance, or :py:data:`None` to indicate the spatial reference is unknown.'))
+    description=_('Spatial reference of the requested type as an :py:class:`osgeo.osr.SpatialReference` instance, or :py:data:`None` to indicate the spatial reference is unknown.'))
 
 AddArgumentMetadata(NumpyGrid.__init__, 'dimensions',
     typeMetadata=Grid.Dimensions.__doc__.Obj.Type,

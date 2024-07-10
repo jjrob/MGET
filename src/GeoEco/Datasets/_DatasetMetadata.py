@@ -50,9 +50,7 @@ AddArgumentMetadata(Dataset.ConvertSpatialReference, 'srType',
 
 * Proj4 - a string in the format recognized by the Proj4 library.
 
-* Obj - an instance of the OSR `SpatialReference
-  <https://gdal.org/api/python/spatial_ref_api.html#osgeo.osr.SpatialReference>`_
-  class.
+* Obj - an instance of the :py:class:`osgeo.osr.SpatialReference` class.
 
 """))
 
@@ -70,10 +68,8 @@ for `srType`.
 
 If `srType` and `outputSRType` are the same, a copy of the input spatial
 reference will be returned. If they are ``'Obj'``, a deep copy of the input
-OSR `SpatialReference
-<https://gdal.org/api/python/spatial_ref_api.html#osgeo.osr.SpatialReference>`_
-instance will be created by initializing a new instance from the OGC WKT
-exported from the input instance.
+:py:class:`osgeo.osr.SpatialReference` instance will be created by
+initializing a new instance from the OGC WKT exported from the input instance.
 
 If `sr` is :py:data:`None`, :py:data:`None` will be returned, except if
 `outputSRType` is ``'ArcGIS'``, in which case the string
@@ -85,10 +81,8 @@ this string to represent the "Unknown" spatial reference.
 AddResultMetadata(Dataset.ConvertSpatialReference, 'outputSR',
     typeMetadata=AnyObjectTypeMetadata(),
     description=_(
-"""Spatial reference resulting from the conversion, either a string, an OSR
-`SpatialReference
-<https://gdal.org/api/python/spatial_ref_api.html#osgeo.osr.SpatialReference>`_
-instance, or :py:data:`None`."""))
+"""Spatial reference resulting from the conversion, either a string, an
+:py:class:`osgeo.osr.SpatialReference` instance, or :py:data:`None`."""))
 
 # Public method: Dataset.GetSpatialReference
 
@@ -115,32 +109,26 @@ AddArgumentMetadata(Dataset.GetSpatialReference, 'srType',
 
 * Proj4 - a string in the format recognized by the Proj4 library.
 
-* Obj - an instance of the OSR `SpatialReference
-  <https://gdal.org/api/python/spatial_ref_api.html#osgeo.osr.SpatialReference>`_
-  class.
+* Obj - an instance of the :py:class:`osgeo.osr.SpatialReference` class.
 
-An OSR `SpatialReference
-<https://gdal.org/api/python/spatial_ref_api.html#osgeo.osr.SpatialReference>`_
-instance is stored internally. If ``'Obj'`` is requested, a reference to this
-instance is returned, not a copy of it, allowing you to make changes to the
-internal instance. This behavior is by design. Take care not to make changes
-unintentionally. Use :func:`ConvertSpatialReference` to obtain a deep copy of
-the instance, if needed.
+An :py:class:`osgeo.osr.SpatialReference` instance is stored internally. If
+``'Obj'`` is requested, a reference to this instance is returned, not a copy
+of it, allowing you to make changes to the internal instance. This behavior is
+by design. Take care not to make changes unintentionally. Use
+:func:`ConvertSpatialReference` to obtain a deep copy of the instance, if
+needed.
 
 If something other than ``'Obj'`` is requested, a string of the specified type
-is exported from the internal `SpatialReference
-<https://gdal.org/api/python/spatial_ref_api.html#osgeo.osr.SpatialReference>`_
-instance and returned.
+is exported from the internal :py:class:`osgeo.osr.SpatialReference` instance
+and returned.
 
 """))
 
 AddResultMetadata(Dataset.GetSpatialReference, 'sr',
     typeMetadata=AnyObjectTypeMetadata(),
     description=_(
-"""Spatial reference of the requested type, either a string, an OSR
-`SpatialReference
-<https://gdal.org/api/python/spatial_ref_api.html#osgeo.osr.SpatialReference>`_
-instance, or :py:data:`None`.
+"""Spatial reference of the requested type, either a string, an
+:py:class:`osgeo.osr.SpatialReference` instance, or :py:data:`None`.
 
 If the dataset does not support a spatial reference (e.g. it is a plain
 table), or it does support a spatial reference but it has never been set,
@@ -185,8 +173,7 @@ The allowed values are:
 
 * Proj4 - `sr` is a string suitable for passing to the Proj4 utility.
 
-* Obj - `sr` is an instance of the OSR `SpatialReference
-  <https://gdal.org/api/python/spatial_ref_api.html#osgeo.osr.SpatialReference>`_
+* Obj - `sr` is an instance of the :py:class:`osgeo.osr.SpatialReference`
   class.
 
 To set the spatial reference to unknown, set `srType` to ``'obj'`` and `sr` to

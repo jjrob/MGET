@@ -54,3 +54,16 @@ use them and gain automatic logging of basic operations.
     GeoEco.DataManagement.Directories
     GeoEco.DataManagement.Fields
     GeoEco.DataManagement.Files
+
+Spatial and Temporal Analysis
+-----------------------------
+
+Classes with functions that perform various spatial and temporal analysis
+tasks.
+
+.. autosummary::
+    :toctree: _autodoc/GeoEco
+    :template: autosummary/module.rst
+    :recursive:
+
+    GeoEco.SpatialAnalysis.Interpolation

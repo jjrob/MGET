@@ -142,23 +142,23 @@ AddArgumentMetadata(ArcGISRaster.CreateRaster, 'options',
     description=_(
 """Additional options, which can include:
 
-* ``'blockSize'`` (:py:class:`int`) - Number of bytes to read at a time from the
+* ``blockSize`` (:py:class:`int`) - Number of bytes to read at a time from the
   grid and write to the raster. The default is 32*1024*1024 bytes (32 MB).
 
-* ``'buildPyramids'`` (:py:class:`bool`) - If True, pyramids will be built for
+* ``buildPyramids`` (:py:class:`bool`) - If True, pyramids will be built for
   the raster using the :arcpy_management:`Build-Pyramids` geoprocessing tool.
 
-* ``'buildRAT'`` (:py:class:`bool`) - If True, a raster attribute table will
+* ``buildRAT`` (:py:class:`bool`) - If True, a raster attribute table will
   be built for the raster using the
   :arcpy_management:`Build-Raster-Attribute-Table` geoprocessing tool.
 
-* ``'calculateStatistics'`` (:py:class:`bool`) - If True, statistics and a
+* ``calculateStatistics`` (:py:class:`bool`) - If True, statistics and a
   histogram will be calculated using GDAL and written along with the raster in
   the appropriate format. Depending on the raster's format, the statistics and
   histogram may be present in the raster file itself, or a "sidecar" file with
   the extension ``.aux.xml``.
 
-* ``'useUnscaledData'`` (:py:class:`bool`) - If True and `grid` has a scaling
+* ``useUnscaledData`` (:py:class:`bool`) - If True and `grid` has a scaling
   equation, the underlying unscaled data will be written out, rather than the
   scaled data that are normally of interest.
 """))

@@ -55,15 +55,15 @@ AddArgumentMetadata(RotatedGlobalGrid.__init__, 'rotationUnits',
     description=_(
 """The type of values that will be used to rotate the grid, one of:
 
-* ``'Map units'`` - the unit of rotation will be the same as the linear unit
-  of the map, typically degrees for data in geographic coordinate systems and
+* ``Map units`` - the unit of rotation will be the same as the linear unit of
+  the map, typically degrees for data in geographic coordinate systems and
   meters for data in projected coordinate systems. Because the rotation must
   be in whole cells, the rotation quantity will be converted to grid cells and
   rounded to the nearest cell.
 
-* ``'Cells'`` - the unit of rotation will be in grid cells. Because the
-  rotation must be in whole cells, the rotation quantity will be rounded to
-  the neareast cell.
+* ``Cells`` - the unit of rotation will be in grid cells. Because the rotation
+  must be in whole cells, the rotation quantity will be rounded to the
+  neareast cell.
 
 """))
 

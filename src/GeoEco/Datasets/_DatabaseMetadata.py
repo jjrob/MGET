@@ -75,7 +75,7 @@ AddArgumentMetadata(Database.CreateTable, 'geometryType',
 
 AddArgumentMetadata(Database.CreateTable, 'spatialReference',
     typeMetadata=AnyObjectTypeMetadata(canBeNone=True),
-    description=_('OSR `SpatialReference <https://gdal.org/api/python/spatial_ref_api.html#osgeo.osr.SpatialReference>`_ instance defining the spatial reference for the table. If omitted, the spatial reference for the table will remain undefined.'))
+    description=_(':py:class:`osgeo.osr.SpatialReference` instance defining the spatial reference for the table. If omitted, the spatial reference for the table will remain undefined.'))
 
 AddArgumentMetadata(Database.CreateTable, 'geometryFieldName',
     typeMetadata=UnicodeStringTypeMetadata(canBeNone=True),

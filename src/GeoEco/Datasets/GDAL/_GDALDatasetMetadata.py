@@ -192,34 +192,34 @@ AddArgumentMetadata(GDALDataset.CreateRaster, 'options',
     description=_(
 """Additional options, which can include:
 
-* ``'blockSize'`` (:py:class:`int`) - Number of bytes to read at a time from the
+* ``blockSize`` (:py:class:`int`) - Number of bytes to read at a time from the
   grid and write to the raster. The default is 32*1024*1024 bytes (32 MB).
 
-* ``'calculateStatistics'`` (:py:class:`bool`) - If True, statistics and a
+* ``calculateStatistics`` (:py:class:`bool`) - If True, statistics and a
   histogram will be calculated using GDAL and written along with the raster in
   the appropriate format. Depending on the raster's format, the statistics and
   histogram may be present in the raster file itself, or a "sidecar" file with
   the extension ``.aux.xml``.
 
-* ``'gdalCreateOptions'`` (:py:class:`list` of :py:class:`str`) - List of
+* ``gdalCreateOptions`` (:py:class:`list` of :py:class:`str`) - List of
   options to be passed to :py:meth:`osgeo.gdal.Driver.Create` to create the
   raster.
 
-* ``'gdalDriverName'`` (:py:class:`str`) - GDAL driver name to use, to be passed
+* ``gdalDriverName`` (:py:class:`str`) - GDAL driver name to use, to be passed
   to :py:func:`osgeo.gdal.GetDriverByName` to retrieve the driver.
 
-* ``'overviewResamplingMethod'`` (:py:class:`str`) and ``'overviewList'``
+* ``overviewResamplingMethod`` (:py:class:`str`) and ``'overviewList'``
   (:py:class:`list` of :py:class:`int`) - The resampling method and list of
   overview levels (decimation factors) to use to build overviews (known as
   "pyramids" in ArcGIS terminology) using
   :py:meth:`osgeo.gdal.Dataset.BuildOverviews`. Both must be specified.
 
-* ``'useArcGISSpatialReference'`` (:py:class:`bool`) - If True, the
+* ``useArcGISSpatialReference`` (:py:class:`bool`) - If True, the
   ArcGIS-compatible WKT string will be used when defining the raster's spatial
   reference. Additionally, the ``FORCETOPESTRING=YES`` creation option will be
   set if the output is ERDAS Imagine (.img) format.
 
-* ``'useUnscaledData'`` (:py:class:`bool`) - If True and `grid` has a scaling
+* ``useUnscaledData`` (:py:class:`bool`) - If True and `grid` has a scaling
   equation, the underlying unscaled data will be written out, rather than the
   scaled data that are normally of interest.
 
