@@ -14,10 +14,10 @@ import numpy
 import pytest
 
 from GeoEco.Logging import Logger
-from GeoEco.Datasets import NumpyGrid
-from GeoEco.Datasets.Collections import DirectoryTree
 from GeoEco.Datasets.GDAL import GDALDataset
 from GeoEco.Datasets.Virtual import InpaintedGrid
+
+Logger.Initialize()
 
 
 @pytest.fixture
@@ -29,7 +29,6 @@ class TestInpaintedGrid():
 
     def test_InpaintFull(self, testRasterPath):
         assert testRasterPath.is_file()
-        Logger.Initialize()
         grid = GDALDataset.GetRasterBand(str(testRasterPath))
         inpaintedGrid = InpaintedGrid(grid)
         expectedGrid = GDALDataset.GetRasterBand(str(pathlib.Path(__file__).parent / 'Inpainted_full.img'))
@@ -37,7 +36,6 @@ class TestInpaintedGrid():
 
     def test_InpaintSmallHoles(self, testRasterPath):
         assert testRasterPath.is_file()
-        Logger.Initialize()
         grid = GDALDataset.GetRasterBand(str(testRasterPath))
         inpaintedGrid = InpaintedGrid(grid, maxHoleSize=200)
         expectedGrid = GDALDataset.GetRasterBand(str(pathlib.Path(__file__).parent / 'Inpainted_small_holes.img'))
@@ -45,7 +43,6 @@ class TestInpaintedGrid():
 
     def test_InpaintSmallHolesMinMax(self, testRasterPath):
         assert testRasterPath.is_file()
-        Logger.Initialize()
         grid = GDALDataset.GetRasterBand(str(testRasterPath))
         inpaintedGrid = InpaintedGrid(grid, maxHoleSize=200, minValue=-1.3, maxValue=-0.2)
         expectedGrid = GDALDataset.GetRasterBand(str(pathlib.Path(__file__).parent / 'Inpainted_min_max.img'))

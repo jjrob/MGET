@@ -207,6 +207,8 @@ class ArcGISRasterBand(Grid):
         # query it for the ArcGISRasterBand that has the specified band
         # number.
 
+        from . import ArcGISRaster
+
         d = GeoprocessorManager.GetWrappedGeoprocessor().Describe(path)
         dataType = d.DataType.lower()
         if dataType == 'rasterband':
