@@ -53,7 +53,7 @@ class MatlabWorkerProcess(object):
         # GeoEco.Matlab._Matlab module.
 
         with open(os.path.join(os.path.dirname(__file__), '_Matlab', 'MatlabFunctions.txt'), 'rt') as f:
-            self._MatlabFunctions = [funcName.strip() for funcName in f.read().strip().split('\n') if not funcName.startswith('#')]
+            self._MatlabFunctions = [line.strip().split()[0] for line in f.read().strip().split('\n') if not line.startswith('#')]
 
         # For each MATLAB function implemented in GeoEco.Matlab._Matlab,
         # create a wrapper that calls the worker process and bind it as an
