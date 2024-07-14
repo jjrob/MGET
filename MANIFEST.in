@@ -1,4 +1,2 @@
 global-exclude .gitignore
 exclude src/GeoEco/_version.py
-exclude src/GeoEco/Matlab/_Matlab/build.py
-exclude src/GeoEco/Matlab/_Matlab/*.m

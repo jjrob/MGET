@@ -1,5 +1,11 @@
 [build-system]
-requires = ["setuptools>=64", "setuptools_scm>=8"]
+requires = [
+    "setuptools>=64", 
+    "setuptools_scm>=8", 
+    "docutils",             # Required by GeoEco.ArcToolbox.ArcToolboxGenerator
+    "lxml",                 # Required by GeoEco.ArcToolbox.ArcToolboxGenerator
+    "sphobjinv",            # Required by GeoEco.ArcToolbox.ArcToolboxGenerator
+]
 build-backend = "setuptools.build_meta"
 
 [project]
@@ -44,9 +50,7 @@ Homepage = "https://github.com/jjrob/MGET"
 version_file = "src/GeoEco/_version.py"
 
 [tool.setuptools.package-data]
-"GeoEco.ArcToolbox" = ["Marine Geospatial Ecology Tools.atbx"]
 "GeoEco.Configuration" = ["Logging.ini"]
-"GeoEco.Matlab._Matlab" = ["_Matlab.ctf"]
 
 [tool.pytest.ini_options]
 addopts = [

@@ -11,7 +11,7 @@ import setuptools.command.build
 import setuptools.command.sdist
 
 
-class BuildMatlabFunctions(setuptools.command.build.SubCommand):
+class BuildMatlabFunctions(setuptools.Command):
     """sdist SubCommand for building MATLAB .m files in GeoEco.Matlab._Matlab as a Python package.
 
     This SubCommand creates the files __init__.py, _Matlab.ctf, and
@@ -34,8 +34,6 @@ class BuildMatlabFunctions(setuptools.command.build.SubCommand):
     """
 
     def __init__(self, *args, **kwargs):
-        self.build_lib = None
-        self.editable_mode = False
         super().__init__(*args, **kwargs)
         self.matlab_path = None
         self.m_files = None
@@ -204,7 +202,129 @@ class BuildMatlabFunctions(setuptools.command.build.SubCommand):
         print('MATLAB functions built successfully.')
 
 
-setuptools.command.sdist.sdist.sub_commands.append(("build_matlab_functions", None))
+class BuildArcGISToolbox(setuptools.Command):
+    """SubCommand for building MGET's ArcGIS Toolbox (.atbx file)."""
+
+    def __init__(self, *args, **kwargs):
+        self.build_lib = None
+        super().__init__(*args, **kwargs)
+        self.build_toolbox = False
+
+    def initialize_options(self):
+        """Set or (reset) all options/attributes/caches used by the command to their default values."""
+        pass
+
+    def finalize_options(self):
+        """Set final values for all options/attributes used by the command."""
+        self.build_toolbox = True
+        self.set_undefined_options('build', ('build_lib', 'build_lib'))
+
+    def ensure_finalized(self):
+        """This function is undocumented by setuputils, but apparently we have to support it."""
+        self.finalize_options()
+
+    def get_output_mapping(self):
+        """Return a mapping between destination files as they would be produced by the build (dict keys) into the respective existing (source) files (dict values)."""
+        return {}
+
+    def get_outputs(self):
+        """Return a list of files intended for distribution as they would have been produced by the build."""
+        return []
+
+    def get_source_files(self):
+        """Return a list of all files that are used by the command to create the expected outputs."""
+        return []
+
+    def run(self):
+        if not self.build_toolbox:
+            print('Not building the ArcGIS Toolbox; build_toolbox is False.')
+            return
+
+        # Add the build_lib directory to sys.path so we can import GeoEco
+        # modules. Also set sys.dont_write_bytecode to inhibit writing of
+        # __pycache__/*.pyc files. If they are created, setuptools will
+        # include them in the built wheel.
+
+        sys.path = [self.build_lib] + sys.path
+        oldFlag = sys.dont_write_bytecode
+        sys.dont_write_bytecode = True
+        try:
+
+            # Import GeoEco.ArcToolbox and generate the .tbx file in the build
+            # directory with ArcToolboxGenerator.GenerateToolboxForPackage.
+
+            import GeoEco
+            from GeoEco.ArcToolbox import ArcToolboxGenerator
+
+            ArcToolboxGenerator.GenerateToolboxForPackage(
+                outputDir=os.path.join(self.build_lib, 'GeoEco', 'ArcToolbox', 'Marine Geospatial Ecology Tools'),
+                packageName='GeoEco',
+                displayName='Marine Geospatial Ecology Tools %s' % GeoEco.__version__.split('+')[0], 
+                description='Access and manipulate marine ecological and oceanographic data', 
+                alias='mget'
+            )
+
+        # When we are done, restore sys.dont_write_bytecode and remove the
+        # build_lib directory from sys.path.
+
+        finally:
+            sys.dont_write_bytecode = oldFlag
+            del sys.path[0]
+
+
+class DeleteFilesFromBDist(setuptools.Command):
+    """SubCommand for deleting unneeded files from build_lib so they do not end up in the bdist.
+
+    The reason for this command is that setuptools apparently does not have a
+    mechanism for excluding specific files from a bdist. To work around this
+    missing functionality, this command explicitly deletes unneeded files from
+    build_lib. After this command is done, setuputils creates the bdist from
+    what is left.
+    """
+
+    def __init__(self, *args, **kwargs):
+        self.build_lib = None
+        super().__init__(*args, **kwargs)
+
+    def initialize_options(self):
+        """Set or (reset) all options/attributes/caches used by the command to their default values."""
+        pass
+
+    def finalize_options(self):
+        """Set final values for all options/attributes used by the command."""
+        self.set_undefined_options('build', ('build_lib', 'build_lib'))
+
+    def ensure_finalized(self):
+        """This function is undocumented by setuputils, but apparently we have to support it."""
+        self.finalize_options()
+
+    def get_output_mapping(self):
+        """Return a mapping between destination files as they would be produced by the build (dict keys) into the respective existing (source) files (dict values)."""
+        return {}
+
+    def get_outputs(self):
+        """Return a list of files intended for distribution as they would have been produced by the build."""
+        return []
+
+    def get_source_files(self):
+        """Return a list of all files that are used by the command to create the expected outputs."""
+        return []
+
+    def run(self):
+        filesToDelete = [
+            os.path.join('GeoEco', 'DocutilsToEsriXdoc.xsl'),
+            os.path.join('GeoEco', '_MetadataUtils.cpp'),
+        ]
+
+        for f in filesToDelete:
+            if os.path.isfile(os.path.join(self.build_lib, f)):
+                print(f'Deleting {f!r} so it is not included in the bdist')
+                os.remove(os.path.join(self.build_lib, f))
+
+
+setuptools.command.sdist.sdist.sub_commands.append(('build_matlab_functions', None))
+setuptools.command.build.build.sub_commands.append(('build_arcgis_toolbox', None))
+setuptools.command.build.build.sub_commands.append(('delete_files_from_bdist', None))
 
 
 setuptools.setup(
@@ -214,5 +334,9 @@ setuptools.setup(
             sources=[os.path.join('src', 'GeoEco', '_MetadataUtils.cpp')],
         ),
     ],
-    cmdclass={"build_matlab_functions": BuildMatlabFunctions}
+    cmdclass={
+        'build_matlab_functions': BuildMatlabFunctions,
+        'build_arcgis_toolbox': BuildArcGISToolbox,
+        'delete_files_from_bdist': DeleteFilesFromBDist,
+    }
 )

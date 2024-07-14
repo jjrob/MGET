@@ -32,11 +32,9 @@ class ArcToolboxGenerator(object):
 
         started = datetime.datetime.now()
 
-        Logger.Initialize()
-        Logger.Info(f'GenerateToolboxForPackage started:')
-        Logger.Info(f'    packageName = {packageName}')
-        Logger.Info(f'    outputDir = {outputDir}')
-        Logger.Info(f'')
+        print(f'GenerateToolboxForPackage started:')
+        print(f'    packageName = {packageName}')
+        print(f'    outputDir = {outputDir}')
 
         # If overwriteExisting is False, verify that the outputDir does not
         # exist or is empty.
@@ -52,15 +50,20 @@ class ArcToolboxGenerator(object):
         # Enumerate the modules in the requested package that do not start
         # with '_'. This code requires the package to be installed.
 
-        Logger.Info(f'Enumerating modules in the {packageName} package.')
+        print(f'Enumerating modules in the {packageName} package.')
+
+        def onError(moduleName):
+            if moduleName == 'GeoEco.Matlab._Matlab':
+                return
+            raise ImportError(f'Failed to import the {moduleName} module')
 
         package = importlib.import_module(packageName)
-        moduleNames = [mi.name for mi in pkgutil.walk_packages(package.__path__, packageName + '.') if not mi.name.split('.')[-1].startswith('_')]
+        moduleNames = [mi.name for mi in pkgutil.walk_packages(package.__path__, packageName + '.', onerror=onError) if not mi.name.split('.')[-1].startswith('_')]
 
         # Enumerate methods of classes that have metadata where
         # IsExposedAsArcGISTool is True.
 
-        Logger.Info(f'Enumerating methods exposed as ArcGIS tools.')
+        print(f'Enumerating methods exposed as ArcGIS tools.')
 
         methodsForToolbox = []
 
@@ -77,7 +80,7 @@ class ArcToolboxGenerator(object):
                             if method.__doc__ is not None and hasattr(method.__doc__, '_Obj') and method.__doc__._Obj.IsExposedAsArcGISTool:
                                 methodsForToolbox.append(method)
 
-        Logger.Info(f'Found {len(methodsForToolbox)} methods.')
+        print(f'Found {len(methodsForToolbox)} methods.')
 
         # Create a temporary output directory.
 
@@ -87,7 +90,7 @@ class ArcToolboxGenerator(object):
         tempOutputDir = p.parent / (p.name + '_tmp%04i' % nextNumber)
         os.makedirs(tempOutputDir)
 
-        Logger.Info(f'Writing new toolbox to temporary directory {tempOutputDir}')
+        print(f'Writing new toolbox to temporary directory {tempOutputDir}')
 
         # Create the toolbox.content file and and a subdirectory for each tool
         # with its own tool.content file.
@@ -103,12 +106,12 @@ class ArcToolboxGenerator(object):
         # Delete the current outputDir, if any, and rename the temp directory
         # to outputDir.
 
-        Logger.Info(f'Removing {outputDir}')
+        print(f'Removing {outputDir}')
 
         if outputDir.is_dir():
             shutil.rmtree(outputDir)
 
-        Logger.Info(f'Renaming {tempOutputDir} to {outputDir}')
+        print(f'Renaming {tempOutputDir} to {outputDir}')
 
         os.rename(tempOutputDir, outputDir)
 
@@ -116,7 +119,7 @@ class ArcToolboxGenerator(object):
 
         outputATBX = str(outputDir) + '.atbx'
 
-        Logger.Info(f'Creating {outputATBX}')
+        print(f'Creating {outputATBX}')
 
         with zipfile.ZipFile(outputATBX, 'w', zipfile.ZIP_DEFLATED) as zipf:
             for root, dirs, files in os.walk(outputDir):
@@ -125,11 +128,19 @@ class ArcToolboxGenerator(object):
                     arcname = os.path.relpath(file_path, outputDir)
                     zipf.write(file_path, arcname)
 
+        # After creating the zip, we can remove the outputDir. If we need to
+        # debug something, we can comment out this code and the outputDir will
+        # be included in the built wheel.
+
+        print(f'Removing {outputDir}')
+
+        if outputDir.is_dir():
+            shutil.rmtree(outputDir)
+
         # Log a completion message.
 
-        Logger.Info(f'')
-        Logger.Info(f'GenerateToolboxForPackage completed successfully.')
-        Logger.Info(f'Elapsed time: {datetime.datetime.now() - started}')
+        print(f'GenerateToolboxForPackage completed successfully.')
+        print(f'Elapsed time: {datetime.datetime.now() - started}')
 
     @classmethod
     def _CreateContentFiles(cls, displayName, description, alias, methodsForToolbox, outputDir):
@@ -176,14 +187,14 @@ class ArcToolboxGenerator(object):
 
         filePath = outputDir / 'toolbox.content'
 
-        Logger.Info(f'Writing {filePath.name}')
+        print(f'Writing {filePath.name}')
 
         with filePath.open('wt') as f:
             json.dump(toolboxContent, f, indent=4)
 
         filePath = outputDir / 'toolbox.content.rc'
 
-        Logger.Info(f'Writing {filePath.name}')
+        print(f'Writing {filePath.name}')
 
         with filePath.open('wt') as f:
             json.dump(toolboxContentRC, f, indent=4)
@@ -269,14 +280,14 @@ class ArcToolboxGenerator(object):
 
         filePath = toolDir / 'tool.content'
 
-        Logger.Info(f'Writing {filePath.relative_to(outputDir)}')
+        print(f'Writing {filePath.relative_to(outputDir)}')
 
         with filePath.open('wt') as f:
             json.dump(toolContent, f, indent=4)
 
         filePath = toolDir / 'tool.content.rc'
 
-        Logger.Info(f'Writing {filePath.relative_to(outputDir)}')
+        print(f'Writing {filePath.relative_to(outputDir)}')
 
         with filePath.open('wt') as f:
             json.dump(toolContentRC, f, indent=4)
@@ -289,7 +300,7 @@ class ArcToolboxGenerator(object):
         toolDir = outputDir / (toolName + '.tool')
         scriptPath = toolDir / 'tool.script.execute.py'
 
-        Logger.Info(f'Writing {scriptPath.relative_to(outputDir)}')
+        print(f'Writing {scriptPath.relative_to(outputDir)}')
 
         moduleFQN = mm.Class.Module.Name
         if moduleFQN.split('.')[-1].startswith('_'):
@@ -317,7 +328,7 @@ if __name__ == "__main__":
 
         scriptPath = toolDir / 'tool.script.validate.py'
 
-        Logger.Info(f'Writing {scriptPath.relative_to(outputDir)}')
+        print(f'Writing {scriptPath.relative_to(outputDir)}')
 
         with scriptPath.open('wt') as f:
             f.write(
@@ -381,8 +392,8 @@ class ToolValidator:
         # transforming docutils XML to ESRI XDoc XML.
 
         if not hasattr(ArcToolboxGenerator, '_RstToXdocTransformer'):
-            xslFile = pathlib.Path('__file__').parent / 'DocutilsToEsriXdoc.xsl'
-            Logger.Info('Parsing %s', xslFile)
+            xslFile = pathlib.Path(__file__).parent / 'DocutilsToEsriXdoc.xsl'
+            print('Parsing %s' % xslFile)
             ArcToolboxGenerator._RstToXdocTransformer = lxml.etree.XSLT(lxml.etree.parse(xslFile))
 
             # Register some handlers for docutils roles that are not part of
@@ -458,7 +469,7 @@ class ToolValidator:
         import sphobjinv
 
         objectsInvURL = 'https://docs.python.org/3/objects.inv'
-        Logger.Info('Downloading ' + objectsInvURL)
+        print('Downloading ' + objectsInvURL)
         inv = sphobjinv.Inventory(url=objectsInvURL)
         iSphinxLookup = {}
 
@@ -640,29 +651,3 @@ def _ExecuteMethodAsGeoprocessingTool(method):
                 Logger.Debug('Setting geoprocessing output parameter %s=%r' % (rm.Name, results[i]))
                 gp.SetParameterAsText(pni[rm.Name], str(results[r]))
                 r += 1
-
-
-def Main() -> int:
-
-    # Determine the output directory.
-
-    outputDir = pathlib.Path(__file__).parent / 'ArcToolbox' / 'Marine Geospatial Ecology Tools'
-
-    # Create the toolbox.
-
-    ArcToolboxGenerator.GenerateToolboxForPackage(
-        outputDir=outputDir,
-        packageName='GeoEco',
-        displayName='Marine Geospatial Ecology Tools %s' % GeoEco.__version__.split('+')[0], 
-        description='Access and manipulate marine ecological and oceanographic data', 
-        alias='mget',
-        overwriteExisting=True
-    )
-
-    # Exit succesfully.
-
-    return 0
-
-
-if __name__ == "__main__":
-    sys.exit(Main())

@@ -56,6 +56,33 @@
         </a>
     </xsl:template>
 
+    <xsl:template match="superscript">
+        <span style="vertical-align:super">
+            <xsl:apply-templates/>
+        </span>
+    </xsl:template>
+
+    <xsl:template match="subscript">
+        <span style="vertical-align:sub">
+            <xsl:apply-templates/>
+        </span>
+    </xsl:template>
+
+    <xsl:template match="strong">
+        <b>
+            <xsl:apply-templates/>
+        </b>
+    </xsl:template>
+
+    <!-- Table-related elements -->
+    <xsl:template match="table | tgroup | thead | tbody | row | entry">
+        <xsl:copy>
+          <xsl:apply-templates select="@*|node()"/>
+        </xsl:copy>
+    </xsl:template>
+
+    <xsl:template match="colspec"/>
+
     <!-- Ignore target elements -->
     <xsl:template match="target"/>
 
