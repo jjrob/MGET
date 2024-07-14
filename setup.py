@@ -120,11 +120,15 @@ class BuildMatlabFunctions(setuptools.Command):
                 oldMFiles = {line.strip().split()[0]: line.strip().split()[-1] for line in f.readlines() if not line.startswith('#')}
 
             # Create similar dictionary for the current .m files.
+            # Replace '\r\n' with '\n', so that the same hash is produced
+            # regardless of which line endings are used, to work around git
+            # on Linux and Windows having different behavior around line
+            # endings.
 
             newMFiles = {}
             for mFile in self.m_files:
                 with open(mFile, "rb") as f:
-                    newMFiles[os.path.splitext(os.path.basename(mFile))[0]] = hashlib.sha256(f.read()).hexdigest()
+                    newMFiles[os.path.splitext(os.path.basename(mFile))[0]] = hashlib.sha256(f.read().replace(b'\r\n', b'\n')).hexdigest()
 
             # If the dictionaries match, we do not need to rebuild the .ctf.
 
@@ -184,12 +188,15 @@ class BuildMatlabFunctions(setuptools.Command):
         print(f'Deleting {d}.')
         shutil.rmtree(d)
 
-        # Compute hashes of the .m files.
+        # Compute hashes of the .m files. Replace '\r\n' with '\n', so that
+        # the same hash is produced regardless of which line endings are
+        # used, to work around git on Linux and Windows having different
+        # behavior around line endings.
 
         newMFiles = {}
         for mFile in self.m_files:
             with open(mFile, "rb") as f:
-                newMFiles[mFile] = hashlib.sha256(f.read()).hexdigest()
+                newMFiles[mFile] = hashlib.sha256(f.read().replace(b'\r\n', b'\n')).hexdigest()
 
         # Write the MatlabFunctions.txt file.
 
