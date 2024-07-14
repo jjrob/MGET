@@ -128,7 +128,7 @@ class BuildMatlabFunctions(setuptools.Command):
             newMFiles = {}
             for mFile in self.m_files:
                 with open(mFile, "rb") as f:
-                    newMFiles[os.path.splitext(os.path.basename(mFile))[0]] = hashlib.sha256(f.read().replace(b'\r\n', b'\n')).hexdigest()
+                    newMFiles[os.path.splitext(os.path.basename(mFile))[0]] = hashlib.sha256(f.read().replace(b'\r', b'')).hexdigest()
 
             # If the dictionaries match, we do not need to rebuild the .ctf.
 
@@ -196,7 +196,7 @@ class BuildMatlabFunctions(setuptools.Command):
         newMFiles = {}
         for mFile in self.m_files:
             with open(mFile, "rb") as f:
-                newMFiles[mFile] = hashlib.sha256(f.read().replace(b'\r\n', b'\n')).hexdigest()
+                newMFiles[mFile] = hashlib.sha256(f.read().replace(b'\r', b'')).hexdigest()
 
         # Write the MatlabFunctions.txt file.
 
