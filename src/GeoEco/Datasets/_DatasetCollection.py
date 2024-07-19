@@ -12,6 +12,7 @@ import datetime
 import re
 
 from ..DynamicDocString import DynamicDocString
+from ..Exceptions import GeoEcoError
 from ..Internationalization import _
 from ..Logging import ProgressReporter
 from ..Types import DateTimeTypeMetadata
@@ -502,6 +503,22 @@ class DatasetCollection(CollectibleObject):
 
     def _ImportDatasets(self, datasets, mode, reportProgress, options):
         raise NotImplementedError(_('The _ImportDatasets method of class %s has not been implemented.') % self.__class__.__name__)
+
+
+class CollectionIsEmptyError(GeoEcoError):
+    __doc__ = DynamicDocString()
+    
+    def __init__(self, collectionDisplayName=None, expression=None):
+        self.__doc__.Obj.ValidateMethodInvocation()
+        self.CollectionDisplayName = collectionDisplayName
+        self.Expression = expression
+
+    def __str__(self):
+        if self.CollectionDisplayName is None and self.Expression is None:
+            return _('This collection contains no datasets.')
+        if self.CollectionDisplayName is not None and self.Expression is None:
+            return _('The %(dn)s contains no datasets.') % {'dn': self.CollectionDisplayName}
+        return _('The %(dn)s contains no datasets matching the expression %(expr)s.') % {'dn': self.CollectionDisplayName, 'expr': self.Expression}
 
 
 ###################################################################################

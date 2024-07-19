@@ -15,7 +15,7 @@
 from ._CollectibleObject import CollectibleObject
 from ._CollectibleObject import QueryableAttribute
 from ._Dataset import Dataset
-from ._DatasetCollection import DatasetCollection
+from ._DatasetCollection import DatasetCollection, CollectionIsEmptyError
 from ._Database import Database
 from ._Table import Table
 from ._Table import Field

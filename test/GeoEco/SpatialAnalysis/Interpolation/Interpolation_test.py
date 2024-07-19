@@ -71,7 +71,7 @@ class TestInterpolatePointsInTable():
 
         # Define a global geographic grid with a cell size of 45 degrees.
 
-        a = numpy.arange(32).reshape((4,8))
+        a = numpy.arange(32, dtype='int32').reshape((4,8))
         sr = Dataset.ConvertSpatialReference('proj4', '+proj=latlong +ellps=WGS84 +datum=WGS84 +no_defs', 'obj')
         grid1 = NumpyGrid(numpyArray=a,
                           displayName="global 45 test grid",
@@ -205,7 +205,7 @@ class TestInterpolatePointsInTable():
 
         # Define a geographic grid that is not global.
 
-        a = numpy.arange(100).reshape((10,10))
+        a = numpy.arange(100, dtype='int32').reshape((10,10))
         sr = Dataset.ConvertSpatialReference('proj4', '+proj=latlong +ellps=WGS84 +datum=WGS84 +no_defs', 'obj')
         grid = NumpyGrid(numpyArray=a,
                          displayName="1 degree test grid",

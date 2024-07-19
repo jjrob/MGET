@@ -18,14 +18,26 @@ from GeoEco.Logging import Logger
 from GeoEco.DataManagement.ArcGISRasters import ArcGISRaster
 from GeoEco.Datasets.ArcGIS import ArcGISRaster as ArcGISRaster2
 
+Logger.Initialize()
 
+
+def isArcPyInstalled():
+    success = False
+    try:
+        import arcpy
+        success = True
+    except:
+        pass
+    return success
+
+
+@pytest.mark.skipif(not isArcPyInstalled(), reason='ArcGIS arcpy module is not installed')
 class TestProjectToTemplate():
 
     def test_Project(self, tmp_path):
         inputRaster = pathlib.Path(__file__).parent / '20100101_sst.img'
         templateRaster = pathlib.Path(__file__).parent / 'EC22_Study_Area_5km.img'
         outputRaster = tmp_path / 'project.img'
-        Logger.Initialize()
         ArcGISRaster.ProjectToTemplate(inputRaster, templateRaster, outputRaster, resamplingTechnique='bilinear')
         assert outputRaster.is_file()
 
@@ -33,7 +45,6 @@ class TestProjectToTemplate():
         inputRaster = pathlib.Path(__file__).parent / '20100101_sst.img'
         templateRaster = pathlib.Path(__file__).parent / 'EC22_Study_Area_5km.img'
         outputRaster = tmp_path / 'project_and_mask.img'
-        Logger.Initialize()
         ArcGISRaster.ProjectToTemplate(inputRaster, templateRaster, outputRaster, resamplingTechnique='bilinear', mask=True)
         assert outputRaster.is_file()
 
@@ -41,7 +52,6 @@ class TestProjectToTemplate():
         inputRaster = pathlib.Path(__file__).parent / '20100101_sst.img'
         templateRaster = pathlib.Path(__file__).parent / 'EC22_Study_Area_5km.img'
         outputRaster = tmp_path / 'project_and_interp_and_mask.img'
-        Logger.Initialize()
         ArcGISRaster.ProjectToTemplate(inputRaster, templateRaster, outputRaster, resamplingTechnique='bilinear', interpolationMethod='del2a', mask=True)
         assert outputRaster.is_file()
         expectedRaster = pathlib.Path(__file__).parent / '20100101_sst_5km.img'
@@ -55,7 +65,6 @@ class TestProjectToTemplate():
         inputRaster = pathlib.Path(__file__).parent / 'topo30_Clip.tif'
         templateRaster = pathlib.Path(__file__).parent / 'Arc26_Study_Area_10km.img'
         outputRaster = tmp_path / 'Arc26_depth.img'
-        Logger.Initialize()
         ArcGISRaster.ProjectToTemplate(inputRaster, templateRaster, outputRaster, resamplingTechnique='bilinear', mask=True)
         assert outputRaster.is_file()
         expectedRaster = pathlib.Path(__file__).parent / 'topo30_Clip_10km.img'
@@ -69,7 +78,6 @@ class TestProjectToTemplate():
         inputRaster = pathlib.Path(__file__).parent / 'ETOPO_2022_v1_60s_N90W180_bed_clipped_resampled.tif'
         templateRaster = pathlib.Path(__file__).parent / 'Arc26_Study_Area_10km.img'
         outputRaster = tmp_path / 'Arc26_depth2.img'
-        Logger.Initialize()
         ArcGISRaster.ProjectToTemplate(inputRaster, templateRaster, outputRaster, resamplingTechnique='bilinear', mask=True)
         assert outputRaster.is_file()
         expectedRaster = pathlib.Path(__file__).parent / 'ETOPO_2022_v1_60s_N90W180_bed_clipped_resampled_10km.img'

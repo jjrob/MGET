@@ -717,7 +717,7 @@ AddClassMetadata(Interpolator,
 
 AddMethodMetadata(Interpolator.InterpolateGridsValuesForTableOfPoints,
     shortDescription=_('Interpolates the values of :class:`~GeoEco.Datasets.Grid`\\ s at points represented as rows of a :class:`~GeoEco.Datasets.Table`.'),
-    dependencies=[ArcGISDependency(), PythonModuleDependency('numpy', cheeseShopName='numpy'), PythonModuleDependency(importName='osgeo', displayName='Python bindings for the Geospatial Data Abstraction Library (GDAL)', cheeseShopName='GDAL')])
+    dependencies=[PythonModuleDependency('numpy', cheeseShopName='numpy'), PythonModuleDependency(importName='osgeo', displayName='Python bindings for the Geospatial Data Abstraction Library (GDAL)', cheeseShopName='GDAL')])
 
 AddArgumentMetadata(Interpolator.InterpolateGridsValuesForTableOfPoints, 'cls',
     typeMetadata=ClassOrClassInstanceTypeMetadata(cls=Interpolator),
@@ -1514,8 +1514,7 @@ By default, if you do not specify anything for this parameter, the
 points will be ordered by the points' Date Field."""),
     arcGISDisplayName=_('Order by fields'),
     arcGISCategory=_('Performance tuning options'),
-    arcGISParameterDependencies=['points'],
-    dependencies=[ArcGISDependency()])
+    arcGISParameterDependencies=['points'])
 
 CopyArgumentMetadata(Interpolator.InterpolateArcGISRasterValuesAtPoints, 'numBlocksToCacheInMemory', Interpolator.InterpolateTimeSeriesOfArcGISRastersValuesAtPoints, 'numBlocksToCacheInMemory')
 CopyArgumentMetadata(Interpolator.InterpolateArcGISRasterValuesAtPoints, 'xBlockSize', Interpolator.InterpolateTimeSeriesOfArcGISRastersValuesAtPoints, 'xBlockSize')
@@ -1613,8 +1612,8 @@ AddArgumentMetadata(Interpolator.InpaintArcGISRaster, 'method',
   ``Del2b`` both fail due to insufficient memory or are too slow.
 
 * ``Del4`` - Same as ``Del2a`` but instead of the Laplace operator (also
-  called the ∇\ :sup:`2` operator) it uses the biharmoic operator (also
-  called the ∇\ :sup:`4` operator). May result in more accurate
+  called the ∇\\ :sup:`2` operator) it uses the biharmoic operator (also
+  called the ∇\\ :sup:`4` operator). May result in more accurate
   interpolations, at some cost in speed.
 
 * ``Spring`` - Uses a spring metaphor. Assumes springs (with a nominal length

@@ -15,6 +15,7 @@ from ._FastMarchingDistanceGrid import FastMarchingDistanceGrid
 from ._GridSlice import GridSlice
 from ._InpaintedGrid import InpaintedGrid
 from ._RotatedGlobalGrid import RotatedGlobalGrid
+from ._TimeSeriesGridStack import TimeSeriesGridStack
 from ._WindFetchGrid import WindFetchGrid
 
 
@@ -31,6 +32,7 @@ from . import _FastMarchingDistanceGridMetadata
 from . import _GridSliceMetadata
 from . import _InpaintedGridMetadata
 from . import _RotatedGlobalGridMetadata
+from . import _TimeSeriesGridStackMetadata
 from . import _WindFetchGridMetadata
 
 
@@ -42,4 +44,5 @@ __all__ = ['FastMarchingDistanceGrid',
            'GridSlice',
            'InpaintedGrid',
            'RotatedGlobalGrid',
+           'TimeSeriesGridStack',
            'WindFetchGrid']

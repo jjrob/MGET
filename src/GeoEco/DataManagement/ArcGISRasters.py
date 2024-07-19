@@ -2209,9 +2209,9 @@ The available algorithms are:
   interpolate accurately for smooth surfaces.
 
 * ``Del4`` - Same as ``Del2a`` but instead of the Laplace operator (also
-  called the del2 operator) it uses the biharmonic operator (also called the
-  del4 operator). May result in more accurate interpolations, at some cost in
-  speed.
+  called the ∇\\ :sup:`2` operator) it uses the biharmonic operator (also
+  called the ∇\\ :sup:`4` operator). May result in more accurate
+  interpolations, at some cost in speed.
 
 * ``Spring`` - Uses a spring metaphor. Assumes springs (with a nominal length
   of zero) connect each cell with every neighbor (horizontally, vertically and

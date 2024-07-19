@@ -15,7 +15,7 @@ from ..Types import *
 
 from ._CollectibleObject import CollectibleObject
 from ._Dataset import Dataset
-from ._DatasetCollection import DatasetCollection
+from ._DatasetCollection import DatasetCollection, CollectionIsEmptyError
 
 
 ###############################################################################
@@ -66,7 +66,7 @@ AddArgumentMetadata(DatasetCollection.QueryDatasets, 'self',
     description=_(':class:`%s` instance.') % DatasetCollection.__name__)
 
 AddArgumentMetadata(DatasetCollection.QueryDatasets, 'expression',
-    typeMetadata=UnicodeStringTypeMetadata(canBeNone=True),
+    typeMetadata=UnicodeStringTypeMetadata(minLength=1, canBeNone=True),
     description=_(
 """A SQL-like query expression that selects the datasets of interest based on
 the values of their queryable attributes. If not provided, all of the datasets
@@ -218,6 +218,36 @@ AddArgumentMetadata(DatasetCollection.__init__, 'cacheDirectory',
 AddResultMetadata(DatasetCollection.__init__, 'obj',
     typeMetadata=ClassInstanceTypeMetadata(cls=DatasetCollection),
     description=_(':class:`%s` instance.') % DatasetCollection.__name__)
+
+
+###############################################################################
+# Metadata: CollectionIsEmptyError class
+###############################################################################
+
+AddClassMetadata(CollectionIsEmptyError,
+    module=__package__,
+    shortDescription=_('Exception indicating that a :class:`~GeoEco.Datasets.DatasetCollection` does not have any :class:`~GeoEco.Datasets.Dataset`\\ s in it.'))
+
+# Constructor
+
+AddMethodMetadata(CollectionIsEmptyError.__init__,
+    shortDescription=_('Constructs a new %s instance.') % CollectionIsEmptyError.__name__)
+
+AddArgumentMetadata(CollectionIsEmptyError.__init__, 'self',
+    typeMetadata=ClassInstanceTypeMetadata(cls=CollectionIsEmptyError),
+    description=_(':class:`%s` instance.') % CollectionIsEmptyError.__name__)
+
+AddArgumentMetadata(CollectionIsEmptyError.__init__, 'collectionDisplayName',
+    typeMetadata=UnicodeStringTypeMetadata(),
+    description=_(':class:`~GeoEco.Datasets.DatasetCollection.DisplayName` of the :class:`~GeoEco.Datasets.DatasetCollection`.'))
+
+AddArgumentMetadata(CollectionIsEmptyError.__init__, 'expression',
+    typeMetadata=UnicodeStringTypeMetadata(canBeNone=True, minLength=1),
+    description=_('Query expression that was used to query the :class:`~GeoEco.Datasets.DatasetCollection` and that failed to select any datasets.'))
+
+AddResultMetadata(CollectionIsEmptyError.__init__, 'obj',
+    typeMetadata=ClassInstanceTypeMetadata(cls=CollectionIsEmptyError),
+    description=_('New :class:`%s` instance.') % CollectionIsEmptyError.__name__)
 
 
 ###################################################################################

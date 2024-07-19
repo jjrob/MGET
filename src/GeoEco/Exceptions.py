@@ -56,6 +56,7 @@ AddResultMetadata(GeoEcoError.__init__, 'obj',
     typeMetadata=ClassInstanceTypeMetadata(cls=GeoEcoError),
     description=_('New :class:`%s` instance.') % GeoEcoError.__name__)
 
+
 ###############################################################################
 # Names exported by this module
 ###############################################################################
