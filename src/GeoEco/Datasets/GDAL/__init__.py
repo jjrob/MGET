@@ -11,28 +11,19 @@
 # To keep file sizes managable, we split the names defined by this package
 # across several files.
 
-# from ._OGRTabularLayer import OGRTabularLayer     # OGRTabularLayer is not fully implemented yet
-from ._GDALDataset import GDALDataset
-from ._GDALRasterBand import GDALRasterBand
-
-
-###############################################################################
-# Metadata: module
-###############################################################################
-
 from ...Internationalization import _
 from ...Metadata import AddModuleMetadata
 
-AddModuleMetadata(shortDescription=_('A :class:`~GeoEco.Datasets.DatasetCollection` and :class:`~GeoEco.Datasets.Grid` for accessing rasters and raster bands through the `Geospatial Data Abstraction Library (GDAL) <https://gdal.org>`_.'))
+AddModuleMetadata(shortDescription=_('A :class:`~GeoEco.Datasets.Collections.FileDatasetCollection` and :class:`~GeoEco.Datasets.Grid` for accessing rasters and raster bands through the `Geospatial Data Abstraction Library (GDAL) <https://gdal.org>`_.'))
 
-# from . import _OGRTabularLayerMetadata            # OGRTabularLayer is not fully implemented yet
+from ._GDALDataset import GDALDataset
 from . import _GDALDatasetMetadata
+
+from ._GDALRasterBand import GDALRasterBand
 from . import _GDALRasterBandMetadata
 
-
-###############################################################################
-# Names exported by this module
-###############################################################################
+# from ._OGRTabularLayer import OGRTabularLayer     # OGRTabularLayer is not fully implemented yet
+# from . import _OGRTabularLayerMetadata            # OGRTabularLayer is not fully implemented yet
 
 __all__ = ['GDALDataset',
            'GDALRasterBand']

@@ -7,28 +7,19 @@
 # root of this project or https://opensource.org/license/bsd-3-clause for the
 # full license text.
 
-from ._MatlabDependency import MatlabDependency
-from ._MatlabFunctions import MatlabFunctions
-from ._MatlabWorkerProcess import MatlabWorkerProcess
-
-
-###############################################################################
-# Metadata: module
-###############################################################################
-
 from ..Internationalization import _
 from ..Metadata import AddModuleMetadata
 
 AddModuleMetadata(shortDescription=_('Classes that wrap GeoEco functions written in MATLAB and expose them as Python functions.'))
 
+from ._MatlabDependency import MatlabDependency
 from . import _MatlabDependencyMetadata
+
+from ._MatlabFunctions import MatlabFunctions
 from . import _MatlabFunctionsMetadata
+
+from ._MatlabWorkerProcess import MatlabWorkerProcess
 from . import _MatlabWorkerProcessMetadata
-
-
-###############################################################################
-# Names exported by this module
-###############################################################################
 
 __all__ = ['MatlabDependency',
            'MatlabFunctions',

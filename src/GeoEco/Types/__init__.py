@@ -52,29 +52,19 @@ from ._ArcGIS import SQLWhereClauseTypeMetadata
 from ._NumPy import NumPyArrayTypeMetadata
 from ._Datasets import TableFieldTypeMetadata
 
-
-###############################################################################
-# Metadata: module
-###############################################################################
+# We have to put this stuff down here to avoid circular imports.
 
 from ..Internationalization import _
 from ..Metadata import AddModuleMetadata
 
 AddModuleMetadata(shortDescription=_('Classes used to describe and validate property values, method arguments, and return values.'))
 
-# To avoid creating circular module imports that Python cannot handle, we
-# could not put the metadata for the classes above in the same file that
-# defined them. Instead, we created separate files just for the metadata.
-# import those now, so that metadata is created.
-
 from . import _BaseMetadata
 from . import _SequenceMetadata
 from . import _StoredObjectMetadata
-
-
-###############################################################################
-# Names exported by this module
-###############################################################################
+from . import _ArcGISMetadata
+from . import _NumPyMetadata
+from . import _DatasetsMetadata
 
 __all__ = ['TypeMetadata',
            'AnyObjectTypeMetadata',

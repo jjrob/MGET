@@ -4,6 +4,8 @@ Python 2 to 3 issues to check for:
 time.clock() is replaced by time.perf_counter()
 Integer division can now return a float
 file() was removed; use open() instead
+Remove unnecessary calls to unicode() and str()
+
 
 MGET issues to check for:
 =========================
@@ -19,6 +21,8 @@ Do not call Destroy on GDAL objects anymore
 os.path.splitunc was subsumed into os.path.splitdrive
 Look for '\\' and check it
 Where possible, switch to using "with" rather than try/finally: dataset.Close()
+Remove unnecessary calls to _Str()
+
 
 ArcPro vs. Desktop issues to check for:
 =======================================

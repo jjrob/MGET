@@ -736,10 +736,10 @@ class _SQLiteInsertCursor(_SQLiteWritableCursor, InsertCursor):
 # Metadata: module
 ###############################################################################
 
-from GeoEco.Metadata import *
-from GeoEco.Types import *
+from ..Metadata import *
+from ..Types import *
 
-AddModuleMetadata(shortDescription=_('A :class:`~GeoEco.Datasets.Table` wrapper for SQLite tables accessible through Python\'s built in :py:mod:`sqlite3` module.'),
+AddModuleMetadata(shortDescription=_('A :class:`~GeoEco.Datasets.Table` for accessing SQLite tables accessible through Python\'s built in :py:mod:`sqlite3` module.'),
     longDescription=(
 """
 This example shows how to create an in-memory database, create a table within

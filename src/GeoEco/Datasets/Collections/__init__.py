@@ -10,30 +10,22 @@
 # To keep file sizes managable, we split the names defined by this package
 # across several files.
 
-from ._DatasetCollectionTree import DatasetCollectionTree
-from ._DirectoryTree import DirectoryTree
-from ._FileDatasetCollection import FileDatasetCollection
-from ._FTPDirectoryTree import FTPDirectoryTree
-
-
-###############################################################################
-# Metadata: module
-###############################################################################
-
 from ...Internationalization import _
 from ...Metadata import AddModuleMetadata
 
 AddModuleMetadata(shortDescription=_('General purpose :class:`~GeoEco.Datasets.DatasetCollection`\\ s.'))
 
-from . import _DatasetCollectionTreeMetadata
-from . import _DirectoryTreeMetadata
+from ._FileDatasetCollection import FileDatasetCollection
 from . import _FileDatasetCollectionMetadata
+
+from ._DatasetCollectionTree import DatasetCollectionTree
+from . import _DatasetCollectionTreeMetadata
+
+from ._DirectoryTree import DirectoryTree
+from . import _DirectoryTreeMetadata
+
+from ._FTPDirectoryTree import FTPDirectoryTree
 from . import _FTPDirectoryTreeMetadata
-
-
-###############################################################################
-# Names exported by this module
-###############################################################################
 
 __all__ = ['DatasetCollectionTree',
            'DirectoryTree',

@@ -11,30 +11,22 @@
 # To keep file sizes managable, we split the names defined by this package
 # across several files.
 
-from ._ArcGISWorkspace import ArcGISWorkspace
-from ._ArcGISRaster import ArcGISRaster
-from ._ArcGISRasterBand import ArcGISRasterBand
-from ._ArcGISTable import ArcGISCopyableTable, ArcGISTable
-
-
-###############################################################################
-# Metadata: module
-###############################################################################
-
 from ...Internationalization import _
 from ...Metadata import AddModuleMetadata
 
 AddModuleMetadata(shortDescription=_(':class:`~GeoEco.Datasets.Table` and :class:`~GeoEco.Datasets.Grid` wrappers around tabular, vector, and raster datasets accessible through the ArcGIS `arcpy <https://www.esri.com/en-us/arcgis/products/arcgis-python-libraries/libraries/arcpy>`_ library.'))
 
-from . import _ArcGISWorkspaceMetadata
+from ._ArcGISRaster import ArcGISRaster
 from . import _ArcGISRasterMetadata
+
+from ._ArcGISRasterBand import ArcGISRasterBand
 from . import _ArcGISRasterBandMetadata
+
+from ._ArcGISTable import ArcGISCopyableTable, ArcGISTable
 from . import _ArcGISTableMetadata
 
-
-###############################################################################
-# Names exported by this module
-###############################################################################
+from ._ArcGISWorkspace import ArcGISWorkspace
+from . import _ArcGISWorkspaceMetadata
 
 __all__ = ['ArcGISCopyableTable',
            'ArcGISRaster',

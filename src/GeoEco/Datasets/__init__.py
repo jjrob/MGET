@@ -12,44 +12,37 @@
 # To keep file sizes managable, we split the names defined by this package
 # across several files.
 
-from ._CollectibleObject import CollectibleObject
-from ._CollectibleObject import QueryableAttribute
-from ._Dataset import Dataset
-from ._DatasetCollection import DatasetCollection, CollectionIsEmptyError
-from ._Database import Database
-from ._Table import Table
-from ._Table import Field
-from ._Cursors import SelectCursor
-from ._Cursors import UpdateCursor
-from ._Cursors import InsertCursor
-from ._Grid import Grid
-from ._NumpyGrid import NumpyGrid
-
-
-###############################################################################
-# Metadata: module
-###############################################################################
-
 from ..Internationalization import _
 from ..Metadata import AddModuleMetadata
 
 AddModuleMetadata(shortDescription=_('Base classes that provide a common wrapper around tabular and gridded datasets accessible through various software frameworks.'))
 
+from ._CollectibleObject import CollectibleObject, QueryableAttribute
 from . import _CollectibleObjectMetadata
+
+from ._Dataset import Dataset
 from . import _DatasetMetadata
+
+from ._DatasetCollection import DatasetCollection, CollectionIsEmptyError
 from . import _DatasetCollectionMetadata
+
+from ._Database import Database
 from . import _DatabaseMetadata
+
+from ._Table import Table, Field
 from . import _TableMetadata
+
+from ._Cursors import SelectCursor, UpdateCursor, InsertCursor
 from . import _CursorsMetadata
+
+from ._Grid import Grid
 from . import _GridMetadata
+
+from ._NumpyGrid import NumpyGrid
 from . import _NumpyGridMetadata
 
-
-###############################################################################
-# Names exported by this module
-###############################################################################
-
 __all__ = ['CollectibleObject',
+           'CollectionIsEmptyError',
            'Database',
            'Dataset',
            'DatasetCollection',
