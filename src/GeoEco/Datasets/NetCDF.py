@@ -1,4 +1,4 @@
-# _NetCDF.py - Defines NetCDFFile, which exposes a netCDF file as a
+# NetCDF.py - Defines NetCDFFile, which exposes a netCDF file as a
 # FileDatasetCollection, and NetCDFVariable, which exposes a netCDF variable
 # as a Grid.
 #

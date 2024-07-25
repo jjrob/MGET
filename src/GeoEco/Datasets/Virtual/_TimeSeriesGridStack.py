@@ -139,7 +139,7 @@ class TimeSeriesGridStack(Grid):
             if name == 'CoordIncrements':
                 if self._CachedOldestGrid.Dimensions[0] != 't':
                     return tuple([self._CachedOldestGrid.GetLazyPropertyValue('TIncrement')] + list(self._CachedOldestGrid.CoordIncrements))
-                return tuple([self._CachedOldestGrid.GetLazyPropertyValue('TIncrement')] + list(self._CachedOldestGrid.CoordIncrements[1:]))        # We should probably get this from CoordIncrements[0] rather than TIncrement. If we change it, we should search for classes redundantly have TIncrement (such as CCMPWindsL35) and remove TIncrement from them.
+                return tuple([self._CachedOldestGrid.GetLazyPropertyValue('TIncrement')] + list(self._CachedOldestGrid.CoordIncrements[1:]))
 
             if name == 'CornerCoords':
                 if self._CachedOldestGrid.Dimensions[0] != 't':
