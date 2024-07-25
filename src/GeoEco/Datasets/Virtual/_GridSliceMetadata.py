@@ -54,8 +54,7 @@ AddArgumentMetadata(GridSlice.__init__, 'tQADisplayName',
     description=_('Display name of the :class:`~GeoEco.Datasets.QueryableAttribute` to define for the t coordinate. Must be given if `tIndex` is given. Ignored otherwise.'))
 
 AddArgumentMetadata(GridSlice.__init__, 'tQACoordType',
-    typeMetadata=UnicodeStringTypeMetadata(canBeNone=True,
-    allowedValues=['min', 'center', 'max'], makeLowercase=True),
+    typeMetadata=UnicodeStringTypeMetadata(canBeNone=True, allowedValues=['min', 'center', 'max'], makeLowercase=True),
     description=_( 
 """Type of t coordinate to use for the value of the
 :class:`~GeoEco.Datasets.QueryableAttribute` for the t coordinate. For
@@ -75,13 +74,12 @@ AddArgumentMetadata(GridSlice.__init__, 'zQADisplayName',
     description=_('Display name of the :class:`~GeoEco.Datasets.QueryableAttribute` to define for the z coordinate. Must be given if `zIndex` is given. Ignored otherwise.'))
 
 AddArgumentMetadata(GridSlice.__init__, 'zQACoordType',
-    typeMetadata=UnicodeStringTypeMetadata(canBeNone=True,
-    allowedValues=['min', 'center', 'max'], makeLowercase=True),
+    typeMetadata=UnicodeStringTypeMetadata(canBeNone=True, allowedValues=['min', 'center', 'max'], makeLowercase=True),
     description=_( 
 """Type of z coordinate to use for the value of the
 :class:`~GeoEco.Datasets.QueryableAttribute` for the z coordinate. For
 example, if increasing positive values of the z coordinate of `grid` indicate
-deeper depths and `tQACoordType` is ``'min'``, the value of the
+deeper depths and `zQACoordType` is ``'min'``, the value of the
 :class:`~GeoEco.Datasets.QueryableAttribute` will be the depth representing
 the shallow edge of the depth slice. If it is ``'center'`` the value will be
 the center depth, and if it is ``'max'`` it will the deep edge."""))
