@@ -182,13 +182,19 @@ class FastMarchingDistanceGrid(Grid):
                     # Mask the slice, compute the fast marching distances, and
                     # store the resulting numpy array as our cached slice.
 
+                    allNoData = False
+
                     if grid.NoDataValue is not None:
+                        allNoData = (sliceData == grid.NoDataValue).all()
                         mask = sliceData == grid.NoDataValue
                         phi = numpy.ma.MaskedArray(phi, mask)
 
                     del sliceData
 
-                    self._CachedSlice = skfmm.distance(phi, dx=grid.CoordIncrements[:])
+                    if not allNoData:
+                        self._CachedSlice = skfmm.distance(phi, dx=grid.CoordIncrements[:])
+                    else:
+                        self._CachedSlice = numpy.zeros(phi.shape, dtype='float64')
 
                     # Apply min and max distances, if any.
 
