@@ -56,6 +56,22 @@ use them and gain automatic logging of basic operations.
     GeoEco.DataManagement.Fields
     GeoEco.DataManagement.Files
 
+Data Products
+-------------
+
+:class:`~GeoEco.Datasets.Grid` and :class:`~GeoEco.Datasets.DatasetCollection`
+wrappers around some commonly-used marine data products. The wrappers allow
+these products to be easily used with the rest of GeoEco, particularly the
+classes and functions in the sub-packages of the :mod:`~GeoEco.Datasets`
+package. The wrappers' documentation include some examples of this.
+
+.. autosummary::
+    :toctree: _autodoc/GeoEco
+    :template: autosummary/module.rst
+    :recursive:
+
+    GeoEco.DataProducts.CMEMS
+
 Spatial and Temporal Analysis
 -----------------------------
 

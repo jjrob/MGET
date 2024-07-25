@@ -16,10 +16,21 @@ import types
 from ..Datasets import QueryableAttribute, Grid
 from ..DynamicDocString import DynamicDocString
 from ..Internationalization import _
+from ..Types import *
 
 
 class CMEMSARCOArray(Grid):
     __doc__ = DynamicDocString()
+
+    def _GetUsername(self):
+        return self._Username
+
+    Username = property(_GetUsername, doc=DynamicDocString())
+
+    def _GetPassword(self):
+        return self._Password
+
+    Password = property(_GetPassword, doc=DynamicDocString())
 
     def _GetDatasetID(self):
         return self._DatasetID
@@ -52,9 +63,17 @@ class CMEMSARCOArray(Grid):
 
         self._CornerCoordTypes = (tCoordType, zCoordType, yCoordType, xCoordType)
 
+        # Define QueryableAttributes for the DatasetID and VariableShortName.
+
+        queryableAttributes = (QueryableAttribute('DatasetID', _('Dataset ID'), UnicodeStringTypeMetadata()),
+                               QueryableAttribute('VariableShortName', _('Variable short name'), UnicodeStringTypeMetadata()))
+
+        queryableAttributeValues = {'DatasetID': datasetID,
+                                    'VariableShortName': variableShortName}
+
         # Initialize the base class.
 
-        super(CMEMSARCOArray, self).__init__()
+        super(CMEMSARCOArray, self).__init__(queryableAttributes=queryableAttributes, queryableAttributeValues=queryableAttributeValues)
 
     def _Close(self):
         pass   # TODO
@@ -654,7 +673,6 @@ class CMEMSARCOArray(Grid):
 
 from ..Dependencies import PythonModuleDependency
 from ..Metadata import *
-from ..Types import *
 
 AddModuleMetadata(
     shortDescription=_('Classes for accessing oceanographic datasets published by `Copernicus Marine Service <https://data.marine.copernicus.eu/products>`_.'),
@@ -665,10 +683,111 @@ AddModuleMetadata(
 ###############################################################################
 
 AddClassMetadata(CMEMSARCOArray,
-    shortDescription=_('A :class:`~GeoEco.Datasets.Grid` for accessing 3D and 4D gridded datasets published by `Copernicus Marine Service <https://data.marine.copernicus.eu/products>`_.'),
+    shortDescription=_('A :class:`~GeoEco.Datasets.Grid` for accessing 2D, 3D, and 4D gridded datasets published by `Copernicus Marine Service <https://data.marine.copernicus.eu/products>`_.'),
     longDescription=_('Copernicus Marine Service is also known as Copernicus Marine Environmental Monitoring Service (CMEMS).'))
 
-# TODO
+# Public properties
+
+AddPropertyMetadata(CMEMSARCOArray.Username,
+    typeMetadata=UnicodeStringTypeMetadata(minLength=1),
+    shortDescription=_('Copernicus Marine Service user name.'))
+
+AddPropertyMetadata(CMEMSARCOArray.Password,
+    typeMetadata=UnicodeStringTypeMetadata(minLength=1),
+    shortDescription=_('Copernicus Marine Service password.'))
+
+AddPropertyMetadata(CMEMSARCOArray.DatasetID,
+    typeMetadata=UnicodeStringTypeMetadata(minLength=1),
+    shortDescription=_(
+"""Dataset ID to access. You can find the Dataset ID by going to the
+`Copernicus Marine Data Store <https://data.marine.copernicus.eu/products>`_,
+viewing your product of interest, clicking on Data Access, and scrolling to
+the Dataset ID table. The dataset must have 2, 3, or 4 dimensions. Two of the
+dimensions must be longitude and latitude. The third and fourth dimension can
+be depth or time."""))
+
+AddPropertyMetadata(CMEMSARCOArray.VariableShortName,
+    typeMetadata=UnicodeStringTypeMetadata(minLength=1),
+    shortDescription=_(
+""""Short name" of the variable to access. You can find the variable's short
+name by going to to the `Copernicus Marine Data Store
+<https://data.marine.copernicus.eu/products>`_, viewing your product of
+interest, clicking on Data Access, scrolling to the Dataset ID table, and
+clicking on Form under the Subset column. When the form appears, look under
+the Variables heading. Each variable has a long description in black font,
+followed by the variable short name and units (in brackets) in a lighter
+color. Do not include the units as part of the short name."""))
+
+# Public constructor: CMEMSARCOArray.__init__
+
+AddMethodMetadata(CMEMSARCOArray.__init__,
+    shortDescription=_('CMEMSARCOArray constructor.'),
+    dependencies=[PythonModuleDependency('numpy', cheeseShopName='numpy'), PythonModuleDependency('copernicusmarine', cheeseShopName='copernicusmarine')])
+
+AddArgumentMetadata(CMEMSARCOArray.__init__, 'self',
+    typeMetadata=ClassInstanceTypeMetadata(cls=CMEMSARCOArray),
+    description=_(':class:`%s` instance.') % CMEMSARCOArray.__name__)
+
+AddArgumentMetadata(CMEMSARCOArray.__init__, 'username',
+    typeMetadata=CMEMSARCOArray.Username.__doc__.Obj.Type,
+    description=CMEMSARCOArray.Username.__doc__.Obj.ShortDescription)
+
+AddArgumentMetadata(CMEMSARCOArray.__init__, 'password',
+    typeMetadata=CMEMSARCOArray.Password.__doc__.Obj.Type,
+    description=CMEMSARCOArray.Password.__doc__.Obj.ShortDescription)
+
+AddArgumentMetadata(CMEMSARCOArray.__init__, 'datasetID',
+    typeMetadata=CMEMSARCOArray.DatasetID.__doc__.Obj.Type,
+    description=CMEMSARCOArray.DatasetID.__doc__.Obj.ShortDescription)
+
+AddArgumentMetadata(CMEMSARCOArray.__init__, 'variableShortName',
+    typeMetadata=CMEMSARCOArray.VariableShortName.__doc__.Obj.Type,
+    description=CMEMSARCOArray.VariableShortName.__doc__.Obj.ShortDescription)
+
+AddArgumentMetadata(CMEMSARCOArray.__init__, 'xCoordType',
+    typeMetadata=UnicodeStringTypeMetadata(allowedValues=['min', 'center', 'max'], makeLowercase=True),
+    description=_(
+"""Whether the longitude coordinates are the left edges (``'min'``), the
+centers (``'center'``), or the right edges (``'max'``) of the cells. This
+varies by dataset but for most Copernicus datasets the longitude coordinates
+are the centers of the cells. To determine the appropriate value for your
+dataset of interest, contact Copernicus or download the dataset to a raster
+and overlay a high resolution shoreline to examine the overlap."""))
+
+AddArgumentMetadata(CMEMSARCOArray.__init__, 'yCoordType',
+    typeMetadata=UnicodeStringTypeMetadata(allowedValues=['min', 'center', 'max'], makeLowercase=True),
+    description=_(
+"""Whether the latitude coordinates are the bottom edges (``'min'``), the
+centers (``'center'``), or the top edges (``'max'``) of the cells. This varies
+by dataset but for most Copernicus datasets the latitude coordinates are the
+centers of the cells. To determine the appropriate value for your dataset of
+interest, contact Copernicus or download the dataset to a raster and overlay a
+high resolution shoreline to examine the overlap."""))
+
+AddArgumentMetadata(CMEMSARCOArray.__init__, 'zCoordType',
+    typeMetadata=UnicodeStringTypeMetadata(allowedValues=['min', 'center', 'max'], makeLowercase=True),
+    description=_(
+"""Whether the depth coordinates are the shallow edges (``'min'``), the
+centers (``'center'``), or the deep edges (``'max'``) of the cells. This
+varies by dataset but for most Copernicus datasets the depth coordinates are
+the centers of the cells. To determine the appropriate value for your dataset
+of interest, contact Copernicus."""))
+
+AddArgumentMetadata(CMEMSARCOArray.__init__, 'tCoordType',
+    typeMetadata=UnicodeStringTypeMetadata(allowedValues=['min', 'center', 'max'], makeLowercase=True),
+    description=_(
+"""Whether the time coordinates are the starting times (``'min'``), the center
+times (``'center'``), or the ending times (``'max'``) of the time slices. This
+varies by dataset but most Copernicus datasets that are "instantaneous" use
+center times, while most datasets that represent mean values (e.g. daily or
+monthly means) use starting times. To determine the appropriate value for your
+dataset of interest, contact Copernicus."""))
+
+CopyArgumentMetadata(Grid.__init__, 'lazyPropertyValues', CMEMSARCOArray.__init__, 'lazyPropertyValues')
+
+AddResultMetadata(CMEMSARCOArray.__init__, 'obj',
+    typeMetadata=ClassInstanceTypeMetadata(cls=CMEMSARCOArray),
+    description=_(':class:`%s` instance.') % CMEMSARCOArray.__name__)
 
 
 ###############################################################################
