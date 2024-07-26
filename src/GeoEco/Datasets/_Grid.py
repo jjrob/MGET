@@ -806,7 +806,7 @@ class Grid(Dataset):
 
         for i in range(len(key)):
             if not isinstance(key[i], (int, slice)) or isinstance(key, bool) or isinstance(key[i], slice) and (not isinstance(key[i].start, (int, type(None))) or not isinstance(key[i].stop, (int, type(None))) or not isinstance(key[i].step, (int, type(None)))):
-                raise IndexError(_('Grid indices must be integers or integer slices.'))
+                raise IndexError(_('%(key)r is an invalid Grid index. Grid indices must be integers or integer slices.') % {'key': key[i]})
             if isinstance(key[i], int):
                 if key[i] >= self.Shape[i]:
                     raise IndexError(_('Index out of bounds for dimension \'%(dim)s\'; %(val)i > dimension length %(len)i.') % {'dim': self.Dimensions[i], 'val': key[i], 'len': self.Shape[i]})

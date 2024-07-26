@@ -351,7 +351,11 @@ class TupleTypeMetadata(SequenceTypeMetadata):
                                                 sphinxMarkup=sphinxMarkup)
 
     def ValidateValue(self, value, variableName, methodLocals=None, argMetadata=None):
-        (valueChanged, value) = super(TupleTypeMetadata, self).ValidateValue(value, variableName, methodLocals, argMetadata)
+        valueChanged = False
+        if isinstance(value, list):
+            value = tuple(value)
+            valueChanged = True
+        (valueChanged2, value) = super(TupleTypeMetadata, self).ValidateValue(value, variableName, methodLocals, argMetadata)
         if value is not None:
             itemsToValidate = min(len(value), self.MaxItemsToValidate)
             if itemsToValidate != len(value):
@@ -364,10 +368,7 @@ class TupleTypeMetadata(SequenceTypeMetadata):
                         value = list(value)
                     value[i] = newElementValue
                     valueChanged = True
-        if isinstance(value, list):
-            value = tuple(value)
-            valueChanged = True
-        return (valueChanged, value)
+        return (valueChanged or valueChanged2, value)
 
     def ParseValueFromArcGISInputParameterString(self, paramString, paramDisplayName, paramIndex):
         resultList = super(TupleTypeMetadata, self).ParseValueFromArcGISInputParameterString(paramString, paramDisplayName, paramIndex)

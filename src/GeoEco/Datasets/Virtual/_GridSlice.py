@@ -9,8 +9,9 @@
 
 from ...DynamicDocString import DynamicDocString
 from ...Internationalization import _
+from ...Types import DateTimeTypeMetadata, FloatTypeMetadata
 
-from .. import Grid
+from .. import Grid, QueryableAttribute
 
 
 class GridSlice(Grid):

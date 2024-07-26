@@ -11,6 +11,7 @@
 
 import datetime
 import math
+import pprint
 import types
 
 from ..Datasets import QueryableAttribute, Grid
@@ -96,6 +97,8 @@ class CMEMSARCOArray(Grid):
         # If we haven't done so already, query the CMEMS catalog with the
         # dataset ID and extract the properties we can get from there.
 
+        debugLines = []
+
         if self._URI is None:
             self._LogInfo('Querying Copernicus Marine Service catalogue for dataset ID "%(datasetID)s".' % {'datasetID': self._DatasetID})
 
@@ -123,361 +126,414 @@ class CMEMSARCOArray(Grid):
             if 'products' not in cat or not isinstance(cat['products'], list):
                 raise RuntimeError(_('The root level of the Copernicus Marine Service catalogue returned by copernicusmarine.describe() does not have a "products" key, or the "products" key does map to a list. This may indicate a problem with Copernicus Marine Service, the copernicusmarine Python package, or MGET. Please contact the MGET development team for assistance.'))
 
-            for product in cat['products']:
-                if not isinstance(product, dict):
-                    self._LogWarning(_('The "products" list at the root level of the Copernicus Marine Service catalogue contains something other than a dictionary. This is unexpected and may indicate a problem with Copernicus Marine Service, the copernicusmarine Python package, or MGET. If your attempt to access this dataset is unsuccessful, contact the MGET development team for assistance.'))
-                    continue
-
-                if 'datasets' not in product:
-                    self._LogWarning(_('The "products" list at the root level of the Copernicus Marine Service catalogue contains a dictionary that does not have a "datasets" key. This is unexpected and may indicate a problem with Copernicus Marine Service, the copernicusmarine Python package, or MGET. If your attempt to access this dataset is unsuccessful, contact the MGET development team for assistance.'))
-                    continue
-
-                for dataset in product['datasets']:
-                    if not isinstance(dataset, dict):
-                        self._LogWarning(_('A "datasets" list in the Copernicus Marine Service catalogue contains something other than a dictionary. This is unexpected and may indicate a problem with Copernicus Marine Service, the copernicusmarine Python package, or MGET. If your attempt to access this dataset is unsuccessful, contact the MGET development team for assistance.'))
+            try:
+                for product in cat['products']:
+                    if not isinstance(product, dict):
+                        self._LogWarning(_('The "products" list at the root level of the Copernicus Marine Service catalogue contains something other than a dictionary. This is unexpected and may indicate a problem with Copernicus Marine Service, the copernicusmarine Python package, or MGET. If your attempt to access this dataset is unsuccessful, contact the MGET development team for assistance.'))
                         continue
 
-                    if 'dataset_id' not in dataset:
-                        self._LogWarning(_('A "datasets" list in the Copernicus Marine Service catalogue contains a dictionary that does not have a "dataset_id" key. This is unexpected and may indicate a problem with Copernicus Marine Service, the copernicusmarine Python package, or MGET. If your attempt to access this dataset is unsuccessful, contact the MGET development team for assistance.'))
+                    if 'datasets' not in product:
+                        self._LogWarning(_('The "products" list at the root level of the Copernicus Marine Service catalogue contains a dictionary that does not have a "datasets" key. This is unexpected and may indicate a problem with Copernicus Marine Service, the copernicusmarine Python package, or MGET. If your attempt to access this dataset is unsuccessful, contact the MGET development team for assistance.'))
                         continue
 
-                    if dataset['dataset_id'] != self._DatasetID:
-                        continue
+                    try:
+                        debugLines.extent(pprint.pformat(product['datasets'], width=160).split('\n'))
+                    except:
+                        pass
 
-                    if 'versions' not in dataset or not isinstance(dataset['versions'], list) or len(dataset['versions']) <= 0:
-                        self._LogWarning(_('In the Copernicus Marine Service catalogue, the dataset dictionary for the "%(datasetID)s" dataset does not contain a "versions" key, or that key does not map to a list, or that list is empty. This is unexpected and may indicate a problem with Copernicus Marine Service, the copernicusmarine Python package, or MGET. If your attempt to access this dataset is unsuccessful, contact the MGET development team for assistance.') % {'datasetID': self._DatasetID})
-                        continue
-
-                    # The catalogue appears to support multiple versions of a
-                    # given dataset, but we have not seen this in practice yet.
-                    # For now, if there are multiple versions, attempt to access
-                    # the latest one by finding the 'label' with the highest
-                    # lexical value.
-
-                    best = 0
-
-                    if len(dataset['versions']) > 1:
-                        if 'label' not in dataset['versions'][best] or not isinstance(dataset['versions'][best]['label']) or len(dataset['versions'][best]['label']) <= 0:
-                            self._LogWarning(_('In the Copernicus Marine Service catalogue, the dataset dictionary for the "%(datasetID)s" contains a version with no "label", or the label is not a string, or the string is empty. This is unexpected and may indicate a problem with Copernicus Marine Service, the copernicusmarine Python package, or MGET. If your attempt to access this dataset is unsuccessful, contact the MGET development team for assistance.') % {'datasetID': self._DatasetID})
-                        else:
-                            for i in range(1, len(dataset['versions'])):
-                                if 'label' not in dataset['versions'][i] or not isinstance(dataset['versions'][i]['label']) or len(dataset['versions'][i]['label']) <= 0:
-                                    self._LogWarning(_('In the Copernicus Marine Service catalogue, the dataset dictionary for the "%(datasetID)s" contains a version with no "label", or the label is not a string, or the string is empty. This is unexpected and may indicate a problem with Copernicus Marine Service, the copernicusmarine Python package, or MGET. If your attempt to access this dataset is unsuccessful, contact the MGET development team for assistance.') % {'datasetID': self._DatasetID})
-                                    continue
-
-                                if best is None or dataset['versions'][i]['label'] > dataset['versions'][best]['label']:
-                                    best = i
-
-                    version = dataset['versions'][best]
-
-                    # Similarly, a given version can have multiple "parts", but
-                    # we've never seen more than one and don't know what they're
-                    # for. In this case, just take the last part in the list and
-                    # search through its services.
-
-                    if 'parts' not in version or not isinstance(version['parts'], list) or len(version['parts']) <= 0:
-                        self._LogWarning(_('In the Copernicus Marine Service catalogue, the dataset dictionary for the "%(datasetID)s" contains a version dictionary with no "parts" key, or that key does not map to a list, or that list is empty. This is unexpected and may indicate a problem with Copernicus Marine Service, the copernicusmarine Python package, or MGET. If your attempt to access this dataset is unsuccessful, contact the MGET development team for assistance.') % {'datasetID': self._DatasetID})
-                        continue
-
-                    if not isinstance(version['parts'][-1], dict) or not 'services' in version['parts'][-1] or not isinstance(version['parts'][-1]['services'], list) or len(version['parts'][-1]['services']) <= 0:
-                        self._LogWarning(_('In the Copernicus Marine Service catalogue, the dataset dictionary for the "%(datasetID)s" contains a version dictionary in which the last item in the parts list is not a dictionary, or that dictionary does not contain a "services" key, or that key does not map to a list, or that list is empty. This is unexpected and may indicate a problem with Copernicus Marine Service, the copernicusmarine Python package, or MGET. If your attempt to access this dataset is unsuccessful, contact the MGET development team for assistance.') % {'datasetID': self._DatasetID})
-                        continue
-
-                    for s in version['parts'][-1]['services']:
-                        if not isinstance(s, dict):
-                            self._LogWarning(_('In the Copernicus Marine Service catalogue, the dataset dictionary for the "%(datasetID)s" contains a services list that contains something other than a dictionary. This is unexpected and may indicate a problem with Copernicus Marine Service, the copernicusmarine Python package, or MGET. If your attempt to access this dataset is unsuccessful, contact the MGET development team for assistance.') % {'datasetID': self._DatasetID})
+                    for dataset in product['datasets']:
+                        if not isinstance(dataset, dict):
+                            self._LogWarning(_('A "datasets" list in the Copernicus Marine Service catalogue contains something other than a dictionary. This is unexpected and may indicate a problem with Copernicus Marine Service, the copernicusmarine Python package, or MGET. If your attempt to access this dataset is unsuccessful, contact the MGET development team for assistance.'))
                             continue
 
-                        if any([key not in s for key in ['service_format', 'service_type', 'uri', 'variables']]) or \
-                           not isinstance(s['service_format'], (str, types.NoneType)) or \
-                           not isinstance(s['service_type'], dict) or 'service_name' not in s['service_type'] or \
-                           not isinstance(s['uri'], str) or len(s['uri']) <= 0 or \
-                           not isinstance(s['variables'], list) or len(s['variables']) <= 0 or \
-                           any([not isinstance(v, dict) or \
-                                not 'short_name' in v or not isinstance(v['short_name'], str) or len(v['short_name']) <= 0 or \
-                                not 'standard_name' in v or not isinstance(v['standard_name'], str) or len(v['standard_name']) <= 0 or \
-                                not 'coordinates' in v or not isinstance(v['coordinates'], list) \
-                                for v in s['variables']]):
-                            self._LogWarning(_('In the Copernicus Marine Service catalogue, the dataset dictionary for the "%(datasetID)s" contains a services list that contains a dictionary that does not contain all the required keys or has some unexpected values. This is unexpected and may indicate a problem with Copernicus Marine Service, the copernicusmarine Python package, or MGET. If your attempt to access this dataset is unsuccessful, contact the MGET development team for assistance.') % {'datasetID': self._DatasetID})
+                        if 'dataset_id' not in dataset:
+                            self._LogWarning(_('A "datasets" list in the Copernicus Marine Service catalogue contains a dictionary that does not have a "dataset_id" key. This is unexpected and may indicate a problem with Copernicus Marine Service, the copernicusmarine Python package, or MGET. If your attempt to access this dataset is unsuccessful, contact the MGET development team for assistance.'))
                             continue
 
-                        for v in s['variables']:
-                            if v['short_name'] == self._VariableShortName and s['service_format'] == 'zarr' and s['service_type']['service_name'] == 'arco-geo-series':
-                                if service is not None:
-                                    self._LogWarning(_('The Copernicus Marine Service catalogue contains multiple datasets with the ID "%(datasetID)s", or the the metadata for that dataset contains multiple "arco-geo-series" services, or the service contains multiple variables named "%(var)s". This is unexpected and may indicate a problem with Copernicus Marine Service, the copernicusmarine Python package, or MGET. The first variable of the first service for the first dataset will be used. Check your results carefully. If you suspect a problem, contact the MGET development team for assistance.') % {'datasetID': self._DatasetID, 'var': self._VariableShortName})
-                                    continue
-                                else:
-                                    service = s
-                                    variable = v
+                        if dataset['dataset_id'] != self._DatasetID:
+                            continue
 
-            # Extract the lazy property values from the service and variable
-            # records. First, determine the dimensions. Note that we can't
-            # determine the *physical* dimension order from the catalogue
-            # record. For that, we need to open the dataset itself.
+                        if 'versions' not in dataset or not isinstance(dataset['versions'], list) or len(dataset['versions']) <= 0:
+                            self._LogWarning(_('In the Copernicus Marine Service catalogue, the dataset dictionary for the "%(datasetID)s" dataset does not contain a "versions" key, or that key does not map to a list, or that list is empty. This is unexpected and may indicate a problem with Copernicus Marine Service, the copernicusmarine Python package, or MGET. If your attempt to access this dataset is unsuccessful, contact the MGET development team for assistance.') % {'datasetID': self._DatasetID})
+                            continue
 
-            coordinates = {}
+                        # The catalogue appears to support multiple versions of a
+                        # given dataset, but we have not seen this in practice yet.
+                        # For now, if there are multiple versions, attempt to access
+                        # the latest one by finding the 'label' with the highest
+                        # lexical value.
 
-            for coord in variable['coordinates']:
-                if not isinstance(coord, dict) or not 'coordinates_id' in coord:
-                    raise RuntimeError(_('In the Copernicus Marine Service catalogue, the coordinates dictionary for the "%(var)s" variable of the "%(datasetID)s" contains an item that is not a dictionary, or that dictionary does not contain a "coordinates_id" key. This is unexpected and may indicate a problem with Copernicus Marine Service, the copernicusmarine Python package, or MGET. Please contact the MGET development team for assistance.') % {'datasetID': self._DatasetID, 'var': self._VariableShortName})
-                if coord['coordinates_id'] not in ('time', 'depth', 'latitude', 'longitude'):
-                    raise RuntimeError(_('In the Copernicus Marine Service catalogue, the coordinates dictionary for the "%(var)s" variable of the "%(datasetID)s" contains a coordinate named "%(coord)s". MGET does not recognize this coordinate and therefore cannot process this dataset. MGET can only recognize coordinates named "time", "depth", "latitude", and "longitude". Please check your dataset ID and variable name to ensure they are correct. If they are and you believe MGET should be able to handle this unrecognized coordinate, please contact the MGET development team for assistance.') % {'datasetID': self._DatasetID, 'var': self._VariableShortName, 'coord': coord['coordinates_id']})
-                if coord['coordinates_id'] in coordinates:
-                    raise RuntimeError(_('In the Copernicus Marine Service catalogue, the coordinates dictionary for the "%(var)s" variable of the "%(datasetID)s" contains more than one coordinate named "%(coord)s". This is unexpected and may indicate a problem with Copernicus Marine Service, the copernicusmarine Python package, or MGET. Please contact the MGET development team for assistance.') % {'datasetID': self._DatasetID, 'var': self._VariableShortName, 'coord': coord['coordinates_id']})
-                coordinates[coord['coordinates_id']] = coord
+                        best = 0
 
-            dimensions = ''
-            if 'time' in coordinates:
-                dimensions += 't'
-            if 'depth' in coordinates:
-                dimensions += 'z'
-            if 'latitude' in coordinates:
-                dimensions += 'y'
-            if 'longitude' in coordinates:
-                dimensions += 'x'
+                        if len(dataset['versions']) > 1:
+                            if 'label' not in dataset['versions'][best] or not isinstance(dataset['versions'][best]['label']) or len(dataset['versions'][best]['label']) <= 0:
+                                self._LogWarning(_('In the Copernicus Marine Service catalogue, the dataset dictionary for the "%(datasetID)s" contains a version with no "label", or the label is not a string, or the string is empty. This is unexpected and may indicate a problem with Copernicus Marine Service, the copernicusmarine Python package, or MGET. If your attempt to access this dataset is unsuccessful, contact the MGET development team for assistance.') % {'datasetID': self._DatasetID})
+                            else:
+                                for i in range(1, len(dataset['versions'])):
+                                    if 'label' not in dataset['versions'][i] or not isinstance(dataset['versions'][i]['label']) or len(dataset['versions'][i]['label']) <= 0:
+                                        self._LogWarning(_('In the Copernicus Marine Service catalogue, the dataset dictionary for the "%(datasetID)s" contains a version with no "label", or the label is not a string, or the string is empty. This is unexpected and may indicate a problem with Copernicus Marine Service, the copernicusmarine Python package, or MGET. If your attempt to access this dataset is unsuccessful, contact the MGET development team for assistance.') % {'datasetID': self._DatasetID})
+                                        continue
 
-            if dimensions not in ['yx', 'zyx', 'tyx', 'tzyx']:
-                raise RuntimeError(_('In the Copernicus Marine Service catalogue, the "%(var)s" variable of the "%(datasetID)s" has the coordinates: %(coords)s. This combination of coordinates is unsupported by MGET. Please check whether this was the dataset and variable you intended to access. For additional assistance, contact the MGET development team.') % {'datasetID': self._DatasetID, 'var': self._VariableShortName, 'coords': ', '.join(coordinates)})
+                                    if best is None or dataset['versions'][i]['label'] > dataset['versions'][best]['label']:
+                                        best = i
 
-            # Determine Shape, CoordIncrements, and CornerCoords. Start with
-            # the x coordinate.
+                        version = dataset['versions'][best]
 
-            shape = [None] * len(dimensions)
-            cornerCoords = [None] * len(dimensions)
-            coordIncrements = [None] * len(dimensions)
+                        # Similarly, a given version can have multiple "parts", but
+                        # we've never seen more than one and don't know what they're
+                        # for. In this case, just take the last part in the list and
+                        # search through its services.
 
-            for key in ['step', 'minimum_value', 'maximum_value']:
-                for coord in ['longitude', 'latitude']:
-                    if key not in coordinates[coord] or not isinstance(coordinates[coord][key], (float, int)):
-                        raise RuntimeError(_('In the Copernicus Marine Service catalogue, the %(coord)s coordinate of the %(var)s" variable of the "%(datasetID)s" does not have a "%(attr)s" attribute, or that attribute is not a numeric value. MGET may not be compatible with this dataset, or there may be problem with Copernicus Marine Service or the copernicusmarine Python package. Please contact the MGET development team for assistance.') % {'datasetID': self._DatasetID, 'var': self._VariableShortName, 'coord': coord, 'attr': key})
+                        if 'parts' not in version or not isinstance(version['parts'], list) or len(version['parts']) <= 0:
+                            self._LogWarning(_('In the Copernicus Marine Service catalogue, the dataset dictionary for the "%(datasetID)s" contains a version dictionary with no "parts" key, or that key does not map to a list, or that list is empty. This is unexpected and may indicate a problem with Copernicus Marine Service, the copernicusmarine Python package, or MGET. If your attempt to access this dataset is unsuccessful, contact the MGET development team for assistance.') % {'datasetID': self._DatasetID})
+                            continue
 
-            xExtent = float(coordinates['longitude']['maximum_value']) - coordinates['longitude']['minimum_value'] + coordinates['longitude']['step']
-            shape[-1] = int(round(xExtent / coordinates['longitude']['step']))
+                        if not isinstance(version['parts'][-1], dict) or not 'services' in version['parts'][-1] or not isinstance(version['parts'][-1]['services'], list) or len(version['parts'][-1]['services']) <= 0:
+                            self._LogWarning(_('In the Copernicus Marine Service catalogue, the dataset dictionary for the "%(datasetID)s" contains a version dictionary in which the last item in the parts list is not a dictionary, or that dictionary does not contain a "services" key, or that key does not map to a list, or that list is empty. This is unexpected and may indicate a problem with Copernicus Marine Service, the copernicusmarine Python package, or MGET. If your attempt to access this dataset is unsuccessful, contact the MGET development team for assistance.') % {'datasetID': self._DatasetID})
+                            continue
 
-            # Check whether the dataset spans about 360 degrees. If so,
-            # recompute the step value. We have noticed that products such as
-            # GLOBAL_ANALYSISFORECAST_PHY_001_024 contain a 'step' value that
-            # is not very precise. If we use their 'step' as our
-            # coordIncrement, the grid will not span exactly 360 degrees,
-            # which will cause problems for some users.
+                        for s in version['parts'][-1]['services']:
+                            if not isinstance(s, dict):
+                                self._LogWarning(_('In the Copernicus Marine Service catalogue, the dataset dictionary for the "%(datasetID)s" contains a services list that contains something other than a dictionary. This is unexpected and may indicate a problem with Copernicus Marine Service, the copernicusmarine Python package, or MGET. If your attempt to access this dataset is unsuccessful, contact the MGET development team for assistance.') % {'datasetID': self._DatasetID})
+                                continue
 
-            if abs(360 - xExtent) != 0 and abs(360 - xExtent) / coordinates['longitude']['step'] < 0.001:
-                coordIncrements[-1] = 360. / round(360. / coordinates['longitude']['step'])
-                self._LogDebug('%(class)s 0x%(id)016X: For the longitude coordinate, step=%(step)r, minimum_value=%(min)r, and maximum_value=%(max)r, which yields an extent of %(extent)s. Recomputing step as %(step2)r.' % {'class': self.__class__.__name__, 'id': id(self), 'step': coordinates['longitude']['step'], 'min': coordinates['longitude']['minimum_value'], 'max': coordinates['longitude']['maximum_value'], 'extent': xExtent, 'step2': coordIncrements[-1]})
-            else:
-                coordIncrements[-1] = float(coordinates['longitude']['step'])
+                            if any([key not in s for key in ['service_format', 'service_type', 'uri', 'variables']]) or \
+                               not isinstance(s['service_format'], (str, types.NoneType)) or \
+                               not isinstance(s['service_type'], dict) or 'service_name' not in s['service_type'] or \
+                               not isinstance(s['uri'], str) or len(s['uri']) <= 0 or \
+                               not isinstance(s['variables'], list) or len(s['variables']) <= 0 or \
+                               any([not isinstance(v, dict) or \
+                                    not 'short_name' in v or not isinstance(v['short_name'], str) or len(v['short_name']) <= 0 or \
+                                    not 'standard_name' in v or not isinstance(v['standard_name'], (str, types.NoneType)) or \
+                                    not 'coordinates' in v or not isinstance(v['coordinates'], list) \
+                                    for v in s['variables']]):
+                                self._LogWarning(_('In the Copernicus Marine Service catalogue, the dataset dictionary for the "%(datasetID)s" contains a services list that contains a dictionary that does not contain all the required keys or has some unexpected values. This is unexpected and may indicate a problem with Copernicus Marine Service, the copernicusmarine Python package, or MGET. If your attempt to access this dataset is unsuccessful, contact the MGET development team for assistance.') % {'datasetID': self._DatasetID})
+                                continue
 
-            cornerCoords[-1] = float(coordinates['longitude']['minimum_value'])
-            if self._CornerCoordTypes[-1] == 'min':
-                cornerCoords[-1] += coordIncrements[-1] / 2
-            elif self._CornerCoordTypes[-1] == 'max':
-                cornerCoords[-1] -= coordIncrements[-1] / 2
+                            for v in s['variables']:
+                                if v['short_name'] == self._VariableShortName and s['service_format'] == 'zarr' and s['service_type']['service_name'] == 'arco-geo-series':
+                                    if service is not None:
+                                        self._LogWarning(_('The Copernicus Marine Service catalogue contains multiple datasets with the ID "%(datasetID)s", or the the metadata for that dataset contains multiple "arco-geo-series" services, or the service contains multiple variables named "%(var)s". This is unexpected and may indicate a problem with Copernicus Marine Service, the copernicusmarine Python package, or MGET. The first variable of the first service for the first dataset will be used. Check your results carefully. If you suspect a problem, contact the MGET development team for assistance.') % {'datasetID': self._DatasetID, 'var': self._VariableShortName})
+                                        continue
+                                    else:
+                                        service = s
+                                        variable = v
 
-            # Handle the y coordinate. 
+                # Fail if we didn't find anything.
 
-            yExtent = float(coordinates['latitude']['maximum_value']) - coordinates['latitude']['minimum_value'] + coordinates['latitude']['step']
-            shape[-2] = int(round(yExtent / coordinates['latitude']['step']))
+                if service is None:
+                    raise RuntimeError(_('Could not find a suitable service in the Copernicus Marine Service catalogue from which to access the "%(var)s" variable of the "%(datasetID)s" dataset. If any warnings were reported above, they may indicate why. If none were reported, it may be that the dataset or variable does not exist. Please the dataset ID and variable name carefully.') % {'datasetID': self._DatasetID, 'var': self._VariableShortName})
 
-            cornerCoords[-2] = float(coordinates['latitude']['minimum_value'])
-            if self._CornerCoordTypes[-2] == 'min':
-                cornerCoords[-2] += coordIncrements[-2] / 2
-            elif self._CornerCoordTypes[-2] == 'max':
-                cornerCoords[-2] -= coordIncrements[-2] / 2
+                # Extract the lazy property values from the service and variable
+                # records. First, determine the dimensions. Note that we can't
+                # determine the *physical* dimension order from the catalogue
+                # record. For that, we need to open the dataset itself.
 
-            coordIncrements[-2] = float(coordinates['latitude']['step'])   # We have not noticed a problem with the latitude 'step' like we did for longitude
+                coordinates = {}
 
-            # Some datasets such as GLOBAL_ANALYSISFORECAST_PHY_001_024 are
-            # node registered rather than cell registered, which means their
-            # bottom-most row might be centered at -90.0 or the top most at
-            # +90.0. We don't like this, because it means the grid extends
-            # below -90.0 or above +90.0, which is impossible. Check for this
-            # and move up and/or down one cell as needed to keep the grid
-            # within +/- 90.0
+                for coord in variable['coordinates']:
+                    if not isinstance(coord, dict) or not 'coordinates_id' in coord:
+                        raise RuntimeError(_('In the Copernicus Marine Service catalogue, the coordinates dictionary for the "%(var)s" variable of the "%(datasetID)s" contains an item that is not a dictionary, or that dictionary does not contain a "coordinates_id" key. This is unexpected and may indicate a problem with Copernicus Marine Service, the copernicusmarine Python package, or MGET. Please contact the MGET development team for assistance.') % {'datasetID': self._DatasetID, 'var': self._VariableShortName})
+                    if coord['coordinates_id'] not in ('time', 'depth', 'latitude', 'longitude'):
+                        raise RuntimeError(_('In the Copernicus Marine Service catalogue, the coordinates dictionary for the "%(var)s" variable of the "%(datasetID)s" contains a coordinate named "%(coord)s". MGET does not recognize this coordinate and therefore cannot process this dataset. MGET can only recognize coordinates named "time", "depth", "latitude", and "longitude". Please check your dataset ID and variable name to ensure they are correct. If they are and you believe MGET should be able to handle this unrecognized coordinate, please contact the MGET development team for assistance.') % {'datasetID': self._DatasetID, 'var': self._VariableShortName, 'coord': coord['coordinates_id']})
+                    if coord['coordinates_id'] in coordinates:
+                        raise RuntimeError(_('In the Copernicus Marine Service catalogue, the coordinates dictionary for the "%(var)s" variable of the "%(datasetID)s" contains more than one coordinate named "%(coord)s". This is unexpected and may indicate a problem with Copernicus Marine Service, the copernicusmarine Python package, or MGET. Please contact the MGET development team for assistance.') % {'datasetID': self._DatasetID, 'var': self._VariableShortName, 'coord': coord['coordinates_id']})
+                    coordinates[coord['coordinates_id']] = coord
 
-            cellsUpFromBottom = 0
-            while cornerCoords[-2] - coordIncrements[-2]/2 < -90.:
-                cellsUpFromBottom += 1
-                shape[-2] -= 1
-                cornerCoords[-2] += coordIncrements[-2]
-            if cellsUpFromBottom > 0:
-                self._LogDebug('%(class)s 0x%(id)016X: The bottom edge of the bottom row of this dataset is %(orig)r, which is less than -90.0. Omitting the bottom-most %(skip)i row(s) of this dataset, so the bottom edge will be >= -90.0.' % {'class': self.__class__.__name__, 'id': id(self), 'orig': float(coordinates['latitude']['minimum_value']), 'skip': cellsUpFromBottom})
+                dimensions = ''
+                if 'time' in coordinates:
+                    dimensions += 't'
+                if 'depth' in coordinates:
+                    dimensions += 'z'
+                if 'latitude' in coordinates:
+                    dimensions += 'y'
+                if 'longitude' in coordinates:
+                    dimensions += 'x'
 
-            cellsDownFromTop = 0
-            while cornerCoords[-2] + (shape[-2] - 1)*coordIncrements[-2] + coordIncrements[-2]/2 > 90.:
-                cellsDownFromTop += 1
-                shape[-2] -= 1
-            if cellsDownFromTop > 0:
-                self._LogDebug('%(class)s 0x%(id)016X: The top edge of the top row of this dataset is %(orig)r, which is greater than 90.0. Omitting the top-most %(skip)i row(s) of this dataset, so the top edge will be <= 90.0.' % {'class': self.__class__.__name__, 'id': id(self), 'orig': cornerCoords[-2] + (shape[-2] - 1 + cellsDownFromTop)*coordIncrements[-2] + coordIncrements[-2]/2, 'skip': cellsDownFromTop})
+                if dimensions not in ['yx', 'zyx', 'tyx', 'tzyx']:
+                    raise RuntimeError(_('In the Copernicus Marine Service catalogue, the "%(var)s" variable of the "%(datasetID)s" has the coordinates: %(coords)s. This combination of coordinates is unsupported by MGET. Please check whether this was the dataset and variable you intended to access. For additional assistance, contact the MGET development team.') % {'datasetID': self._DatasetID, 'var': self._VariableShortName, 'coords': ', '.join(coordinates)})
 
-            # Handle the z coordinate.
+                # Determine Shape, CoordIncrements, and CornerCoords. Start with
+                # the x coordinate.
 
-            zCoords = None
+                shape = [None] * len(dimensions)
+                cornerCoords = [None] * len(dimensions)
+                coordIncrements = [None] * len(dimensions)
 
-            if 'z' in dimensions:
-                if 'values' in coordinates['depth'] and isinstance(coordinates['depth']['values'], list) and len(coordinates['depth']['values']) > 0:
-                    numPositive = 0
-                    for value in coordinates['depth']['values']:
-                        if not isinstance(value, (float, int)):
-                            raise RuntimeError(_('In the Copernicus Marine Service catalogue, the %(coord)s coordinate of the %(var)s" variable of the "%(datasetID)s" contains an item that is not a numerical value. This is unexpected and indicates there may be problem with Copernicus Marine Service, the copernicusmarine Python package, or MGET. Please contact the MGET development team for assistance.') % {'datasetID': self._DatasetID, 'var': self._VariableShortName, 'coord': 'depth'})
-                        if value >= 0:
-                            numPositive += 1
-                    if numPositive > 0 and numPositive < len(coordinates['depth']['values']):
-                        raise RuntimeError(_('In the Copernicus Marine Service catalogue, the %(coord)s coordinate of the %(var)s" variable of the "%(datasetID)s" contains both positive and negative values. This is unexpected and indicates there may be problem with Copernicus Marine Service, the copernicusmarine Python package, or MGET. Please contact the MGET development team for assistance.') % {'datasetID': self._DatasetID, 'var': self._VariableShortName, 'coord': 'depth'})
-
-                    zCoords = [abs(depth) for depth in coordinates['depth']['values']]
-                    if not all([zCoords[i+1] > zCoords[i] for i in range(len(zCoords)-1)]) and not all([zCoords[i+1] < zCoords[i] for i in range(len(zCoords)-1)]):
-                        raise RuntimeError(_('In the Copernicus Marine Service catalogue, the %(coord)s coordinate of the %(var)s" variable of the "%(datasetID)s" is neither monotonically increasing nor monotonically decreasing. This is unexpected and indicates there may be problem with Copernicus Marine Service, the copernicusmarine Python package, or MGET. Please contact the MGET development team for assistance. The coordinate values are: %(values)s') % {'datasetID': self._DatasetID, 'var': self._VariableShortName, 'coord': 'depth', 'values': ', '.join(repr(val) for val in coordinates['depth']['values'])})
-
-                    zCoords.sort()      # zCoords are now guaranteed to be positive and in ascending order
-
-                    shape[-3] = len(zCoords)
-                    cornerCoords[-3] = None
-                    coordIncrements[-3] = None
-
-                else:
-                    raise RuntimeError(_('In the Copernicus Marine Service catalogue, the %(coord)s coordinate of the %(var)s" variable of the "%(datasetID)s" does not have a "values" list. Currently, MGET only supports datasets that explicitly list their depth coordinate values. Please contact the MGET development team for assistance.') % {'datasetID': self._DatasetID, 'var': self._VariableShortName, 'coord': 'depth'})
-
-            # Handle the t coordinate.
-
-            tIncrementUnit = None
-
-            if 't' in dimensions:
-
-                # Parse the units attribute.
-
-                if 'units' not in coordinates['time'] or not isinstance(coordinates['time']['units'], str):
-                    raise RuntimeError(_('In the Copernicus Marine Service catalogue, the "time" coordinate of the %(var)s" variable of the "%(datasetID)s" does not have a "units" attribute, or that attribute is not a numeric value. MGET may not be compatible with this dataset, or there may be problem with Copernicus Marine Service or the copernicusmarine Python package. Please contact the MGET development team for assistance.') % {'datasetID': self._DatasetID, 'var': self._VariableShortName})
-
-                units = coordinates['time']['units'].lower().split()
-                if len(units) < 4 or units[0] not in ['milliseconds', 'seconds', 'minutes', 'hours', 'days'] or units[1] != 'since':
-                    raise RuntimeError(_('In the Copernicus Marine Service catalogue, for the "time" coordinate of the %(var)s" variable of the "%(datasetID)s", the value of the "units" attribute, "%(units)s", could not be parsed. MGET may not be compatible with this dataset, or there may be problem with Copernicus Marine Service or the copernicusmarine Python package. Please contact the MGET development team for assistance.') % {'datasetID': self._DatasetID, 'var': self._VariableShortName, 'units': coordinates['time']['units']})
-
-                try:
-                    since = datetime.datetime.strptime((units[2] + ' ' + units[3])[:19], '%Y-%m-%d %H:%M:%S')
-                except:
-                    raise RuntimeError(_('In the Copernicus Marine Service catalogue, for the "time" coordinate of the %(var)s" variable of the "%(datasetID)s", the value of the "units" attribute, "%(units)s", could not be parsed. MGET may not be compatible with this dataset, or there may be problem with Copernicus Marine Service or the copernicusmarine Python package. Please contact the MGET development team for assistance.') % {'datasetID': self._DatasetID, 'var': self._VariableShortName, 'units': coordinates['time']['units']})
-
-                # Handle times being provided with a constant step.
-
-                constantStep = True
                 for key in ['step', 'minimum_value', 'maximum_value']:
-                    if key not in coordinates['time'] or not isinstance(coordinates['time'][key], (float, int)):
-                        constantStep = False
+                    for coord in ['longitude', 'latitude']:
+                        if key not in coordinates[coord] or not isinstance(coordinates[coord][key], (float, int)):
+                            raise RuntimeError(_('In the Copernicus Marine Service catalogue, the %(coord)s coordinate of the %(var)s" variable of the "%(datasetID)s" does not have a "%(attr)s" attribute, or that attribute is not a numeric value. MGET may not be compatible with this dataset, or there may be problem with Copernicus Marine Service or the copernicusmarine Python package. Please contact the MGET development team for assistance.') % {'datasetID': self._DatasetID, 'var': self._VariableShortName, 'coord': coord, 'attr': key})
 
-                if constantStep:
-                    numSteps = (coordinates['time']['maximum_value'] - coordinates['time']['minimum_value'] + coordinates['time']['step']) / coordinates['time']['step']
-                    if numSteps % 1 != 0:
-                        self._LogWarning(_('In the Copernicus Marine Service catalogue, for the "time" coordinate of the %(var)s" variable of the "%(datasetID)s", the "maximum_value" minus the "minimum_value" is not evenly divisible by the "step". This is unexpected but MGET will proceed with accessing the dataset. Check your results carefully. If you suspect a problem, please contact the MGET development team for assistance.') % {'datasetID': self._DatasetID, 'var': self._VariableShortName})
+                xExtent = float(coordinates['longitude']['maximum_value']) - coordinates['longitude']['minimum_value'] + coordinates['longitude']['step']
+                shape[-1] = int(round(xExtent / coordinates['longitude']['step']))
 
-                    shape[0] = int(math.trunc(numSteps))
-                    coordIncrements[0] = float(coordinates['time']['step'])
+                # Check whether the dataset spans about 360 degrees. If so,
+                # recompute the step value. We have noticed that products such as
+                # GLOBAL_ANALYSISFORECAST_PHY_001_024 contain a 'step' value that
+                # is not very precise. If we use their 'step' as our
+                # coordIncrement, the grid will not span exactly 360.0 degrees,
+                # which will cause problems for some users.
 
-                    if units[0] == 'milliseconds':
-                        tIncrementUnit = 'second'    # We don't support milliseconds; convert to seconds
-                        cornerCoords[0] = since + datetime.timedelta(milliseconds=coordinates['time']['minimum_value'])
-                        coordIncrements[0] = coordIncrements[0] / 1000
+                if abs(360 - xExtent) != 0 and abs(360 - xExtent) / coordinates['longitude']['step'] < 0.001:
+                    coordIncrements[-1] = 360. / round(360. / coordinates['longitude']['step'])
+                    self._LogDebug('%(class)s 0x%(id)016X: For the longitude coordinate, step=%(step)r, minimum_value=%(min)r, and maximum_value=%(max)r, which yields an extent of %(extent)s. Recomputing step as %(step2)r.' % {'class': self.__class__.__name__, 'id': id(self), 'step': coordinates['longitude']['step'], 'min': coordinates['longitude']['minimum_value'], 'max': coordinates['longitude']['maximum_value'], 'extent': xExtent, 'step2': coordIncrements[-1]})
+                else:
+                    coordIncrements[-1] = float(coordinates['longitude']['step'])
 
-                    elif units[0] == 'seconds':
-                        tIncrementUnit = 'second'
-                        cornerCoords[0] = since + datetime.timedelta(seconds=coordinates['time']['minimum_value'])
+                cornerCoords[-1] = float(coordinates['longitude']['minimum_value'])
+                if self._CornerCoordTypes[-1] == 'min':
+                    cornerCoords[-1] += coordIncrements[-1] / 2
+                elif self._CornerCoordTypes[-1] == 'max':
+                    cornerCoords[-1] -= coordIncrements[-1] / 2
 
-                    elif units[0] == 'minutes':
-                        tIncrementUnit = 'minute'
-                        cornerCoords[0] = since + datetime.timedelta(minutes=coordinates['time']['minimum_value'])
+                # If the dataset spans 360 degrees and the left edge is very
+                # close to but not exactly -180.0 or 0.0, set it to -180.0 or
+                # 0.0, repectively. There appears to be a precision or
+                # rounding issue with certain datasets that causes this. It
+                # will be problematic to our users.
 
-                    elif units[0] == 'hours':
-                        tIncrementUnit = 'hour'
-                        cornerCoords[0] = since + datetime.timedelta(hours=coordinates['time']['minimum_value'])
+                if shape[-1] * coordIncrements[-1] == 360.:
+                    if abs(cornerCoords[-1] - coordIncrements[-1] / 2 + 180.) / coordIncrements[-1] < 0.001:
+                        self._LogDebug('%(class)s 0x%(id)016X: The minimum_value of the longitude coordinate %(min)r yields a left edge of %(left)r, which is very close to but not exactly -180.0. This is probably a precision or rounding error at Copernicus. Setting the left edge to -180.0.' % {'class': self.__class__.__name__, 'id': id(self), 'min': coordinates['longitude']['minimum_value'], 'left': cornerCoords[-1] - coordIncrements[-1] / 2})
+                        cornerCoords[-1] = -180. + coordIncrements[-1] / 2
+                    elif abs(cornerCoords[-1] - coordIncrements[-1] / 2) / coordIncrements[-1] < 0.001:
+                        self._LogDebug('%(class)s 0x%(id)016X: The minimum_value of the longitude coordinate %(min)r yields a left edge of %(left)r, which is very close to but not exactly 0.0. This is probably a precision or rounding error at Copernicus. Setting the left edge to -180.0.' % {'class': self.__class__.__name__, 'id': id(self), 'min': coordinates['longitude']['minimum_value'], 'left': cornerCoords[-1] - coordIncrements[-1] / 2})
+                        cornerCoords[-1] = coordIncrements[-1] / 2
 
-                    elif units[0] == 'days':
-                        tIncrementUnit = 'day'
-                        cornerCoords[0] = since + datetime.timedelta(days=coordinates['time']['minimum_value'])
+                # Handle the y coordinate. 
+
+                yExtent = float(coordinates['latitude']['maximum_value']) - coordinates['latitude']['minimum_value'] + coordinates['latitude']['step']
+                shape[-2] = int(round(yExtent / coordinates['latitude']['step']))
+
+                # Similar to the problem with the longitude coordinate not
+                # spanning exactly 360.0 degrees, we've seen the latitude
+                # coordinate not span exactly 180.0 degrees. Apply same logic.
+
+                if abs(180 - yExtent) != 0 and abs(180 - yExtent) / coordinates['latitude']['step'] < 0.001:
+                    coordIncrements[-2] = 180. / round(180. / coordinates['latitude']['step'])
+                    self._LogDebug('%(class)s 0x%(id)016X: For the latitude coordinate, step=%(step)r, minimum_value=%(min)r, and maximum_value=%(max)r, which yields an extent of %(extent)s. Recomputing step as %(step2)r.' % {'class': self.__class__.__name__, 'id': id(self), 'step': coordinates['latitude']['step'], 'min': coordinates['latitude']['minimum_value'], 'max': coordinates['latitude']['maximum_value'], 'extent': xExtent, 'step2': coordIncrements[-2]})
+                else:
+                    coordIncrements[-2] = float(coordinates['latitude']['step'])
+
+                cornerCoords[-2] = float(coordinates['latitude']['minimum_value'])
+                if self._CornerCoordTypes[-2] == 'min':
+                    cornerCoords[-2] += coordIncrements[-2] / 2
+                elif self._CornerCoordTypes[-2] == 'max':
+                    cornerCoords[-2] -= coordIncrements[-2] / 2
+
+                # If the bottom edge is very close to but not exactly
+                # -90.0, set it to -90.0. There appears to be a precision
+                # or rounding issue with certain datasets that causes
+                # this. It will be problematic to our users.
+
+                if abs(cornerCoords[-2] - coordIncrements[-2] / 2 + 90.) / coordIncrements[-2] < 0.001:
+                    self._LogDebug('%(class)s 0x%(id)016X: The minimum_value of the latitude coordinate %(min)r yields a bottom edge of %(bottom)r, which is very close to but not exactly -90.0. This is probably a precision or rounding error at Copernicus. Setting the bottom edge to -90.0.' % {'class': self.__class__.__name__, 'id': id(self), 'min': coordinates['latitude']['minimum_value'], 'bottom': cornerCoords[-2] - coordIncrements[-2] / 2})
+                    cornerCoords[-2] = -90. + coordIncrements[-2] / 2
+
+                # Some datasets such as GLOBAL_ANALYSISFORECAST_PHY_001_024 are
+                # node registered rather than cell registered, which means their
+                # bottom-most row might be centered at -90.0 or the top most at
+                # +90.0. We don't like this, because it means the grid extends
+                # below -90.0 or above +90.0, which is impossible. Check for this
+                # and move up and/or down one cell as needed to keep the grid
+                # within +/- 90.0
+
+                cellsUpFromBottom = 0
+                originalBottomEdge = cornerCoords[-2] - coordIncrements[-2]/2
+                while cornerCoords[-2] - coordIncrements[-2]/2 < -90.:
+                    cellsUpFromBottom += 1
+                    shape[-2] -= 1
+                    cornerCoords[-2] += coordIncrements[-2]
+                if cellsUpFromBottom > 0:
+                    self._LogDebug('%(class)s 0x%(id)016X: The bottom edge of the bottom row of this dataset is %(orig)r, which is less than -90.0. Omitting the bottom-most %(skip)i row(s) of this dataset, so the bottom edge will be >= -90.0.' % {'class': self.__class__.__name__, 'id': id(self), 'orig': originalBottomEdge, 'skip': cellsUpFromBottom})
+
+                cellsDownFromTop = 0
+                originalTopEdge = cornerCoords[-2] + (shape[-2] - 1)*coordIncrements[-2] + coordIncrements[-2]/2
+                while cornerCoords[-2] + (shape[-2] - 1)*coordIncrements[-2] + coordIncrements[-2]/2 > 90.:
+                    cellsDownFromTop += 1
+                    shape[-2] -= 1
+                if cellsDownFromTop > 0:
+                    self._LogDebug('%(class)s 0x%(id)016X: The top edge of the top row of this dataset is %(orig)r, which is greater than 90.0. Omitting the top-most %(skip)i row(s) of this dataset, so the top edge will be <= 90.0.' % {'class': self.__class__.__name__, 'id': id(self), 'orig': originalTopEdge, 'skip': cellsDownFromTop})
+
+                # Handle the z coordinate.
+
+                zCoords = None
+
+                if 'z' in dimensions:
+                    if 'values' in coordinates['depth'] and isinstance(coordinates['depth']['values'], list) and len(coordinates['depth']['values']) > 0:
+                        numPositive = 0
+                        for value in coordinates['depth']['values']:
+                            if not isinstance(value, (float, int)):
+                                raise RuntimeError(_('In the Copernicus Marine Service catalogue, the %(coord)s coordinate of the %(var)s" variable of the "%(datasetID)s" contains an item that is not a numerical value. This is unexpected and indicates there may be problem with Copernicus Marine Service, the copernicusmarine Python package, or MGET. Please contact the MGET development team for assistance.') % {'datasetID': self._DatasetID, 'var': self._VariableShortName, 'coord': 'depth'})
+                            if value >= 0:
+                                numPositive += 1
+                        if numPositive > 0 and numPositive < len(coordinates['depth']['values']):
+                            raise RuntimeError(_('In the Copernicus Marine Service catalogue, the %(coord)s coordinate of the %(var)s" variable of the "%(datasetID)s" contains both positive and negative values. This is unexpected and indicates there may be problem with Copernicus Marine Service, the copernicusmarine Python package, or MGET. Please contact the MGET development team for assistance.') % {'datasetID': self._DatasetID, 'var': self._VariableShortName, 'coord': 'depth'})
+
+                        zCoords = [abs(depth) for depth in coordinates['depth']['values']]
+                        if not all([zCoords[i+1] > zCoords[i] for i in range(len(zCoords)-1)]) and not all([zCoords[i+1] < zCoords[i] for i in range(len(zCoords)-1)]):
+                            raise RuntimeError(_('In the Copernicus Marine Service catalogue, the %(coord)s coordinate of the %(var)s" variable of the "%(datasetID)s" is neither monotonically increasing nor monotonically decreasing. This is unexpected and indicates there may be problem with Copernicus Marine Service, the copernicusmarine Python package, or MGET. Please contact the MGET development team for assistance. The coordinate values are: %(values)s') % {'datasetID': self._DatasetID, 'var': self._VariableShortName, 'coord': 'depth', 'values': ', '.join(repr(val) for val in coordinates['depth']['values'])})
+
+                        zCoords.sort()      # zCoords are now guaranteed to be positive and in ascending order
+
+                        shape[-3] = len(zCoords)
+                        cornerCoords[-3] = None
+                        coordIncrements[-3] = None
 
                     else:
-                        raise RuntimeError(_('Programming error in this tool: unexpected time unit "%(units)s". Please contact the MGET development team for assistance.') % {'units': units[0]})
+                        raise RuntimeError(_('In the Copernicus Marine Service catalogue, the %(coord)s coordinate of the %(var)s" variable of the "%(datasetID)s" does not have a "values" list. Currently, MGET only supports datasets that explicitly list their depth coordinate values. Please contact the MGET development team for assistance.') % {'datasetID': self._DatasetID, 'var': self._VariableShortName, 'coord': 'depth'})
 
-                # Handle times provided with a list of values.
+                # Handle the t coordinate.
 
-                elif 'values' in coordinates['time'] and isinstance(coordinates['time']['values'], list) and len(coordinates['time']['values']) > 0:
-                    for value in coordinates['time']['values']:
-                        if not isinstance(value, (float, int)):
-                            raise RuntimeError(_('In the Copernicus Marine Service catalogue, the %(coord)s coordinate of the %(var)s" variable of the "%(datasetID)s" contains an item that is not a numerical value. This is unexpected and indicates there may be problem with Copernicus Marine Service, the copernicusmarine Python package, or MGET. Please contact the MGET development team for assistance.') % {'datasetID': self._DatasetID, 'var': self._VariableShortName, 'coord': 'time'})
+                tIncrementUnit = None
 
-                    shape[0] = len(coordinates['time']['values'])
+                if 't' in dimensions:
 
-                    # Convert all the values to datetimes.
+                    # Parse the units attribute.
 
-                    if units[0] == 'milliseconds':
-                        tCoords = [since + datetime.timedelta(milliseconds=value) for value in coordinates['time']['values']]
+                    if 'units' not in coordinates['time'] or not isinstance(coordinates['time']['units'], str):
+                        raise RuntimeError(_('In the Copernicus Marine Service catalogue, the "time" coordinate of the %(var)s" variable of the "%(datasetID)s" does not have a "units" attribute, or that attribute is not a numeric value. MGET may not be compatible with this dataset, or there may be problem with Copernicus Marine Service or the copernicusmarine Python package. Please contact the MGET development team for assistance.') % {'datasetID': self._DatasetID, 'var': self._VariableShortName})
 
-                    elif units[0] == 'seconds':
-                        tCoords = [since + datetime.timedelta(seconds=value) for value in coordinates['time']['values']]
+                    units = coordinates['time']['units'].lower().split()
+                    if len(units) < 4 or units[0] not in ['milliseconds', 'seconds', 'minutes', 'hours', 'days'] or units[1] != 'since':
+                        raise RuntimeError(_('In the Copernicus Marine Service catalogue, for the "time" coordinate of the %(var)s" variable of the "%(datasetID)s", the value of the "units" attribute, "%(units)s", could not be parsed. MGET may not be compatible with this dataset, or there may be problem with Copernicus Marine Service or the copernicusmarine Python package. Please contact the MGET development team for assistance.') % {'datasetID': self._DatasetID, 'var': self._VariableShortName, 'units': coordinates['time']['units']})
 
-                    elif units[0] == 'minutes':
-                        tCoords = [since + datetime.timedelta(minutes=value) for value in coordinates['time']['values']]
+                    try:
+                        since = datetime.datetime.strptime((units[2] + ' ' + units[3])[:19], '%Y-%m-%d %H:%M:%S')
+                    except:
+                        raise RuntimeError(_('In the Copernicus Marine Service catalogue, for the "time" coordinate of the %(var)s" variable of the "%(datasetID)s", the value of the "units" attribute, "%(units)s", could not be parsed. MGET may not be compatible with this dataset, or there may be problem with Copernicus Marine Service or the copernicusmarine Python package. Please contact the MGET development team for assistance.') % {'datasetID': self._DatasetID, 'var': self._VariableShortName, 'units': coordinates['time']['units']})
 
-                    elif units[0] == 'hours':
-                        tCoords = [since + datetime.timedelta(hours=value) for value in coordinates['time']['values']]
+                    # Handle times being provided with a constant step.
 
-                    elif units[0] == 'days':
-                        tCoords = [since + datetime.timedelta(days=value) for value in coordinates['time']['values']]
+                    constantStep = True
+                    for key in ['step', 'minimum_value', 'maximum_value']:
+                        if key not in coordinates['time'] or not isinstance(coordinates['time'][key], (float, int)):
+                            constantStep = False
 
-                    else:
-                        raise RuntimeError(_('Programming error in this tool: unexpected time unit "%(units)s". Please contact the MGET development team for assistance.') % {'units': units[0]})
+                    if constantStep:
+                        numSteps = (coordinates['time']['maximum_value'] - coordinates['time']['minimum_value'] + coordinates['time']['step']) / coordinates['time']['step']
+                        if numSteps % 1 != 0:
+                            self._LogWarning(_('In the Copernicus Marine Service catalogue, for the "time" coordinate of the %(var)s" variable of the "%(datasetID)s", the "maximum_value" minus the "minimum_value" is not evenly divisible by the "step". This is unexpected but MGET will proceed with accessing the dataset. Check your results carefully. If you suspect a problem, please contact the MGET development team for assistance.') % {'datasetID': self._DatasetID, 'var': self._VariableShortName})
 
-                    # If there is only one time slice, we can't deduce the
-                    # time step. Assume it is 1 day.
+                        shape[0] = int(math.trunc(numSteps))
+                        coordIncrements[0] = float(coordinates['time']['step'])
 
-                    cornerCoords[0] = tCoords[0]
+                        if units[0] == 'milliseconds':
+                            tIncrementUnit = 'second'    # We don't support milliseconds; convert to seconds
+                            cornerCoords[0] = since + datetime.timedelta(milliseconds=coordinates['time']['minimum_value'])
+                            coordIncrements[0] = coordIncrements[0] / 1000
 
-                    if shape[0] == 1:
-                        coordIncrements[0] = 1.
-                        tIncrementUnit = 'day'
+                        elif units[0] == 'seconds':
+                            tIncrementUnit = 'second'
+                            cornerCoords[0] = since + datetime.timedelta(seconds=coordinates['time']['minimum_value'])
 
-                    # Otherwise, check whether the values increase by the same
-                    # relative amount of time. If so, configure ourselves with
-                    # a constant t increment.
+                        elif units[0] == 'minutes':
+                            tIncrementUnit = 'minute'
+                            cornerCoords[0] = since + datetime.timedelta(minutes=coordinates['time']['minimum_value'])
 
-                    else:
-                        import dateutil.relativedelta
+                        elif units[0] == 'hours':
+                            tIncrementUnit = 'hour'
+                            cornerCoords[0] = since + datetime.timedelta(hours=coordinates['time']['minimum_value'])
 
-                        tCoords.sort()
-                        deltas = [dateutil.relativedelta.relativedelta(tCoords[i+1], tCoords[i]).normalized() for i in range(len(tCoords) - 1)]
+                        elif units[0] == 'days':
+                            tIncrementUnit = 'day'
+                            cornerCoords[0] = since + datetime.timedelta(days=coordinates['time']['minimum_value'])
 
-                        if len(set(deltas)) == 1:
-                            if all([getattr(deltas[0], attr) == 0 for attr in ['microseconds', 'seconds', 'minutes', 'hours', 'days', 'weeks']]):
-                                if deltas[0].months == 0:
-                                    if deltas[0].years > 0:
-                                        coordIncrements[0] = deltas[0].years
-                                        tIncrementUnit = 'year'
+                        else:
+                            raise RuntimeError(_('Programming error in this tool: unexpected time unit "%(units)s". Please contact the MGET development team for assistance.') % {'units': units[0]})
+
+                    # Handle times provided with a list of values.
+
+                    elif 'values' in coordinates['time'] and isinstance(coordinates['time']['values'], list) and len(coordinates['time']['values']) > 0:
+                        for value in coordinates['time']['values']:
+                            if not isinstance(value, (float, int)):
+                                raise RuntimeError(_('In the Copernicus Marine Service catalogue, the %(coord)s coordinate of the %(var)s" variable of the "%(datasetID)s" contains an item that is not a numerical value. This is unexpected and indicates there may be problem with Copernicus Marine Service, the copernicusmarine Python package, or MGET. Please contact the MGET development team for assistance.') % {'datasetID': self._DatasetID, 'var': self._VariableShortName, 'coord': 'time'})
+
+                        shape[0] = len(coordinates['time']['values'])
+
+                        # Convert all the values to datetimes.
+
+                        if units[0] == 'milliseconds':
+                            tCoords = [since + datetime.timedelta(milliseconds=value) for value in coordinates['time']['values']]
+
+                        elif units[0] == 'seconds':
+                            tCoords = [since + datetime.timedelta(seconds=value) for value in coordinates['time']['values']]
+
+                        elif units[0] == 'minutes':
+                            tCoords = [since + datetime.timedelta(minutes=value) for value in coordinates['time']['values']]
+
+                        elif units[0] == 'hours':
+                            tCoords = [since + datetime.timedelta(hours=value) for value in coordinates['time']['values']]
+
+                        elif units[0] == 'days':
+                            tCoords = [since + datetime.timedelta(days=value) for value in coordinates['time']['values']]
+
+                        else:
+                            raise RuntimeError(_('Programming error in this tool: unexpected time unit "%(units)s". Please contact the MGET development team for assistance.') % {'units': units[0]})
+
+                        # If there is only one time slice, we can't deduce the
+                        # time step. Assume it is 1 day.
+
+                        cornerCoords[0] = tCoords[0]
+
+                        if shape[0] == 1:
+                            coordIncrements[0] = 1.
+                            tIncrementUnit = 'day'
+
+                        # Otherwise, check whether the values increase by the same
+                        # relative amount of time. If so, configure ourselves with
+                        # a constant t increment.
+
+                        else:
+                            import dateutil.relativedelta
+
+                            tCoords.sort()
+                            deltas = [dateutil.relativedelta.relativedelta(tCoords[i+1], tCoords[i]).normalized() for i in range(len(tCoords) - 1)]
+
+                            if len(set(deltas)) == 1:
+                                if all([getattr(deltas[0], attr) == 0 for attr in ['microseconds', 'seconds', 'minutes', 'hours', 'days', 'weeks']]):
+                                    if deltas[0].months == 0:
+                                        if deltas[0].years > 0:
+                                            coordIncrements[0] = deltas[0].years
+                                            tIncrementUnit = 'year'
+                                        else:
+                                            raise RuntimeError(_('In the Copernicus Marine Service catalogue, the values of the "time" coordinate of the %(var)s" variable of the "%(datasetID)s" appear to contain duplicates. MGET may not be compatible with this dataset, or there may be problem with Copernicus Marine Service or the copernicusmarine Python package. Please contact the MGET development team for assistance.') % {'datasetID': self._DatasetID, 'var': self._VariableShortName})
+                                    else:
+                                        coordIncrements[0] = float(deltas[0].months + deltas[0].years * 12)
+                                        tIncrementUnit = 'month'
+
+                                elif all([getattr(deltas[0], attr) == 0 for attr in ['months', 'years']]):
+                                    if deltas.microseconds > 0:
+                                        coordIncrements[0] = float(deltas[0].microseconds * 0.000001 + deltas[0].seconds + deltas[0].minutes*60 + deltas[0].hours*60*60 + deltas[0].days*60*60*24 + deltas[0].weeks*60*60*24*7)
+                                        tIncrementUnit = 'second'
+                                    elif deltas.seconds > 0:
+                                        coordIncrements[0] = float(deltas[0].seconds + deltas[0].minutes*60 + deltas[0].hours*60*60 + deltas[0].days*60*60*24 + deltas[0].weeks*60*60*24*7)
+                                        tIncrementUnit = 'second'
+                                    elif deltas.minutes > 0:
+                                        coordIncrements[0] = float(deltas[0].minutes + deltas[0].hours*60 + deltas[0].days*60*24 + deltas[0].weeks*60*24*7)
+                                        tIncrementUnit = 'minute'
+                                    elif deltas.hours > 0:
+                                        coordIncrements[0] = float(deltas[0].hours + deltas[0].days*24 + deltas[0].weeks*24*7)
+                                        tIncrementUnit = 'hour'
+                                    elif deltas.days > 0 or deltas.weeks > 0:
+                                        coordIncrements[0] = float(deltas[0].days + deltas[0].weeks*7)
+                                        tIncrementUnit = 'day'
                                     else:
                                         raise RuntimeError(_('In the Copernicus Marine Service catalogue, the values of the "time" coordinate of the %(var)s" variable of the "%(datasetID)s" appear to contain duplicates. MGET may not be compatible with this dataset, or there may be problem with Copernicus Marine Service or the copernicusmarine Python package. Please contact the MGET development team for assistance.') % {'datasetID': self._DatasetID, 'var': self._VariableShortName})
-                                else:
-                                    coordIncrements[0] = float(deltas[0].months + deltas[0].years * 12)
-                                    tIncrementUnit = 'month'
+                            else:
+                                raise RuntimeError(_('In the Copernicus Marine Service catalogue, the values of the "time" coordinate of the %(var)s" variable of the "%(datasetID)s" do not monotonically increase. MGET may not be compatible with this dataset, or there may be problem with Copernicus Marine Service or the copernicusmarine Python package. Please contact the MGET development team for assistance.') % {'datasetID': self._DatasetID, 'var': self._VariableShortName})
+                    else:
+                        raise RuntimeError(_('In the Copernicus Marine Service catalogue, the attributes of the "time" coordinate of the %(var)s" variable of the "%(datasetID)s" could not be recognized. MGET may not be compatible with this dataset, or there may be problem with Copernicus Marine Service or the copernicusmarine Python package. Please contact the MGET development team for assistance.') % {'datasetID': self._DatasetID, 'var': self._VariableShortName})
 
-                            elif all([getattr(deltas[0], attr) == 0 for attr in ['months', 'years']]):
-                                if deltas.microseconds > 0:
-                                    coordIncrements[0] = float(deltas[0].microseconds * 0.000001 + deltas[0].seconds + deltas[0].minutes*60 + deltas[0].hours*60*60 + deltas[0].days*60*60*24 + deltas[0].weeks*60*60*24*7)
-                                    tIncrementUnit = 'second'
-                                elif deltas.seconds > 0:
-                                    coordIncrements[0] = float(deltas[0].seconds + deltas[0].minutes*60 + deltas[0].hours*60*60 + deltas[0].days*60*60*24 + deltas[0].weeks*60*60*24*7)
-                                    tIncrementUnit = 'second'
-                                elif deltas.minutes > 0:
-                                    coordIncrements[0] = float(deltas[0].minutes + deltas[0].hours*60 + deltas[0].days*60*24 + deltas[0].weeks*60*24*7)
-                                    tIncrementUnit = 'minute'
-                                elif deltas.hours > 0:
-                                    coordIncrements[0] = float(deltas[0].hours + deltas[0].days*24 + deltas[0].weeks*24*7)
-                                    tIncrementUnit = 'hour'
-                                elif deltas.days > 0 or deltas.weeks > 0:
-                                    coordIncrements[0] = float(deltas[0].days + deltas[0].weeks*7)
-                                    tIncrementUnit = 'day'
-                                else:
-                                    raise RuntimeError(_('In the Copernicus Marine Service catalogue, the values of the "time" coordinate of the %(var)s" variable of the "%(datasetID)s" appear to contain duplicates. MGET may not be compatible with this dataset, or there may be problem with Copernicus Marine Service or the copernicusmarine Python package. Please contact the MGET development team for assistance.') % {'datasetID': self._DatasetID, 'var': self._VariableShortName})
-                        else:
-                            raise RuntimeError(_('In the Copernicus Marine Service catalogue, the values of the "time" coordinate of the %(var)s" variable of the "%(datasetID)s" do not monotonically increase. MGET may not be compatible with this dataset, or there may be problem with Copernicus Marine Service or the copernicusmarine Python package. Please contact the MGET development team for assistance.') % {'datasetID': self._DatasetID, 'var': self._VariableShortName})
-                else:
-                    raise RuntimeError(_('In the Copernicus Marine Service catalogue, the attributes of the "time" coordinate of the %(var)s" variable of the "%(datasetID)s" could not be recognized. MGET may not be compatible with this dataset, or there may be problem with Copernicus Marine Service or the copernicusmarine Python package. Please contact the MGET development team for assistance.') % {'datasetID': self._DatasetID, 'var': self._VariableShortName})
+            # If we raised an exception, debug log the datasets in the
+            # catalogue, so we can look at them.
+
+            except:
+                self._LogDebug('%(class)s 0x%(id)016X: Got the following datasets:' % {'class': self.__class__.__name__, 'id': id(self)})
+                for line in lines:
+                    self._LogDebug('%(class)s 0x%(id)016X:    %(line)s' % {'class': self.__class__.__name__, 'id': id(self), 'line': line})
+                raise
 
             # We successfully extracted all of the values. Save them.
 
@@ -616,13 +672,19 @@ class CMEMSARCOArray(Grid):
             from copernicusmarine.download_functions.download_arco_series import open_dataset_from_arco_series
             from copernicusmarine.download_functions.subset_parameters import DepthParameters, GeographicalParameters, TemporalParameters
 
-            self._LogDebug('%(class)s 0x%(id)016X: Opening the xarray by calling copernicusmarine.download_functions.download_arco_series.open_dataset_from_arco_series(username=***, password=***,, dataset_url="%(url)s", variables=["%(var)s"], geographical_parameters=GeographicalParameters(), temporal_parameters=TemporalParameters(), depth_parameters=DepthParameters(), chunks="auto")' % {'class': self.__class__.__name__, 'id': id(self), 'url': self._URI, 'var': self._VariableStandardName})
+            if isinstance(self._VariableStandardName, str) and len(self._VariableStandardName) > 0:
+                variableName = self._VariableStandardName
+            else:
+                variableName = self._VariableShortName
+                self._LogDebug('%(class)s 0x%(id)016X: The "standard_name" attribute was %(standardName)r, so the "short_name" of %(shortName)r will be used instead.' % {'class': self.__class__.__name__, 'id': id(self), 'url': self._URI, 'standardName': self._VariableStandardName, 'shortName': self._VariableShortName})
+
+            self._LogDebug('%(class)s 0x%(id)016X: Opening the xarray by calling copernicusmarine.download_functions.download_arco_series.open_dataset_from_arco_series(username=***, password=***,, dataset_url="%(url)s", variables=["%(var)s"], geographical_parameters=GeographicalParameters(), temporal_parameters=TemporalParameters(), depth_parameters=DepthParameters(), chunks="auto")' % {'class': self.__class__.__name__, 'id': id(self), 'url': self._URI, 'var': variableName})
 
             try:
                 self._Dataset = open_dataset_from_arco_series(username=self._Username, 
                                                               password=self._Password,
                                                               dataset_url=self._URI,
-                                                              variables=[self._VariableStandardName],
+                                                              variables=[variableName],
                                                               geographical_parameters=GeographicalParameters(),
                                                               temporal_parameters=TemporalParameters(),
                                                               depth_parameters=DepthParameters(),
@@ -684,7 +746,62 @@ AddModuleMetadata(
 
 AddClassMetadata(CMEMSARCOArray,
     shortDescription=_('A :class:`~GeoEco.Datasets.Grid` for accessing 2D, 3D, and 4D gridded datasets published by `Copernicus Marine Service <https://data.marine.copernicus.eu/products>`_.'),
-    longDescription=_('Copernicus Marine Service is also known as Copernicus Marine Environmental Monitoring Service (CMEMS).'))
+    longDescription=_(
+"""Copernicus Marine Service is also known as Copernicus Marine Environmental
+Monitoring Service (CMEMS).
+
+This example shows how to create a time series of rasters for `Copernicus GlobColour
+<https://data.marine.copernicus.eu/product/OCEANCOLOUR_GLO_BGC_L4_MY_009_104>`_
+monthly chlorophyll concentration data:
+
+.. code-block:: python
+
+    import os
+
+    from GeoEco.Datasets.Collections import DirectoryTree
+    from GeoEco.Datasets.GDAL import GDALDataset
+    from GeoEco.Datasets.Virtual import GridSliceCollection
+    from GeoEco.DataProducts.CMEMS import CMEMSARCOArray
+    from GeoEco.Logging import Logger
+
+    # Initialize GeoEco's logging.
+
+    Logger.Initialize()
+
+    # Define a CMEMSARCOArray for Copernicus monthly GlobColour chlorophyll
+    # concentration, which is 3D with dimensions time, latitude, and longitude.
+
+    grid = CMEMSARCOArray(username='**********', 
+                          password='**********',
+                          datasetID='cmems_obs-oc_glo_bgc-plankton_my_l4-multi-4km_P1M',
+                          variableShortName='CHL')
+
+    # Define a GridSliceCollection that slices the CMEMSARCOArray into a
+    # collection of 3D (latitude, longitude) grids.
+
+    slices = GridSliceCollection(grid)
+
+    # Define a DirectoryTree that describes how we want to create the slices when
+    # we import them: as GDAL datasets stored in subdirectories for the Copernicus
+    # dataset, year, and variable short name, and named with the variable short
+    # name, year, and month. Store them in ERDAS Imagine raster format (.img). In
+    # order for these expressions to work, QueryableAttributes have to be defined
+    # for them; we can tak the definitions from the GridSliceCollection.
+
+    dirTree = DirectoryTree(path=r'C:\\Data_Products\\CMEMS',
+                            datasetType=GDALDataset,
+                            pathCreationExpressions=['%(DatasetID)s',
+                                                     '%(VariableShortName)s',
+                                                     '%%Y',
+                                                     '%(VariableShortName)s_%%Y%%m.img',],
+                            queryableAttributes=slices.GetAllQueryableAttributes())
+
+    # Query the slices for datasets within a range of years and import them into
+    # the directory tree. Also calculate statistics for the rasters.
+
+    dirTree.ImportDatasets(datasets=slices.QueryDatasets('Year >= 2020 AND Year <= 2022'),
+                           calculateStatistics=True)
+"""))
 
 # Public properties
 

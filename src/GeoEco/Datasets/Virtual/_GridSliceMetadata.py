@@ -85,8 +85,10 @@ the shallow edge of the depth slice. If it is ``'center'`` the value will be
 the center depth, and if it is ``'max'`` it will the deep edge."""))
 
 AddArgumentMetadata(GridSlice.__init__, 'displayName',
-    typeMetadata=Grid.DisplayName.__doc__.Obj.Type,
-    description=Grid.DisplayName.__doc__.Obj.ShortDescription)
+    typeMetadata=UnicodeStringTypeMetadata(canBeNone=True),
+    description=_(
+"""Informal name of this object. If you do not provide a name, a suitable name
+will be created automatically."""))
 
 AddArgumentMetadata(GridSlice.__init__, 'additionalQueryableAttributeValues',
     typeMetadata=DictionaryTypeMetadata(keyType=UnicodeStringTypeMetadata(minLength=1, mustMatchRegEx='[a-zA-Z][a-zA-Z0-9_]+'), valueType=AnyObjectTypeMetadata(canBeNone=True), canBeNone=True),

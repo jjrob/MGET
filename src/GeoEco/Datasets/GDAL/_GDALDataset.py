@@ -658,7 +658,7 @@ class GDALDataset(FileDatasetCollection):
                             # Copy the data in blocks.
                             
                             rowsCopied = 0
-                            rowsToCopy = blockSize / bytesPerRow
+                            rowsToCopy = blockSize // bytesPerRow
                             allNoData = noDataValue is not None
 
                             while rowsCopied < sourceDatasets[i].Shape[0]:
