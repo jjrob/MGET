@@ -31,7 +31,6 @@ classifiers = [
 ]
 
 dependencies = [
-    "dateutil",
     "docutils",
     "gdal",
     "lxml",
@@ -39,6 +38,7 @@ dependencies = [
     "numpy",
     "packaging",
     "pyparsing",
+    "python-dateutil",
     "scikit-fmm",
     "scipy",
 ]
