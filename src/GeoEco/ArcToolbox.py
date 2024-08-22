@@ -232,11 +232,15 @@ class ArcToolboxGenerator(object):
 
             toolContent['params'][am.Name] = {
                 'displayname': '$rc:' + am.Name + '.name',
-                'datatype': {'type': cls._GetArcGISDataType(am.Type)},
+                'datatype': am.Type.ArcGISDataTypeDict,
                 'description': '$rc:' + am.Name + '.descr',
             }
             toolContentRC['map'][am.Name + '.name'] = am.ArcGISDisplayName
             toolContentRC['map'][am.Name + '.descr'] = cls._RestructuredTextToEsriXDoc(am.Description)
+
+            domain = am.Type.ArcGISDomainDict
+            if domain is not None:
+                toolContent['params'][am.Name]['domain'] = domain
 
             if am.ArcGISCategory is not None and len(am.ArcGISCategory) > 0:
                 if am.ArcGISCategory not in catNums:
@@ -248,16 +252,14 @@ class ArcToolboxGenerator(object):
             if am.Direction == 'Output':
                 toolContent['params'][am.Name]['direction'] = 'out'
 
-            if am.HasDefault:
+            if am.HasDefault or am.Type.CanBeNone:
                 toolContent['params'][am.Name]['type'] = 'optional'
 
             if am.HasDefault and am.Default is not None:
                 toolContent['params'][am.Name]['value'] = str(am.Default)
 
             if am.ArcGISParameterDependencies is not None and len(am.ArcGISParameterDependencies) > 0:
-                toolContent['params'][am.Name]['dependencies'] = am.ArcGISParameterDependencies
-
-            # TODO: 'domain' based on allowedValues, minValue, etc.
+                toolContent['params'][am.Name]['depends'] = am.ArcGISParameterDependencies
 
         for rm in mm.Results:
             if rm.ArcGISDisplayName is None:
@@ -265,7 +267,7 @@ class ArcToolboxGenerator(object):
 
             toolContent['params'][rm.Name] = {
                 'displayname': '$rc:' + rm.Name + '.name',
-                'datatype': {'type': cls._GetArcGISDataType(rm.Type)},
+                'datatype': rm.Type.ArcGISDataTypeDict,
                 'description': '$rc:' + rm.Name + '.descr',
                 'direction': 'out',
                 'type': 'derived',
@@ -274,7 +276,7 @@ class ArcToolboxGenerator(object):
             toolContentRC['map'][rm.Name + '.descr'] = cls._RestructuredTextToEsriXDoc(rm.Description)
 
             if rm.ArcGISParameterDependencies is not None and len(rm.ArcGISParameterDependencies) > 0:
-                toolContent['params'][rm.Name]['dependencies'] = rm.ArcGISParameterDependencies
+                toolContent['params'][rm.Name]['depends'] = rm.ArcGISParameterDependencies
 
         # Write the tool.content and tool.content.rc files.
 
@@ -346,30 +348,6 @@ class ToolValidator:
     def updateMessages(self):
         pass
 """)
-
-    @classmethod
-    def _GetArcGISDataType(cls, typeMetadata):
-
-        # If it is a SequenceTypeMetadata, return the data type of the
-        # element it contains.
-
-        if isinstance(typeMetadata, SequenceTypeMetadata):
-            return cls._GetArcGISDataType(typeMetadata.ElementType)
-
-        # For some types, we just need to strip 'Class' from the end of the
-        # ArcObjects .NET class name.
-
-        arcObjectsType = typeMetadata.ArcGISType.split('.')[-1]
-
-        if arcObjectsType in ['DEGeoDatasetTypeClass', 'GPTypeClass']:
-            return arcObjectsType[:-5]
-
-        # For everything else, we need strip 'TypeClass' from the end.
-
-        if arcObjectsType.endswith('TypeClass'):
-            return arcObjectsType[:-9]
-
-        return arcObjectsType
 
     @classmethod
     def _GetToolDescription(cls, methodMetadata):

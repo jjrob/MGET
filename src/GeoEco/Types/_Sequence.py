@@ -83,6 +83,17 @@ class SequenceTypeMetadata(TypeMetadata):
     
     MustBeSameLengthAsArgument = property(_GetMustBeSameLengthAsArgument, doc=DynamicDocString())
 
+    def _GetArcGISDataTypeDict(self):
+        return {'type': 'GPMultiValue',
+                'datatype': {'type': self.ElementType.ArcGISDataTypeDict}}
+
+    ArcGISDataTypeDict = property(_GetArcGISDataTypeDict, doc=DynamicDocString())
+
+    def _GetArcGISDomainDict(self):
+        return self.ElementType.ArcGISDomainDict
+
+    ArcGISDomainDict = property(_GetArcGISDomainDict, doc=DynamicDocString())
+
     def AppendXMLNodes(self, node, document):
         super(SequenceTypeMetadata, self).AppendXMLNodes(node, document)
         elementTypeNode = node.appendChild(document.createElement('ElementTypeMetadata'))

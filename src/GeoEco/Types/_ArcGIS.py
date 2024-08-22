@@ -63,6 +63,11 @@ class ArcGISGeoDatasetTypeMetadata(StoredObjectTypeMetadata):
                                                            canBeArcGISInputParameter=canBeArcGISInputParameter,
                                                            canBeArcGISOutputParameter=canBeArcGISOutputParameter)
 
+    def _GetArcGISDataTypeDict(self):
+        return {'type': 'DEGeoDatasetType'}
+
+    ArcGISDataTypeDict = property(_GetArcGISDataTypeDict, doc=DynamicDocString())
+
     def _CanonicalizePath(self, value, argMetadata, methodLocals):
         
         # It could be a layer or it could be a path to something.
@@ -181,6 +186,11 @@ class ArcGISRasterTypeMetadata(StoredObjectTypeMetadata):
                                                        arcGISAssembly=arcGISAssembly,
                                                        canBeArcGISInputParameter=canBeArcGISInputParameter,
                                                        canBeArcGISOutputParameter=canBeArcGISOutputParameter)
+
+    def _GetArcGISDataTypeDict(self):
+        return {'type': 'DERasterDataset'}
+
+    ArcGISDataTypeDict = property(_GetArcGISDataTypeDict, doc=DynamicDocString())
 
     def _GetAllowedPixelTypes(self):
         return self._AllowedPixelTypes
@@ -416,6 +426,11 @@ class ArcGISRasterLayerTypeMetadata(ArcGISRasterTypeMetadata):
                                                             arcGISType=arcGISType,
                                                             arcGISAssembly=arcGISAssembly)
 
+    def _GetArcGISDataTypeDict(self):
+        return {'type': 'GPRasterLayer'}
+
+    ArcGISDataTypeDict = property(_GetArcGISDataTypeDict, doc=DynamicDocString())
+
     def _CanonicalizePath(self, value, argMetadata, methodLocals):
         
         # It could be a layer or it could be a path to something.
@@ -495,6 +510,11 @@ class ArcGISRasterCatalogTypeMetadata(StoredObjectTypeMetadata):
                                                               canBeArcGISInputParameter=canBeArcGISInputParameter,
                                                               canBeArcGISOutputParameter=canBeArcGISOutputParameter)
 
+    def _GetArcGISDataTypeDict(self):
+        return {'type': 'DERasterCatalog'}
+
+    ArcGISDataTypeDict = property(_GetArcGISDataTypeDict, doc=DynamicDocString())
+
     @classmethod
     def Exists(cls, name, argMetadata=None, methodLocals=None):
         from ..ArcGIS import GeoprocessorManager
@@ -570,6 +590,33 @@ class ArcGISFeatureClassTypeMetadata(StoredObjectTypeMetadata):
     
     AllowedShapeTypes = property(_GetAllowedShapeTypes, doc=DynamicDocString())
 
+    def _GetArcGISDataTypeDict(self):
+        return {'type': 'DEFeatureClass'}
+
+    ArcGISDataTypeDict = property(_GetArcGISDataTypeDict, doc=DynamicDocString())
+
+    def _GetArcGISDomainDict(self):
+        if self.AllowedShapeTypes is not None:
+            geometryTypes = []
+            for ast in self.AllowedShapeTypes:
+                if ast.lower() == 'point':
+                    geometryTypes.append('Point')
+                elif ast.lower() == 'polyline':
+                    geometryTypes.append('Polyline')
+                elif ast.lower() == 'polygon':
+                    geometryTypes.append('Polygon')
+                elif ast.lower() == 'multipoint':
+                    geometryTypes.append('Multipoint')
+                elif ast.lower() == 'multipatch':
+                    geometryTypes.append('MultiPatch')
+                else:
+                    raise NotImplementedError(_('%(cls)s._GetArcGISDomainDict() does not recognize the AllowedShapeType of %(ast)r.') % {'cls': self.__class__.__name__, 'ast': ast})
+            return {'type': 'GPFeatureClassDomain', 'geometrytype': geometryTypes}
+
+        return None
+
+    ArcGISDomainDict = property(_GetArcGISDomainDict, doc=DynamicDocString())
+
     def AppendXMLNodes(self, node, document):
         super(ArcGISFeatureClassTypeMetadata, self).AppendXMLNodes(node, document)
         allowedShapeTypesNode = node.appendChild(document.createElement('AllowedShapeTypes'))
@@ -639,6 +686,11 @@ class ArcGISFeatureLayerTypeMetadata(ArcGISFeatureClassTypeMetadata):
                                                              canBeNone=canBeNone,
                                                              arcGISType=arcGISType,
                                                              arcGISAssembly=arcGISAssembly)
+
+    def _GetArcGISDataTypeDict(self):
+        return {'type': 'GPFeatureLayer'}
+
+    ArcGISDataTypeDict = property(_GetArcGISDataTypeDict, doc=DynamicDocString())
 
     def _CanonicalizePath(self, value, argMetadata, methodLocals):
         
@@ -718,6 +770,11 @@ class ShapefileTypeMetadata(FileTypeMetadata):
                                                     canBeArcGISInputParameter=canBeArcGISInputParameter,
                                                     canBeArcGISOutputParameter=canBeArcGISOutputParameter)
 
+    def _GetArcGISDataTypeDict(self):
+        return {'type': 'DEShapeFile'}
+
+    ArcGISDataTypeDict = property(_GetArcGISDataTypeDict, doc=DynamicDocString())
+
     @classmethod
     def Exists(cls, name, argMetadata=None, methodLocals=None):
         from ..DataManagement.Shapefiles import Shapefile
@@ -776,6 +833,11 @@ class ArcGISWorkspaceTypeMetadata(StoredObjectTypeMetadata):
                                                           arcGISAssembly=arcGISAssembly,
                                                           canBeArcGISInputParameter=canBeArcGISInputParameter,
                                                           canBeArcGISOutputParameter=canBeArcGISOutputParameter)
+
+    def _GetArcGISDataTypeDict(self):
+        return {'type': 'DEWorkspace'}
+
+    ArcGISDataTypeDict = property(_GetArcGISDataTypeDict, doc=DynamicDocString())
 
     @classmethod
     def Exists(cls, name, argMetadata=None, methodLocals=None):
@@ -836,6 +898,11 @@ class ArcGISTableTypeMetadata(StoredObjectTypeMetadata):
                                                       canBeArcGISInputParameter=canBeArcGISInputParameter,
                                                       canBeArcGISOutputParameter=canBeArcGISOutputParameter)
 
+    def _GetArcGISDataTypeDict(self):
+        return {'type': 'DETable'}
+
+    ArcGISDataTypeDict = property(_GetArcGISDataTypeDict, doc=DynamicDocString())
+
     @classmethod
     def Exists(cls, name, argMetadata=None, methodLocals=None):
         from ..ArcGIS import GeoprocessorManager
@@ -883,6 +950,11 @@ class ArcGISTableViewTypeMetadata(ArcGISTableTypeMetadata):
                                                           canBeNone=canBeNone,
                                                           arcGISType=arcGISType,
                                                           arcGISAssembly=arcGISAssembly)
+
+    def _GetArcGISDataTypeDict(self):
+        return {'type': 'GPTableView'}
+
+    ArcGISDataTypeDict = property(_GetArcGISDataTypeDict, doc=DynamicDocString())
 
     def _CanonicalizePath(self, value, argMetadata, methodLocals):
         
@@ -974,6 +1046,39 @@ class ArcGISFieldTypeMetadata(StoredObjectTypeMetadata):
     
     AllowedFieldTypes = property(_GetAllowedFieldTypes, doc=DynamicDocString())
 
+    def _GetArcGISDataTypeDict(self):
+        return {'type': 'Field'}
+
+    ArcGISDataTypeDict = property(_GetArcGISDataTypeDict, doc=DynamicDocString())
+
+    def _GetArcGISDomainDict(self):
+        if self.AllowedFieldTypes is not None:
+            fieldTypes = []
+            for aft in self.AllowedFieldTypes:
+                if aft.lower() in ['short', 'int8', 'uint8', 'int16']:
+                    fieldTypes.append('Short')
+                elif aft.lower() in ['long', 'uint16', 'int32']:
+                    fieldTypes.append('Long')
+                elif aft.lower() in ['biginteger', 'uint32', 'int64', 'uint64']:    # We optimistically allow uint64
+                    fieldTypes.append('BigInteger')
+                elif aft.lower() in ['float', 'float32']:
+                    fieldTypes.append('Float')
+                elif aft.lower() in ['double', 'float64']:
+                    fieldTypes.append('Double')
+                elif aft.lower() in ['date', 'datetime']:
+                    fieldTypes.append('Date')
+                elif aft.lower() in ['text', 'string']:
+                    fieldTypes.append('Text')
+                elif aft.lower() in ['oid']:
+                    fieldTypes.append('OID')
+                else:
+                    raise NotImplementedError(_('%(cls)s._GetArcGISDomainDict() does not recognize the AllowedFieldType of %(aft)r.') % {'cls': self.__class__.__name__, 'aft': aft})
+            return {'type': 'GPFieldDomain', 'fieldtype': fieldTypes}
+
+        return None
+
+    ArcGISDomainDict = property(_GetArcGISDomainDict, doc=DynamicDocString())
+
     def AppendXMLNodes(self, node, document):
         super(ArcGISFieldTypeMetadata, self).AppendXMLNodes(node, document)
         allowedFieldTypesNode = node.appendChild(document.createElement('AllowedFieldTypes'))
@@ -1040,6 +1145,11 @@ class CoordinateSystemTypeMetadata(UnicodeStringTypeMetadata):
     
     TreatUnknownCSAsNone = property(_GetTreatUnknownCSAsNone, doc=DynamicDocString())
 
+    def _GetArcGISDataTypeDict(self):
+        return {'type': 'GPCoordinateSystem'}
+
+    ArcGISDataTypeDict = property(_GetArcGISDataTypeDict, doc=DynamicDocString())
+
     def AppendXMLNodes(self, node, document):
         super(CoordinateSystemTypeMetadata, self).AppendXMLNodes(node, document)
         Metadata.AppendPropertyXMLNode(self, 'TreatUnknownCSAsNone', node, document)
@@ -1065,6 +1175,11 @@ class EnvelopeTypeMetadata(UnicodeStringTypeMetadata):
                                                    arcGISAssembly='ESRI.ArcGIS.Geoprocessing',
                                                    canBeArcGISInputParameter=True,
                                                    canBeArcGISOutputParameter=True)
+
+    def _GetArcGISDataTypeDict(self):
+        return {'type': 'GPEnvelope'}
+
+    ArcGISDataTypeDict = property(_GetArcGISDataTypeDict, doc=DynamicDocString())
 
     @classmethod
     def ParseFromArcGISString(cls, value):
@@ -1129,6 +1244,11 @@ class LinearUnitTypeMetadata(UnicodeStringTypeMetadata):
                                                      canBeArcGISInputParameter=True,
                                                      canBeArcGISOutputParameter=True)
 
+    def _GetArcGISDataTypeDict(self):
+        return {'type': 'GPLinearUnit'}
+
+    ArcGISDataTypeDict = property(_GetArcGISDataTypeDict, doc=DynamicDocString())
+
 
 class MapAlgebraExpressionTypeMetadata(UnicodeStringTypeMetadata):
     __doc__ = DynamicDocString()
@@ -1143,6 +1263,11 @@ class MapAlgebraExpressionTypeMetadata(UnicodeStringTypeMetadata):
                                                                canBeArcGISInputParameter=True,
                                                                canBeArcGISOutputParameter=True)
 
+    def _GetArcGISDataTypeDict(self):
+        return {'type': 'GPSAMapAlgebraExp'}
+
+    ArcGISDataTypeDict = property(_GetArcGISDataTypeDict, doc=DynamicDocString())
+
 
 class PointTypeMetadata(UnicodeStringTypeMetadata):
     __doc__ = DynamicDocString()
@@ -1155,6 +1280,11 @@ class PointTypeMetadata(UnicodeStringTypeMetadata):
                                                 arcGISAssembly='ESRI.ArcGIS.Geoprocessing',
                                                 canBeArcGISInputParameter=True,
                                                 canBeArcGISOutputParameter=True)
+
+    def _GetArcGISDataTypeDict(self):
+        return {'type': 'GPPoint'}
+
+    ArcGISDataTypeDict = property(_GetArcGISDataTypeDict, doc=DynamicDocString())
 
     @classmethod
     def ParseFromArcGISString(cls, value):
@@ -1200,6 +1330,11 @@ class SpatialReferenceTypeMetadata(UnicodeStringTypeMetadata):
                                                            canBeArcGISInputParameter=True,
                                                            canBeArcGISOutputParameter=True)
 
+    def _GetArcGISDataTypeDict(self):
+        return {'type': 'GPSpatialReference'}
+
+    ArcGISDataTypeDict = property(_GetArcGISDataTypeDict, doc=DynamicDocString())
+
     def ValidateValue(self, value, variableName, methodLocals=None, argMetadata=None):
         from ..ArcGIS import _ArcGISObjectWrapper
         if isinstance(value, _ArcGISObjectWrapper):
@@ -1221,6 +1356,11 @@ class SQLWhereClauseTypeMetadata(UnicodeStringTypeMetadata):
                                                          arcGISAssembly='ESRI.ArcGIS.Geoprocessing',
                                                          canBeArcGISInputParameter=True,
                                                          canBeArcGISOutputParameter=True)
+
+    def _GetArcGISDataTypeDict(self):
+        return {'type': 'GPSQLExpression'}
+
+    ArcGISDataTypeDict = property(_GetArcGISDataTypeDict, doc=DynamicDocString())
 
 
 ###############################################################################

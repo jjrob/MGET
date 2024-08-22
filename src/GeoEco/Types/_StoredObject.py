@@ -405,6 +405,11 @@ class FileTypeMetadata(StoredObjectTypeMetadata):
     
     DecompressedFileToUse = property(_GetDecompressedFileToUse)
 
+    def _GetArcGISDataTypeDict(self):
+        return {'type': 'DEFile'}
+
+    ArcGISDataTypeDict = property(_GetArcGISDataTypeDict, doc=DynamicDocString())
+
     def AppendXMLNodes(self, node, document):
         super(FileTypeMetadata, self).AppendXMLNodes(node, document)
         Metadata.AppendPropertyXMLNode(self, 'MayBeCompressed', node, document)
@@ -472,6 +477,11 @@ class TextFileTypeMetadata(FileTypeMetadata):
                                                    canBeArcGISInputParameter=canBeArcGISInputParameter,
                                                    canBeArcGISOutputParameter=canBeArcGISOutputParameter)
 
+    def _GetArcGISDataTypeDict(self):
+        return {'type': 'DETextFile'}
+
+    ArcGISDataTypeDict = property(_GetArcGISDataTypeDict, doc=DynamicDocString())
+
 
 class DirectoryTypeMetadata(StoredObjectTypeMetadata):
     __doc__ = DynamicDocString()
@@ -515,6 +525,11 @@ class DirectoryTypeMetadata(StoredObjectTypeMetadata):
                                                     arcGISAssembly=arcGISAssembly,
                                                     canBeArcGISInputParameter=canBeArcGISInputParameter,
                                                     canBeArcGISOutputParameter=canBeArcGISOutputParameter)
+
+    def _GetArcGISDataTypeDict(self):
+        return {'type': 'DEFolder'}
+
+    ArcGISDataTypeDict = property(_GetArcGISDataTypeDict, doc=DynamicDocString())
 
     @classmethod
     def Exists(cls, name, argMetadata=None, methodLocals=None):

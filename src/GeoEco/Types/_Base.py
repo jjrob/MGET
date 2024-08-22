@@ -119,6 +119,16 @@ class TypeMetadata(object):
         else:
             return _('instance of %(type)s') % {'type': str(self.PythonType)}
 
+    def _GetArcGISDataTypeDict(self):
+        raise NotImplementedError(_('%(cls)s has not implemented _GetArcGISDataTypeDict().') % {'cls': self.__class__.__name__})
+
+    ArcGISDataTypeDict = property(_GetArcGISDataTypeDict, doc=DynamicDocString())
+
+    def _GetArcGISDomainDict(self):
+        raise NotImplementedError(_('%(cls)s has not implemented _GetArcGISDomainDict().') % {'cls': self.__class__.__name__})
+
+    ArcGISDomainDict = property(_GetArcGISDomainDict, doc=DynamicDocString())
+
     def _GetSphinxMarkup(self):
         if self._SphinxMarkup is not None:
             return self._SphinxMarkup
@@ -351,6 +361,37 @@ class BooleanTypeMetadata(TypeMetadata):
                                                   canBeArcGISOutputParameter=True,
                                                   sphinxMarkup=':py:class:`bool`')
 
+    def _GetArcGISDataTypeDict(self):
+        return {'type': 'GPBoolean'}
+
+    ArcGISDataTypeDict = property(_GetArcGISDataTypeDict, doc=DynamicDocString())
+
+    def _GetArcGISDomainDict(self):
+        # Return a GPCodedValueDomain that allows the caller to pass the
+        # strings "False" and "True". This mimics ESRI's tools, which always
+        # allow a string to be passed. ESRI's strings are usually more
+        # descriptive such as "NO_GAPS" and "GAPS". These strings appear as
+        # the "code". Our metadata does not support the concept of
+        # representing boolean True and False with descriptive strings, so we
+        # just always use "True" and "False".
+        #
+        # Although our metadata supports canBeNone, the ESRI GUI renders
+        # booleans as checkboxes that must either be checked or unchecked, and
+        # does not appear to support the concept of a third state (e.g.
+        # representing "neither" or "unknown"). So we do not incorporate
+        # canBeNone into the "domain" dictionary returned here.
+        #
+        # Similarly, although our metadata supports allowedValues for
+        # booleans, this is never used in practice: we never define a boolean
+        # argument that must always be true or always be false. So we do not
+        # incorporate allowedValues into the dictionary we return either.
+
+        return {'type': 'GPCodedValueDomain', 
+                'items': [{'type': 'GPBoolean', 'value': 'false', 'code': 'False'}, 
+                          {'type': 'GPBoolean', 'value': 'true', 'code': 'True'}]}
+
+    ArcGISDomainDict = property(_GetArcGISDomainDict, doc=DynamicDocString())
+
     def AppendXMLNodesForValue(self, value, node, document):
         assert isinstance(value, self.PythonType), 'value must be an instance of %s' % self.PythonType.__name__
         assert isinstance(node, xml.dom.Node) and node.nodeType == xml.dom.Node.ELEMENT_NODE, 'node must be an instance of xml.dom.Node with nodeType==ELEMENT_NODE'
@@ -419,6 +460,23 @@ class DateTimeTypeMetadata(TypeMetadata):
         return self._MustBeLessThan
     
     MustBeLessThan = property(_GetMustBeLessThan, doc=DynamicDocString())
+
+    def _GetArcGISDataTypeDict(self):
+        return {'type': 'GPDate'}
+
+    ArcGISDataTypeDict = property(_GetArcGISDataTypeDict, doc=DynamicDocString())
+
+    def _GetArcGISDomainDict(self):
+        # We'd like to set the domain from properties above such as MinValue
+        # and MaxValue but we don't have any examples from ESRI's toolboxes
+        # showing how to set the domain dictionary for GPDate. So we just
+        # return None. The argument value will still be validated when the
+        # function actually runs, even though it won't be validated first by
+        # the ArcGIS GUI.
+
+        return None     
+
+    ArcGISDomainDict = property(_GetArcGISDomainDict, doc=DynamicDocString())
 
     def AppendXMLNodes(self, node, document):
         super(DateTimeTypeMetadata, self).AppendXMLNodes(node, document)
@@ -614,6 +672,7 @@ class FloatTypeMetadata(TypeMetadata):
         assert mustBeGreaterThan is None or maxValue is None or mustBeGreaterThan < maxValue, 'mustBeGreaterThan must be less than maxValue'
         assert mustBeLessThan is None or minValue is None or mustBeLessThan > minValue, 'mustBeLessThan must be greater than minValue'
         assert mustBeGreaterThan is None or mustBeLessThan is None or mustBeGreaterThan < mustBeLessThan, 'mustBeGreaterThan must be less than mustBeLessThan'
+        assert (minValue is None and mustBeGreaterThan is None and maxValue is None and mustBeLessThan is None) or allowedValues is None, 'minValue, mustBeGreaterThan, maxValue, mustBeLessThan must all be None, or allowedValues must be None; they cannot both be specified'
         super(FloatTypeMetadata, self).__init__(pythonType=float,
                                                 canBeNone=canBeNone,
                                                 allowedValues=allowedValues,
@@ -646,6 +705,42 @@ class FloatTypeMetadata(TypeMetadata):
         return self._MustBeLessThan
     
     MustBeLessThan = property(_GetMustBeLessThan, doc=DynamicDocString())
+
+    def _GetArcGISDataTypeDict(self):
+        return {'type': 'GPDouble'}
+
+    ArcGISDataTypeDict = property(_GetArcGISDataTypeDict, doc=DynamicDocString())
+
+    def _GetArcGISDomainDict(self):
+
+        # If we have AllowedValues, return a GPCodedValueDomain for them.
+
+        if self.AllowedValues is not None:
+            return {'type': 'GPCodedValueDomain', 
+                    'items': [{'type': 'GPDouble', 'value': repr(val), 'code': repr(val)} for val in self.AllowedValues]}
+
+        # Otherwise, if we have CanBeNone, MinValue, MaxValue,
+        # MustBeGreaterThan, or MustBeLessThan, create a GPNumericDomain.
+
+        if self.CanBeNone or self.MinValue is not None or self.MustBeGreaterThan is not None or self.MaxValue is not None or self.MustBeLessThan is not None:
+            domain = {'type': 'GPNumericDomain'}
+            if self.CanBeNone:
+                domain['allowempty'] = 'true'
+            if self.MinValue is not None:
+                domain['low'] = {'inclusive': 'true', 'val': repr(self.MinValue)}
+            elif self.MustBeGreaterThan is not None:
+                domain['low'] = {'inclusive': 'false', 'val': repr(self.MustBeGreaterThan)}
+            if self.MaxValue is not None:
+                domain['high'] = {'allow': 'true', 'val': repr(self.MaxValue)}
+            elif self.MustBeLessThan is not None:
+                domain['high'] = {'allow': 'false', 'val': repr(self.MustBeLessThan)}
+            return domain
+
+        # Otherwise do not return a domain dictionary.
+
+        return None
+
+    ArcGISDomainDict = property(_GetArcGISDomainDict, doc=DynamicDocString())
 
     def AppendXMLNodes(self, node, document):
         super(FloatTypeMetadata, self).AppendXMLNodes(node, document)
@@ -785,6 +880,42 @@ class IntegerTypeMetadata(TypeMetadata):
     
     MustBeLessThan = property(_GetMustBeLessThan, doc=DynamicDocString())
 
+    def _GetArcGISDataTypeDict(self):
+        return {'type': 'GPLong'}
+
+    ArcGISDataTypeDict = property(_GetArcGISDataTypeDict, doc=DynamicDocString())
+
+    def _GetArcGISDomainDict(self):
+
+        # If we have AllowedValues, return a GPCodedValueDomain for them.
+
+        if self.AllowedValues is not None:
+            return {'type': 'GPCodedValueDomain', 
+                    'items': [{'type': 'GPLong', 'value': repr(val), 'code': repr(val)} for val in self.AllowedValues]}
+
+        # Otherwise, if we have CanBeNone, MinValue, MaxValue,
+        # MustBeGreaterThan, or MustBeLessThan, create a GPNumericDomain.
+
+        if self.CanBeNone or self.MinValue is not None or self.MustBeGreaterThan is not None or self.MaxValue is not None or self.MustBeLessThan is not None:
+            domain = {'type': 'GPNumericDomain'}
+            if self.CanBeNone:
+                domain['allowempty'] = 'true'
+            if self.MinValue is not None:
+                domain['low'] = {'inclusive': 'true', 'val': repr(self.MinValue)}
+            elif self.MustBeGreaterThan is not None:
+                domain['low'] = {'inclusive': 'false', 'val': repr(self.MustBeGreaterThan)}
+            if self.MaxValue is not None:
+                domain['high'] = {'allow': 'true', 'val': repr(self.MaxValue)}
+            elif self.MustBeLessThan is not None:
+                domain['high'] = {'allow': 'false', 'val': repr(self.MustBeLessThan)}
+            return domain
+
+        # Otherwise do not return a domain dictionary.
+
+        return None
+
+    ArcGISDomainDict = property(_GetArcGISDomainDict, doc=DynamicDocString())
+
     def AppendXMLNodes(self, node, document):
         super(IntegerTypeMetadata, self).AppendXMLNodes(node, document)
         from ..Metadata import Metadata
@@ -901,6 +1032,25 @@ class UnicodeStringTypeMetadata(TypeMetadata):
         return self._MustMatchRegEx
     
     MustMatchRegEx = property(_GetMustMatchRegEx, doc=DynamicDocString())
+
+    def _GetArcGISDataTypeDict(self):
+        return {'type': 'GPString'}
+
+    ArcGISDataTypeDict = property(_GetArcGISDataTypeDict, doc=DynamicDocString())
+
+    def _GetArcGISDomainDict(self):
+
+        # If we have AllowedValues, return a GPCodedValueDomain for them.
+
+        if self.AllowedValues is not None:
+            return {'type': 'GPCodedValueDomain', 
+                    'items': [{'type': self.ArcGISDataTypeDict['type'], 'value': val, 'code': val} for val in self.AllowedValues]}
+
+        # Otherwise do not return a domain dictionary.
+
+        return None
+
+    ArcGISDomainDict = property(_GetArcGISDomainDict, doc=DynamicDocString())
 
     def AppendXMLNodes(self, node, document):
         super(UnicodeStringTypeMetadata, self).AppendXMLNodes(node, document)
