@@ -85,7 +85,7 @@ class SequenceTypeMetadata(TypeMetadata):
 
     def _GetArcGISDataTypeDict(self):
         return {'type': 'GPMultiValue',
-                'datatype': {'type': self.ElementType.ArcGISDataTypeDict}}
+                'datatype': self.ElementType.ArcGISDataTypeDict}
 
     ArcGISDataTypeDict = property(_GetArcGISDataTypeDict, doc=DynamicDocString())
 
