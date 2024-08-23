@@ -21,6 +21,34 @@ from .. import Dataset, DatasetCollection, QueryableAttribute, Grid
 from ..GDAL import GDALDataset, GDALRasterBand
 
 
+_CalculateStatisticsDescription = _(
+"""If True, statistics will be calculated for the output rasters. This is
+usually a good idea for most raster formats because ArcGIS will only display
+them with helpful colors and gradients if statistics have been calculated. For
+certain formats, the explicit calculation of statistics is not necessary
+because it happens automatically when the rasters are created. If you're using
+one of those formats, you can set this option to False to speed up the
+creation of the output rasters.""")
+
+_BuildRATDescription = _(
+"""If True and the output rasters use an integer data type, raster attribute
+tables (RATs) will be built for the output rasters using the ArcGIS Build
+Raster Attribute Table tool. Raster attribute tables are essentially
+histograms: they store the counts of cells having each value. If you do not
+need this information, you can skip the building of raster attribute tables to
+speed up the creation of the output rasters. Note that for certain raster
+formats, such as ArcInfo Binary Grid, the explicit buliding of raster
+attribute tables is not necessary because it happens automatically when the
+rasters are created. This option is ignored if the output rasters use a
+floating point data type.""")
+
+_BuildPyramidsDescription = _(
+"""If True, pyramids will be built for the output rasters using the ArcGIS
+Build Pyramids tool. Pyramids, also known as overviews, are reduced resolution
+versions of the rasters that can improve the speed at which they are displayed
+in the ArcGIS user interface.""")
+
+
 class ArcGISRaster(DatasetCollection):
     __doc__ = DynamicDocString()
 

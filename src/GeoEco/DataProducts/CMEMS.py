@@ -14,6 +14,7 @@ import math
 import pprint
 import types
 
+from ..ArcGIS import GeoprocessorManager
 from ..Datasets import QueryableAttribute, Grid
 from ..DynamicDocString import DynamicDocString
 from ..Internationalization import _
@@ -44,7 +45,7 @@ class CMEMSARCOArray(Grid):
     VariableShortName = property(_GetVariableShortName, doc=DynamicDocString())
 
     def __init__(self, username, password, datasetID, variableShortName, xCoordType='center', yCoordType='center', zCoordType='center', tCoordType='min', lazyPropertyValues=None):
-        #self.__doc__.Obj.ValidateMethodInvocation()   TODO
+        self.__doc__.Obj.ValidateMethodInvocation()
 
         # Initialize our properties.
 
@@ -75,9 +76,6 @@ class CMEMSARCOArray(Grid):
         # Initialize the base class.
 
         super(CMEMSARCOArray, self).__init__(queryableAttributes=queryableAttributes, queryableAttributeValues=queryableAttributeValues)
-
-    def _Close(self):
-        pass   # TODO
 
     def _GetDisplayName(self):
         return self._DisplayName
@@ -678,7 +676,7 @@ class CMEMSARCOArray(Grid):
                 variableName = self._VariableShortName
                 self._LogDebug('%(class)s 0x%(id)016X: The "standard_name" attribute was %(standardName)r, so the "short_name" of %(shortName)r will be used instead.' % {'class': self.__class__.__name__, 'id': id(self), 'url': self._URI, 'standardName': self._VariableStandardName, 'shortName': self._VariableShortName})
 
-            self._LogDebug('%(class)s 0x%(id)016X: Opening the xarray by calling copernicusmarine.download_functions.download_arco_series.open_dataset_from_arco_series(username=***, password=***,, dataset_url="%(url)s", variables=["%(var)s"], geographical_parameters=GeographicalParameters(), temporal_parameters=TemporalParameters(), depth_parameters=DepthParameters(), chunks="auto")' % {'class': self.__class__.__name__, 'id': id(self), 'url': self._URI, 'var': variableName})
+            self._LogDebug('%(class)s 0x%(id)016X: Opening the xarray by calling copernicusmarine.download_functions.download_arco_series.open_dataset_from_arco_series(username="%(username)s", password=\'*****\', dataset_url="%(url)s", variables=["%(var)s"], geographical_parameters=GeographicalParameters(), temporal_parameters=TemporalParameters(), depth_parameters=DepthParameters(), chunks="auto")' % {'class': self.__class__.__name__, 'username': self._Username, 'id': id(self), 'url': self._URI, 'var': variableName})
 
             try:
                 self._Dataset = open_dataset_from_arco_series(username=self._Username, 
@@ -728,11 +726,191 @@ class CMEMSARCOArray(Grid):
         except Exception as e:
             raise RuntimeError(_('Failed to read slice [%(slice)s] of %(dn)s. Detailed error information: %(e)s: %(msg)s.') % {'slice': sliceName, 'dn': self.DisplayName, 'e': e.__class__.__name__, 'msg': e})
 
+    @classmethod
+    def _RotateAndClip(cls, grid, rotationOffset=None, spatialExtent=None, minDepth=None, maxDepth=None, startDate=None, endDate=None):
+        
+        # Rotate the grid, if requested.
+        
+        if rotationOffset is not None:
+            sr = grid.GetSpatialReference('obj')
+            if not sr.IsGeographic():
+                raise ValueError(_('Cannot rotate %(dn)s. This dataset uses a projected cooordinate system and the rotation option is only implemented for datasets that use a geographic (unprojected) coordinate system.') % {'dn': grid.DisplayName})
+            if grid.MaxCoords['x', -1] - grid.MinCoords['x', 0] < 360:
+                raise ValueError(_('Cannot rotate %(dn)s. This dataset only spans %(degrees)s degrees of longitude. It must span 360 degrees in order to be rotatable.') % {'dn': grid.DisplayName, 'degrees': grid.MaxCoords['x', -1] - grid.MinCoords['x', 0]})
+
+            grid = RotatedGlobalGrid(grid, rotationOffset, 'Map units')
+
+        # Clip the grid, if requested.
+
+        if spatialExtent is not None or minDepth is not None or maxDepth is not None or startDate is not None or endDate is not None:
+            xMin, yMin, xMax, yMax = None, None, None, None
+            if spatialExtent is not None:
+                from GeoEco.Types import EnvelopeTypeMetadata
+                xMin, yMin, xMax, yMax = EnvelopeTypeMetadata.ParseFromArcGISString(spatialExtent)
+
+            grid = ClippedGrid(grid, 'Map coordinates', xMin=xMin, xMax=xMax, yMin=yMin, yMax=yMax, zMin=minDepth, zMax=maxDepth, tMin=startDate, tMax=endDate)
+
+        # Return the grid.
+
+        return grid
+
+    @classmethod
+    def CreateArcGISRasters(cls, username, password, datasetID, variableShortName, 
+                            outputWorkspace, mode='Add', 
+                            xCoordType='center', yCoordType='center', zCoordType='center', tCoordType='min',
+                            rotationOffset=None, spatialExtent=None, 
+                            minDepth=None, maxDepth=None, startDate=None, endDate=None,
+                            rasterExtension='.img', rasterNameExpressions=None, calculateStatistics=True, buildPyramids=False):
+        cls.__doc__.Obj.ValidateMethodInvocation()
+
+        # If rasterNameExpressions is not None, ignore rasterExtension.
+
+        if rasterNameExpressions is not None:
+            rasterExtension = None
+
+        # Instantiate the CMEMSARCOArray. 
+
+        grid = CMEMSARCOArray(username, password, datasetID, variableShortName, xCoordType=xCoordType, yCoordType=yCoordType, zCoordType=zCoordType, tCoordType=tCoordType)
+        try:
+            # If rasterNameExpressions is None, we will determine a default
+            # value. First, do some preliminary work related to this.
+
+            if rasterNameExpressions is None:
+
+                # If the grid contains a t dimension, determine the
+                # default suffix representing time.
+
+                if 't' in grid.Dimensions:
+                    if grid.TIncrementUnit == 'year' or grid.TIncrementUnit == 'month' and grid.CoordIncrements[0] % 12 == 0:
+                        timeSuffix = '_%%Y'
+                    elif grid.TIncrementUnit == 'month':
+                        timeSuffix = '_%%Y%%m'
+                    elif grid.TIncrementUnit == 'day' or grid.TIncrementUnit == 'hour' and grid.CoordIncrements[0] % 24 == 0 or grid.TIncrementUnit == 'minute' and grid.CoordIncrements[0] % 1440 == 0 or grid.TIncrementUnit == 'second' and grid.CoordIncrements[0] % 86400 == 0:
+                        timeSuffix = '_%%Y%%m%%d'
+                    else:
+                        timeSuffix = '_%%Y%%m%%d_%%H%%M%%S'
+
+                # If the grid contains a t dimension, determine whether any
+                # digits should appear after the decimal point of the depth.
+                # Also determine the maximum length of the depth string, so we
+                # can zero pad it.
+
+                if rasterNameExpressions is None and 'z' in grid.Dimensions:
+                    depths = grid.MinCoords['z', :] if zCoordType == 'min' else grid.CenterCoords['z', :] if zCoordType == 'center' else grid.MaxCoords['z', :]
+                    if all(depth % 1 == 0 for depth in depths):
+                        depthDecimalDigits = 0
+                    else:
+                        for depthDecimalDigits in range(1, 15):
+                            fmt = '%%0.%if' % depthDecimalDigits
+                            if len(set([fmt % depth for depth in depths])) == len(depths):
+                                break
+
+                    fmt = '%%0.%if' % depthDecimalDigits
+                    depthStrLen = max([len(fmt % depth) for depth in depths])
+
+                # Determine whether the outputWorkspace is a file system
+                # directory or not. If it is, then our default
+                # rasterNameExpressions will store the rasters in a tree.
+                # Otherwise it will construct a flat list of very long unique
+                # names.
+
+                gp = GeoprocessorManager.GetWrappedGeoprocessor()
+                d = gp.Describe(outputWorkspace)
+                outputWorkspaceIsDir = os.path.isdir(outputWorkspace) and (str(d.DataType).lower() != 'workspace' or str(d.DataType).lower() == 'filesystem')
+
+            # Based on the dimensions of the grid, create a list of 2D slices
+            # to import, a list of additional QueryableAttributes for the z
+            # and t dimensions as appropriate, and determine the default value
+            # of rasterNameExpressions if it was not provided.
+
+            if grid.Dimensions == 'yx':
+                grids = [cls._RotateAndClip(grid, rotationOffset, spatialExtent)]
+                qa = []
+                if rasterNameExpressions is None:
+                    if outputWorkspaceIsDir:
+                        rasterNameExpressions = ['%(DatasetID)s', 
+                                                 '%(VariableShortName)s']
+                    else:
+                        rasterNameExpressions = ['Copernicus_%(DatasetID)s_%(VariableShortName)s'] 
+
+            elif grid.Dimensions == 'tyx':
+                clippedGrid = cls._RotateAndClip(grid, rotationOffset, spatialExtent, startDate=startDate, endDate=endDate)
+                grids = GridSliceCollection(clippedGrid, tQACoordType='min').QueryDatasets(reportProgress=False)
+                qa = [QueryableAttribute('DateTime', _('Date'), DateTimeTypeMetadata())]
+                if rasterNameExpressions is None:
+                    if outputWorkspaceIsDir:
+                        rasterNameExpressions = ['%(DatasetID)s', 
+                                                 '%(VariableShortName)s', 
+                                                 '%(VariableShortName)s' + timeSuffix]
+                        if '%%d' in timeSuffix:
+                            rasterNameExpressions.insert(-1, '%%Y')
+                    else:
+                        rasterNameExpressions = ['Copernicus_%(DatasetID)s_%(VariableShortName)s' + timeSuffix] 
+
+            elif grid.Dimensions in ['zyx', 'tzyx']:
+
+                # If the caller requested a minimum depth that is within a
+                # realistic range, instantiate those grids.
+
+                grids = []
+                if minDepth is None or minDepth <= 5500.:
+                    clippedGrid = cls._RotateAndClip(grid, rotationOffset, spatialExtent, minDepth, maxDepth, startDate if 't' in grid.Dimensions else None, endDate if 't' in grid.Dimensions else None)
+                    grids.extend(GridSliceCollection(clippedGrid, tQACoordType=grid._CornerCoordTypes[0] if 't' in grid.Dimensions else None, zQACoordType=grid._CornerCoordTypes[-3]).QueryDatasets(reportProgress=False))
+
+                # If the caller requested a maximum depth that is greater than
+                # or equal to 20000, instantiate a grid representing the
+                # values at the seafloor.
+
+                if minDepth == 20000. or maxDepth >= 20000.:
+                    clippedGrid = cls._RotateAndClip(grid, rotationOffset, spatialExtent, None, None, startDate, endDate)
+                    seafloorGrid = SeafloorGrid(clippedGrid, (QueryableAttribute('Depth', _('Depth'), FloatTypeMetadata()),), {'Depth': 20000.})
+                    grids.extend(GridSliceCollection(seafloorGrid, tQACoordType=grid._CornerCoordTypes[0] if 't' in grid.Dimensions else None).QueryDatasets())
+
+                # Determine the QueryableAttributes and rasterNameExpressions.
+
+                qa = [QueryableAttribute('Depth', _('Depth'), FloatTypeMetadata())]
+                if 't' in grid.Dimensions:
+                    qa.append(QueryableAttribute('DateTime', _('Date'), DateTimeTypeMetadata()))
+
+                if rasterNameExpressions is None:
+                    if outputWorkspaceIsDir:
+                        rasterNameExpressions = ['%(DatasetID)s', 
+                                                 '%(VariableShortName)s', 
+                                                 'Depth_%%(Depth)0%i.%if' % (depthStrLen, depthDecimalDigits),
+                                                 '%%(VariableShortName)s_%%(Depth)0%i.%if' % (depthStrLen, depthDecimalDigits)]
+                        if 't' in grid.Dimensions:
+                            rasterNameExpressions[-1] += timeSuffix
+                            if '%%d' in timeSuffix:
+                                rasterNameExpressions.insert(-1, '%%Y')
+                    else:
+                        rasterNameExpressions = ['Copernicus_%%(DatasetID)s_%%(VariableShortName)s_%%(Depth)0%i.%if' % (depthStrLen, depthDecimalDigits)] 
+                        if 't' in grid.Dimensions:
+                            rasterNameExpressions[-1] += timeSuffix
+
+            # If the output workspace is a directory, apply the
+            # rasterExtension, if it was given.
+
+            if outputWorkspaceIsDir and rasterExtension is not None:
+                if not rasterExtension.startswith('.') and not rasterNameExpressions[-1].endswith('.'):
+                    rasterNameExpressions[-1] += '.' 
+                rasterNameExpressions[-1] += rasterExtension
+
+            # Create the rasters.
+
+            workspace = ArcGISWorkspace(outputWorkspace, ArcGISRaster, pathCreationExpressions=rasterNameExpressions, cacheTree=True, queryableAttributes=tuple(grid.GetAllQueryableAttributes() + qa))
+            workspace.ImportDatasets(grids, mode, calculateStatistics=calculateStatistics, buildPyramids=buildPyramids)
+        
+        finally:
+            grid.Close()
+
+        return outputWorkspace
+
 
 ###############################################################################
 # Metadata: module
 ###############################################################################
 
+from ..Datasets.ArcGIS import _CalculateStatisticsDescription, _BuildPyramidsDescription
 from ..Dependencies import PythonModuleDependency
 from ..Metadata import *
 
@@ -810,7 +988,7 @@ AddPropertyMetadata(CMEMSARCOArray.Username,
     shortDescription=_('Copernicus Marine Service user name.'))
 
 AddPropertyMetadata(CMEMSARCOArray.Password,
-    typeMetadata=UnicodeStringTypeMetadata(minLength=1),
+    typeMetadata=UnicodeStringHiddenTypeMetadata(minLength=1),
     shortDescription=_('Copernicus Marine Service password.'))
 
 AddPropertyMetadata(CMEMSARCOArray.DatasetID,
@@ -847,64 +1025,294 @@ AddArgumentMetadata(CMEMSARCOArray.__init__, 'self',
 
 AddArgumentMetadata(CMEMSARCOArray.__init__, 'username',
     typeMetadata=CMEMSARCOArray.Username.__doc__.Obj.Type,
-    description=CMEMSARCOArray.Username.__doc__.Obj.ShortDescription)
+    description=CMEMSARCOArray.Username.__doc__.Obj.ShortDescription,
+    arcGISDisplayName=_('Copernicus user name'))
 
 AddArgumentMetadata(CMEMSARCOArray.__init__, 'password',
     typeMetadata=CMEMSARCOArray.Password.__doc__.Obj.Type,
-    description=CMEMSARCOArray.Password.__doc__.Obj.ShortDescription)
+    description=CMEMSARCOArray.Password.__doc__.Obj.ShortDescription,
+    arcGISDisplayName=_('Copernicus password'))
 
 AddArgumentMetadata(CMEMSARCOArray.__init__, 'datasetID',
     typeMetadata=CMEMSARCOArray.DatasetID.__doc__.Obj.Type,
-    description=CMEMSARCOArray.DatasetID.__doc__.Obj.ShortDescription)
+    description=CMEMSARCOArray.DatasetID.__doc__.Obj.ShortDescription,
+    arcGISDisplayName=_('Copernicus dataset ID'))
 
 AddArgumentMetadata(CMEMSARCOArray.__init__, 'variableShortName',
     typeMetadata=CMEMSARCOArray.VariableShortName.__doc__.Obj.Type,
-    description=CMEMSARCOArray.VariableShortName.__doc__.Obj.ShortDescription)
+    description=CMEMSARCOArray.VariableShortName.__doc__.Obj.ShortDescription,
+    arcGISDisplayName=_('Variable short name'))
 
 AddArgumentMetadata(CMEMSARCOArray.__init__, 'xCoordType',
     typeMetadata=UnicodeStringTypeMetadata(allowedValues=['min', 'center', 'max'], makeLowercase=True),
     description=_(
-"""Whether the longitude coordinates are the left edges (``'min'``), the
-centers (``'center'``), or the right edges (``'max'``) of the cells. This
-varies by dataset but for most Copernicus datasets the longitude coordinates
-are the centers of the cells. To determine the appropriate value for your
-dataset of interest, contact Copernicus or download the dataset to a raster
-and overlay a high resolution shoreline to examine the overlap."""))
+"""Specifies whether the latitude coordinates used by Copernicus for this
+dataset are the left edges (``'min'``), the centers (``'center'``), or the
+right edges (``'max'``) of the cells. This cannot be determined automatically
+but for most Copernicus datasets the longitude coordinates are the centers of
+the cells. To determine the appropriate value for your dataset of interest,
+consult the dataset's documentation or contact Copernicus for help.
+Alternatively, download the dataset to a raster using ``'center'``, load it
+into a GIS, and overlay a high resolution shoreline. Examine the overlap to
+determine whether ``'min'`` or ``'max'`` would provide a better match up
+between the raster and the shoreline."""),
+    arcGISDisplayName=_('Longitude coordinate type'),
+    arcGISCategory=_('Dataset geolocation options'))
 
 AddArgumentMetadata(CMEMSARCOArray.__init__, 'yCoordType',
     typeMetadata=UnicodeStringTypeMetadata(allowedValues=['min', 'center', 'max'], makeLowercase=True),
     description=_(
-"""Whether the latitude coordinates are the bottom edges (``'min'``), the
-centers (``'center'``), or the top edges (``'max'``) of the cells. This varies
-by dataset but for most Copernicus datasets the latitude coordinates are the
-centers of the cells. To determine the appropriate value for your dataset of
-interest, contact Copernicus or download the dataset to a raster and overlay a
-high resolution shoreline to examine the overlap."""))
+"""Specifies whether the latitude coordinates used by Copernicus for this
+dataset are the bottom edges (``'min'``), the centers (``'center'``), or the
+top edges (``'max'``) of the cells. This cannot be determined automatically
+but for most Copernicus datasets the latitude coordinates are the centers of
+the cells. To determine the appropriate value for your dataset of interest,
+consult the dataset's documentation or contact Copernicus for help.
+Alternatively, download the dataset to a raster using ``'center'``, load it
+into a GIS, and overlay a high resolution shoreline. Examine the overlap to
+determine whether ``'min'`` or ``'max'`` would provide a better match up
+between the raster and the shoreline."""),
+    arcGISDisplayName=_('Latitude coordinate type'),
+    arcGISCategory=_('Dataset geolocation options'))
 
 AddArgumentMetadata(CMEMSARCOArray.__init__, 'zCoordType',
     typeMetadata=UnicodeStringTypeMetadata(allowedValues=['min', 'center', 'max'], makeLowercase=True),
     description=_(
-"""Whether the depth coordinates are the shallow edges (``'min'``), the
-centers (``'center'``), or the deep edges (``'max'``) of the cells. This
-varies by dataset but for most Copernicus datasets the depth coordinates are
-the centers of the cells. To determine the appropriate value for your dataset
-of interest, contact Copernicus."""))
+"""Specifies whether the depth coordinates used by Copernicus for this dataset
+are the shallow edges (``'min'``), the centers (``'center'``), or the deep
+edges (``'max'``) of the cells. This cannot be determined automatically but
+for most Copernicus datasets the depth coordinates are the centers of the
+cells. To determine the appropriate value for your dataset of interest,
+consult the dataset's documentation or contact Copernicus for help."""),
+    arcGISDisplayName=_('Depth coordinate type'),
+    arcGISCategory=_('Dataset geolocation options'))
 
 AddArgumentMetadata(CMEMSARCOArray.__init__, 'tCoordType',
     typeMetadata=UnicodeStringTypeMetadata(allowedValues=['min', 'center', 'max'], makeLowercase=True),
     description=_(
-"""Whether the time coordinates are the starting times (``'min'``), the center
-times (``'center'``), or the ending times (``'max'``) of the time slices. This
-varies by dataset but most Copernicus datasets that are "instantaneous" use
-center times, while most datasets that represent mean values (e.g. daily or
-monthly means) use starting times. To determine the appropriate value for your
-dataset of interest, contact Copernicus."""))
+"""Specifies whether the time coordinates used by Copernicus for this dataset
+are the starting times (``'min'``), the center times (``'center'``), or the
+ending times (``'max'``) of the time slices. This cannot be determined
+automatically but most Copernicus datasets that are "instantaneous" use center
+times, while most datasets that represent mean values (e.g. daily or monthly
+means) use starting times. To determine the appropriate value for your dataset
+of interest, consult the dataset's documentation or contact Copernicus for
+help."""),
+    arcGISDisplayName=_('Time coordinate type'),
+    arcGISCategory=_('Dataset geolocation options'))
 
 CopyArgumentMetadata(Grid.__init__, 'lazyPropertyValues', CMEMSARCOArray.__init__, 'lazyPropertyValues')
 
 AddResultMetadata(CMEMSARCOArray.__init__, 'obj',
     typeMetadata=ClassInstanceTypeMetadata(cls=CMEMSARCOArray),
     description=_(':class:`%s` instance.') % CMEMSARCOArray.__name__)
+
+# Public method: CMEMSARCOArray.CreateArcGISRasters
+
+AddMethodMetadata(CMEMSARCOArray.CreateArcGISRasters,
+    shortDescription=_('Creates rasters for a 2D, 3D, or 4D gridded dataset published by `Copernicus Marine Service <https://data.marine.copernicus.eu/products>`_.'),
+    isExposedAsArcGISTool=True,
+    arcGISDisplayName=_('Create Rasters for CMEMS Dataset'),
+    arcGISToolCategory=_('Data Products\\Copernicus Marine Service (CMEMS)'),
+    dependencies=CMEMSARCOArray.__init__.__doc__.Obj.Dependencies)
+
+AddArgumentMetadata(CMEMSARCOArray.CreateArcGISRasters, 'cls',
+    typeMetadata=ClassOrClassInstanceTypeMetadata(cls=CMEMSARCOArray),
+    description=_(':class:`%s` or an instance of it.') % CMEMSARCOArray.__name__)
+
+CopyArgumentMetadata(CMEMSARCOArray.__init__, 'username', CMEMSARCOArray.CreateArcGISRasters, 'username')
+CopyArgumentMetadata(CMEMSARCOArray.__init__, 'password', CMEMSARCOArray.CreateArcGISRasters, 'password')
+CopyArgumentMetadata(CMEMSARCOArray.__init__, 'datasetID', CMEMSARCOArray.CreateArcGISRasters, 'datasetID')
+CopyArgumentMetadata(CMEMSARCOArray.__init__, 'variableShortName', CMEMSARCOArray.CreateArcGISRasters, 'variableShortName')
+
+AddArgumentMetadata(CMEMSARCOArray.CreateArcGISRasters, 'outputWorkspace',
+    typeMetadata=ArcGISWorkspaceTypeMetadata(createParentDirectories=True),
+    description=_(
+"""Directory or geodatabase to receive the rasters. Unless you have a specific
+reason to store the rasters in a geodatabase, we recommend you store them in a
+directory because it will be faster and allow the rasters to be organized in a
+tree. The tree structure and raster names will be generated automatically
+unless you provide a value for the Raster Name Expressions parameter."""),
+    arcGISDisplayName=_('Output workspace'))
+
+AddArgumentMetadata(CMEMSARCOArray.CreateArcGISRasters, 'mode',
+    typeMetadata=UnicodeStringTypeMetadata(allowedValues=['Add', 'Replace'], makeLowercase=True),
+    description=_(
+"""Overwrite mode, one of:
+
+* Add - create rasters that do not exist and skip those that already exist.
+  This is the default.
+
+* Replace - create rasters that do not exist and overwrite those that already
+  exist.
+
+The ArcGIS Overwrite Output environment setting has no effect on this tool. If
+'Replace' is selected the rasters will be overwritten, regardless of the
+ArcGIS Overwrite Output setting."""),
+    arcGISDisplayName=_('Overwrite mode'))
+
+CopyArgumentMetadata(CMEMSARCOArray.__init__, 'xCoordType', CMEMSARCOArray.CreateArcGISRasters, 'xCoordType')
+CopyArgumentMetadata(CMEMSARCOArray.__init__, 'yCoordType', CMEMSARCOArray.CreateArcGISRasters, 'yCoordType')
+CopyArgumentMetadata(CMEMSARCOArray.__init__, 'zCoordType', CMEMSARCOArray.CreateArcGISRasters, 'zCoordType')
+CopyArgumentMetadata(CMEMSARCOArray.__init__, 'tCoordType', CMEMSARCOArray.CreateArcGISRasters, 'tCoordType')
+
+AddArgumentMetadata(CMEMSARCOArray.CreateArcGISRasters, 'rotationOffset',
+    typeMetadata=FloatTypeMetadata(canBeNone=True),
+    description=_(
+"""Degrees to rotate the outputs about the polar axis. This parameter may only
+be used for global products. The outputs can only be rotated in whole cells.
+The value you provide will be rounded off to the closest cell. The value may
+be positive or negative."""),
+    arcGISDisplayName=_('Rotate by'),
+    arcGISCategory=_('Spatiotemporal extent'))
+
+AddArgumentMetadata(CMEMSARCOArray.CreateArcGISRasters, 'spatialExtent',
+    typeMetadata=EnvelopeTypeMetadata(canBeNone=True),
+    description=_(
+"""Spatial extent of the outputs, in degrees. This parameter is applied after
+the rotation parameter and uses coordinates that result after rotation. The
+outputs can only be clipped in whole grid cells. The values you provide will
+be rounded off to the closest cell."""),
+    arcGISDisplayName=_('Spatial extent'),
+    arcGISCategory=_('Spatiotemporal extent'))
+
+AddArgumentMetadata(CMEMSARCOArray.CreateArcGISRasters, 'minDepth',
+    typeMetadata=FloatTypeMetadata(minValue=0.0, maxValue=20000.0, canBeNone=True),
+    description=_(
+"""Minimum depth, in meters, for the outputs to create. This parameter is
+ignored if the dataset does not have a depth coordinate. Its value must be
+between 0 and 20000, inclusive. Outputs will be created for layers with depths
+that are greater than or equal to the minimum depth and less than or equal to
+the maximum depth. If you do not specify a minimum depth, the minimum depth of
+the dataset will be used.
+
+The value 20000 is a special code representing conditions at the seafloor. Use
+this value if you need an estimate of "bottom temperature" or the value of
+another variable at the seafloor. If this value is requested, an output will
+be created with a fake depth of 20000 meters. The cells of this output will be
+assigned by stacking all of the depth layers and selecting the deepest cells
+that have data.
+
+Note that some Copernicus datasets offer a variable representing values at the
+seafloor that Copernicus computed ahead of time. This tool is not aware of
+those variables and cannot access them automatically. But you can manually
+access such a variable just like any other by providing its name for the
+Variable Short Name parameter. Accessing those precomputed variables will be
+faster than using a depth of 20000 to compute them yourself. Variables of that
+kind will be treated by this tool as not having a depth coordinate."""),
+    arcGISDisplayName=_('Minimum depth'),
+    arcGISCategory=_('Spatiotemporal extent'))
+
+AddArgumentMetadata(CMEMSARCOArray.CreateArcGISRasters, 'maxDepth',
+    typeMetadata=FloatTypeMetadata(minValue=0.0, maxValue=20000.0, canBeNone=True),
+    description=_(
+"""Maximum depth, in meters, for the outputs to create. This parameter is
+ignored if the dataset does not have a depth coordinate. Its value must be
+between 0 and 20000, inclusive. Outputs will be created for images with depths
+that are greater than or equal to the minimum depth and less than or equal to
+the maximum depth. If you do not specify a maximum depth, the maximum depth of
+the dataset will be used.
+
+The value 20000 is a special code representing conditions at the seafloor.
+Please see the documenation for the Minimum Depth parameter for discussions of
+this value."""),
+    arcGISDisplayName=_('Maximum depth'),
+    arcGISCategory=_('Spatiotemporal extent'))
+
+AddArgumentMetadata(CMEMSARCOArray.CreateArcGISRasters, 'startDate',
+    typeMetadata=DateTimeTypeMetadata(canBeNone=True),
+    description=_(
+"""Start date for the outputs to create. This parameter is ignored if the
+dataset does not have a time coordinate. Outputs will be created for images
+that occur on or after the start date and on or before the end date. If you do
+not provide a start date, the date of the first available time slice will be
+used."""),
+    arcGISDisplayName=_('Start date'),
+    arcGISCategory=_('Spatiotemporal extent'))
+
+AddArgumentMetadata(CMEMSARCOArray.CreateArcGISRasters, 'endDate',
+    typeMetadata=DateTimeTypeMetadata(canBeNone=True),
+    description=_(
+"""End date for the outputs to create. This parameter is ignored if the
+dataset does not have a time coordinate. Outputs will be created for images
+that occur on or after the start date and on or before the end date. If you do
+not specify an end date, the date of the most recent time slice will be used.
+The time component of the end date is ignored."""),
+    arcGISDisplayName=_('End date'),
+    arcGISCategory=_('Spatiotemporal extent'))
+
+AddArgumentMetadata(CMEMSARCOArray.CreateArcGISRasters, 'rasterExtension',
+    typeMetadata=UnicodeStringTypeMetadata(minLength=1, canBeNone=True),
+    description=_(
+"""File extension to use for output rasters. This parameter is ignored if the
+rasters are stored in a geodatabase rather than the file system, or if the
+Raster Name Expressions parameter is provided (in which case it determines the
+file extension). The default is '.img', for ERDAS IMAGINE format. Another
+popular choice is '.tif', the GeoTIFF format. Please see the ArcGIS
+documentation for the extensions of the supported formats."""),
+    arcGISDisplayName=_('Raster file extension'),
+    arcGISCategory=_('Output raster options'))
+
+AddArgumentMetadata(CMEMSARCOArray.CreateArcGISRasters, 'rasterNameExpressions',
+    typeMetadata=ListTypeMetadata(elementType=UnicodeStringTypeMetadata(minLength=1), minLength=1, canBeNone=True),
+    description=_(
+"""List of expressions specifying how the output rasters should be named. If
+you do not provide anything, a default naming scheme will be used.
+
+If the output workspace is a file system directory, you may provide one or
+more expression. Each expression defines a level in a directory tree. The
+final expression specifies the raster file name. If the output workspace is a
+geodatabase, you should provide only one expression, which specifies the
+raster name.
+
+Each expression may contain any sequence of characters permitted by the output
+workspace. Each expression may optionally contain one or more of the following
+case-sensitive codes. The tool replaces the codes with appropriate values when
+creating each raster:
+
+* %(DatasetID)s - Copernicus dataset ID.
+
+* %(ShortVariableName)s - Copernicus short variable name.
+
+* %(Depth)s - depth of the raster. Only avilable for datasets that have depth
+  coordinates.
+
+* %%Y - four-digit year of the raster. This and the following codes are only
+  available for datasets that have time coordinates.
+
+* %%m - two-digit month of the raster.
+
+* %%d - two-digit day of the month of the raster.
+
+* %%j - three-digit day of the year of the raster.
+
+* %%H - two-digit hour of the raster.
+
+* %%M - two-digit minute of the raster.
+
+* %%S - two-digit second of the raster.
+
+"""),
+    arcGISDisplayName=_('Raster name expressions'),
+    arcGISCategory=_('Output raster options'))
+
+AddArgumentMetadata(CMEMSARCOArray.CreateArcGISRasters, 'calculateStatistics',
+    typeMetadata=BooleanTypeMetadata(),
+    description=_CalculateStatisticsDescription,
+    arcGISDisplayName=_('Calculate statistics'),
+    arcGISCategory=_('Additional raster processing options'))
+
+AddArgumentMetadata(CMEMSARCOArray.CreateArcGISRasters, 'buildPyramids',
+    typeMetadata=BooleanTypeMetadata(),
+    description=_BuildPyramidsDescription,
+    arcGISDisplayName=_('Build pyramids'),
+    arcGISCategory=_('Additional raster processing options'))
+
+AddResultMetadata(CMEMSARCOArray.CreateArcGISRasters, 'updatedOutputWorkspace',
+    typeMetadata=ArcGISWorkspaceTypeMetadata(),
+    description=_('Updated output workspace.'),
+    arcGISDisplayName=_('Updated output workspace'),
+    arcGISParameterDependencies=['outputWorkspace'])
 
 
 ###############################################################################

@@ -89,6 +89,13 @@ AddClassMetadata('UnicodeStringTypeMetadata', module=__package__, shortDescripti
 
 
 ###############################################################################
+# Metadata: UnicodeStringHiddenTypeMetadata class
+###############################################################################
+
+AddClassMetadata('UnicodeStringHiddenTypeMetadata', module=__package__, shortDescription=_('Metadata specifying that a value must be a :py:class:`str`, a Unicode string, that should not be displayed (e.g. because it is a password).'))
+
+
+###############################################################################
 # Export nothing from this module
 ###############################################################################
 

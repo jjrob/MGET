@@ -1108,6 +1108,42 @@ class UnicodeStringTypeMetadata(TypeMetadata):
         return constraints
 
 
+class UnicodeStringHiddenTypeMetadata(UnicodeStringTypeMetadata):
+    __doc__ = DynamicDocString()
+
+    def __init__(self,
+                 stripWhitespace=True,
+                 makeLowercase=False,
+                 makeUppercase=False,
+                 minLength=1,
+                 maxLength=2147483647,
+                 mustMatchRegEx=None,
+                 canBeNone=False,
+                 allowedValues=None,
+                 arcGISType='ESRI.ArcGIS.Geoprocessing.GPStringHiddenTypeClass',
+                 arcGISAssembly='ESRI.ArcGIS.Geoprocessing',
+                 canBeArcGISInputParameter=True,
+                 canBeArcGISOutputParameter=True):
+        
+        super(UnicodeStringHiddenTypeMetadata, self).__init__(stripWhitespace=stripWhitespace,
+                                                              makeLowercase=makeLowercase,
+                                                              makeUppercase=makeUppercase,
+                                                              minLength=minLength,
+                                                              maxLength=maxLength,
+                                                              mustMatchRegEx=mustMatchRegEx,
+                                                              canBeNone=canBeNone,
+                                                              allowedValues=allowedValues,
+                                                              arcGISType=arcGISType,
+                                                              arcGISAssembly=arcGISAssembly,
+                                                              canBeArcGISInputParameter=canBeArcGISInputParameter,
+                                                              canBeArcGISOutputParameter=canBeArcGISOutputParameter)
+
+    def _GetArcGISDataTypeDict(self):
+        return {'type': 'GPStringHidden'}
+
+    ArcGISDataTypeDict = property(_GetArcGISDataTypeDict, doc=DynamicDocString())
+
+
 ###############################################################################
 # Names exported by this module
 #

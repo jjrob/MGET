@@ -576,43 +576,59 @@ def _ExecuteMethodAsGeoprocessingTool(method):
     from GeoEco.ArcGIS import GeoprocessorManager
 
     gp = GeoprocessorManager.GetWrappedGeoprocessor()
+    gpUnwrapped = GeoprocessorManager.GetGeoprocessor()
     paramInfo = gp.GetParameterInfo()
     pni = {p.name: i for i, p in enumerate(paramInfo)}
     mm = method.__doc__.Obj
     argValues = {}
+    argValuesToLog = {}
 
     for am in mm.Arguments:
+
+        # If we are supposed to initialize this argument to a geoprocessor
+        # variable (typically a member of arcpy.env), get that value. If the
+        # argument is supposed to be a hidden string, use the unwrapped
+        # geoprocessor so we don't log its value.
+
         if am.InitializeToArcGISGeoprocessorVariable is not None:
-            value = gp
+            value = gp if not isinstance(am.Type, UnicodeStringHiddenTypeMetadata) else gpUnwrapped
             for attr in am.InitializeToArcGISGeoprocessorVariable.split('.'):
                 value = getattr(value, attr)
-            argValues[am.Name] = value
 
-        if am.ArcGISDisplayName is None:
-                continue
+        # Otherwise, if the argment is displayed in the ArcGIS user interface,
+        # get the value that the user provided. Unfortunately, we can't easily
+        # use gp.GetParameter(), because it returns an opaque object in most
+        # situations. So we will follow ESRI's examples and use
+        # gp.GetParameterAsText() and parse the result, which is what we've
+        # always done from the beginning of GeoEco. In any case, as above, if
+        # the argument is supposed to be a hidden string, use the unwrapped
+        # geoprocessor so we don't log its value.
 
-        # Unfortunately, we can't easily use gp.GetParameter(), because it
-        # returns an opaque object in most situations. So we will follow
-        # ESRI's examples and use gp.GetParameterAsText() and parse the
-        # result, which is what we've always done from the beginning of
-        # GeoEco.
+        elif am.ArcGISDisplayName is None:
+            value = gp.GetParameterAsText(pni[am.Name]) if not isinstance(am.Type, UnicodeStringHiddenTypeMetadata) else gpUnwrapped.GetParameterAsText(pni[am.Name])
 
-        value = gp.GetParameterAsText(pni[am.Name])
-        if value == '#' or len(value) <= 0:
-            if am.Type.CanBeNone:
-                value = None
-            elif am.HasDefault:
-                value = am.Default
+            if value == '#' or len(value) <= 0:
+                if am.Type.CanBeNone:
+                    value = None
+                elif am.HasDefault:
+                    value = am.Default
+                else:
+                    value = None   # This will cause an exception to be raised by the method's validation code when we call the method
             else:
-                value = None   # This will cause an exception to be raised by the method's validation code when we call the method
+                value = am.Type.ParseValueFromArcGISInputParameterString(value, am.ArcGISDisplayName, pni[am.Name] + 1)
+
+        # Otherwise, we won't assign a value to this argument and its default
+        # value will be used.
+
         else:
-            value = am.Type.ParseValueFromArcGISInputParameterString(value, am.ArcGISDisplayName, pni[am.Name] + 1)
+            continue
 
         argValues[am.Name] = value
+        argValuesToLog[am.Name] = argValues[am.Name] if not isinstance(am.Type, UnicodeStringHiddenTypeMetadata) else '*****'
 
     # Log a debug message indicating the method is being called.
 
-    Logger.Debug('Calling %s.%s.%s(%s)' % (mm.Class.Module.Name, mm.Class.Name, mm.Name, ', '.join([key + '=' + repr(value) for key, value in argValues.items()])))
+    Logger.Debug('Calling %s.%s.%s(%s)' % (mm.Class.Module.Name, mm.Class.Name, mm.Name, ', '.join([key + '=' + repr(value) for key, value in argValuesToLog.items()])))
 
     # Call the method.
 
@@ -626,6 +642,10 @@ def _ExecuteMethodAsGeoprocessingTool(method):
             results = (results,)
         for i, rm in enumerate(mm.Results):
             if rm.ArcGISDisplayName is not None:
-                Logger.Debug('Setting geoprocessing output parameter %s=%r' % (rm.Name, results[i]))
-                gp.SetParameterAsText(pni[rm.Name], str(results[r]))
+                if not isinstance(rm.Type, UnicodeStringHiddenTypeMetadata):
+                    Logger.Debug('Setting geoprocessing output parameter %s=%r' % (rm.Name, results[i]))
+                    gp.SetParameterAsText(pni[rm.Name], str(results[r]))
+                else:
+                    Logger.Debug('Setting geoprocessing output parameter %s=\'*****\'' % rm.Name)
+                    gpUnwrapped.SetParameterAsText(pni[rm.Name], str(results[r]))
                 r += 1

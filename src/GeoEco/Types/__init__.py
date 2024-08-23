@@ -22,6 +22,7 @@ from ._Base import DateTimeTypeMetadata
 from ._Base import FloatTypeMetadata
 from ._Base import IntegerTypeMetadata
 from ._Base import UnicodeStringTypeMetadata
+from ._Base import UnicodeStringHiddenTypeMetadata
 from ._Sequence import SequenceTypeMetadata
 from ._Sequence import ListTypeMetadata
 from ._Sequence import TupleTypeMetadata
@@ -77,6 +78,7 @@ __all__ = ['TypeMetadata',
            'FloatTypeMetadata',
            'IntegerTypeMetadata',
            'UnicodeStringTypeMetadata',
+           'UnicodeStringHiddenTypeMetadata',
            'SequenceTypeMetadata',
            'ListTypeMetadata',
            'TupleTypeMetadata',
