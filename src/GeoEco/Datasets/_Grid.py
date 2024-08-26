@@ -116,6 +116,11 @@ class Grid(Dataset):
 
     UnscaledData = property(_GetUnscaledData, doc=DynamicDocString())
 
+    @staticmethod
+    def numpy_equal_nan(a, b):
+        import numpy
+        return (a == b) | (numpy.isnan(a) & numpy.isnan(b))
+
     def GetIndicesForCoords(self, coords):
 
         # Validate the coordinates.
@@ -678,15 +683,15 @@ class Grid(Dataset):
         unscaledData = self._GetUnscaledDataAsArray(key)
         data = self.GetLazyPropertyValue('ScalingFunction')(unscaledData)
 
+        import numpy
+
         if data.dtype.name != self.DataType:
-            import numpy
             data = numpy.cast[str(self.DataType)](data)
             
         if self.UnscaledNoDataValue is not None and self.NoDataValue is not None:
             if data.ndim > 0:
-                data[unscaledData == self.UnscaledNoDataValue] = self.NoDataValue
-            elif unscaledData == self.UnscaledNoDataValue:
-                import numpy
+                data[Grid.numpy_equal_nan(unscaledData, self.UnscaledNoDataValue)] = self.NoDataValue
+            elif unscaledData == self.UnscaledNoDataValue or numpy.isnan(unscaledData) and numpy.isnan(self.UnscaledNoDataValue):
                 return numpy.array(self.NoDataValue, data.dtype)
             
         return data
@@ -694,11 +699,12 @@ class Grid(Dataset):
     def _SetScaledDataWithArray(self, key, value):
         unscaledData = self.GetLazyPropertyValue('UnscalingFunction')(value)
 
+        import numpy
+
         if self.UnscaledNoDataValue is not None and self.NoDataValue is not None:
             if unscaledData.ndim > 0:
-                unscaledData[unscaledData == self.NoDataValue] = self.UnscaledNoDataValue
-            elif unscaledData == self.UnscaledNoDataValue:
-                import numpy
+                unscaledData[Grid.numpy_equal_nan(value, self.NoDataValue)] = self.UnscaledNoDataValue
+            elif value == self.NoDataValue:
                 return numpy.array(self.UnscaledNoDataValue, unscaledData.dtype)
         
         self._SetUnscaledDataWithArray(key, unscaledData)
@@ -761,13 +767,15 @@ class Grid(Dataset):
         # the desired NoData value and/or recast it to use the desired
         # data type.
 
-        if actualNoDataValue is not None and self.UnscaledNoDataValue is not None and ((isinstance(self.UnscaledNoDataValue, int) and int(actualNoDataValue) != self.UnscaledNoDataValue or isinstance(self.UnscaledNoDataValue, float) and actualNoDataValue != self.UnscaledNoDataValue)):
+        import numpy
+
+        if actualNoDataValue is not None and self.UnscaledNoDataValue is not None and ((isinstance(self.UnscaledNoDataValue, int) and int(actualNoDataValue) != self.UnscaledNoDataValue or isinstance(self.UnscaledNoDataValue, float) and actualNoDataValue != self.UnscaledNoDataValue and not(numpy.isnan(actualNoDataValue) and numpy.isnan(self.UnscaledNoDataValue)))):
             if data.dtype.kind == 'i':
                 self._LogDebug(_('%(class)s 0x%(id)016X: Changing the NoData value of the returned data from %(v1)i to %(v2)i.') % {'class': self.__class__.__name__, 'id': id(self), 'v1': int(actualNoDataValue), 'v2': self.UnscaledNoDataValue})
                 data[data == int(actualNoDataValue)] = self.UnscaledNoDataValue
             else:
                 self._LogDebug(_('%(class)s 0x%(id)016X: Changing the NoData value of the returned data from %(v1)g to %(v2)g.') % {'class': self.__class__.__name__, 'id': id(self), 'v1': actualNoDataValue, 'v2': self.UnscaledNoDataValue})
-                data[data == actualNoDataValue] = self.UnscaledNoDataValue
+                data[Grid.numpy_equal_nan(data, actualNoDataValue)] = self.UnscaledNoDataValue
 
         if data.dtype.name != self.UnscaledDataType:
             self._LogDebug(_('%(class)s 0x%(id)016X: Changing the data type of the returned data from %(t1)s to %(t2)s.') % {'class': self.__class__.__name__, 'id': id(self), 't1': data.dtype.name, 't2': self.UnscaledDataType})

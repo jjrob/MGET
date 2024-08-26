@@ -517,7 +517,7 @@ class ProgressReporter(object):
 
         if self._UseArcGISProgressor():
             from .ArcGIS import GeoprocessorManager
-            gp = GeoprocessorManager.GetWrappedGeoprocessor()
+            gp = GeoprocessorManager.GetGeoprocessor()
             if self.HasStarted:
                 try:
                     gp.ResetProgressor()
@@ -644,7 +644,7 @@ class ProgressReporter(object):
 
         if self._UseArcGISProgressor() and (reinitializeArcGISProgressor or int(math.floor(float(self._OperationsCompleted) / float(self._TotalOperations) * 1000.)) > int(math.floor(float(self._OperationsCompleted - 1) / float(self._TotalOperations) * 1000.))):
             from .ArcGIS import GeoprocessorManager
-            gp = GeoprocessorManager.GetWrappedGeoprocessor()
+            gp = GeoprocessorManager.GetGeoprocessor()
             try:
                 if reinitializeArcGISProgressor:
                     gp.SetProgressor('step', self.ArcGISProgressorLabel, 0, 1000, 1)

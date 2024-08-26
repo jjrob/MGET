@@ -16,6 +16,9 @@ from ...Metadata import AddModuleMetadata
 
 AddModuleMetadata(shortDescription=_(':class:`~GeoEco.Datasets.Grid`\\ s and :class:`~GeoEco.Datasets.DatasetCollection`\\ s that transform :class:`~GeoEco.Datasets.Grid`\\ s and :class:`~GeoEco.Datasets.DatasetCollection`\\ s, lazily if possible.'))
 
+from ._ClippedGrid import ClippedGrid
+from . import _ClippedGridMetadata
+
 from ._FastMarchingDistanceGrid import FastMarchingDistanceGrid
 from . import _FastMarchingDistanceGridMetadata
 
@@ -31,6 +34,9 @@ from . import _InpaintedGridMetadata
 from ._RotatedGlobalGrid import RotatedGlobalGrid
 from . import _RotatedGlobalGridMetadata
 
+from ._SeafloorGrid import SeafloorGrid
+from . import _SeafloorGridMetadata
+
 from ._TimeSeriesGridStack import TimeSeriesGridStack
 from . import _TimeSeriesGridStackMetadata
 
@@ -41,10 +47,12 @@ from . import _WindFetchGridMetadata
 # Names exported by this module
 ###############################################################################
 
-__all__ = ['FastMarchingDistanceGrid',
+__all__ = ['ClippedGrid',
+           'FastMarchingDistanceGrid',
            'GridSlice',
            'GridSliceCollection',
            'InpaintedGrid',
            'RotatedGlobalGrid',
+           'SeafloorGrid',
            'TimeSeriesGridStack',
            'WindFetchGrid']

@@ -1,0 +1,169 @@
+# CMEMS_test.py - pytest tests for GeoEco.DataProducts.CMEMS.
+#
+# Copyright (C) 2024 Jason J. Roberts
+#
+# This file is part of Marine Geospatial Ecology Tools (MGET) and is released
+# under the terms of the 3-Clause BSD License. See the LICENSE file at the
+# root of this project or https://opensource.org/license/bsd-3-clause for the
+# full license text.
+
+import datetime
+import os
+from pathlib import Path
+
+import dotenv
+import pytest
+
+from GeoEco.Logging import Logger
+from GeoEco.DataProducts.CMEMS import CMEMSARCOArray
+
+Logger.Initialize()
+
+
+def getCMEMSCredentials():
+    dotenv.load_dotenv(Path(__file__).parent.parent.parent / '.env')
+    return (os.getenv('CMEMS_USERNAME'), os.getenv('CMEMS_PASSWORD'))
+
+
+def isArcPyInstalled():
+    try:
+        import arcpy
+    except:
+        return False
+    return True
+
+
+@pytest.mark.skipif(None in getCMEMSCredentials(), reason='CMEMS_USERNAME or CMEMS_PASSWORD environment variables not defined')
+@pytest.mark.skipif(not isArcPyInstalled(), reason='ArcGIS arcpy module is not installed')
+class TestCMEMSARCOArrayArcGIS():
+
+    # Test that we can download arrays of all supported dimensions. Note: I
+    # could not find dataset with zyx dimensions, e.g. a cumulative
+    # climatology of something that has depth layers. So this case is not
+    # tested.
+
+    def test_CreateArcGISRasters_yx(self, tmp_path):
+        username, password = getCMEMSCredentials()
+        datasetID = 'cmems_mod_glo_phy_my_0.083deg_static'
+        vsn = 'mdt'
+        outputDir = tmp_path / (vsn + '1' )
+        os.makedirs(outputDir)
+        CMEMSARCOArray.CreateArcGISRasters(username=username,
+                                           password=password,
+                                           datasetID=datasetID,
+                                           variableShortName=vsn,
+                                           outputWorkspace=outputDir)
+        assert (outputDir / datasetID / ('%s.img' % vsn)).is_file()
+
+    def test_CreateArcGISRasters_tyx_monthly(self, tmp_path):
+        username, password = getCMEMSCredentials()
+        datasetID = 'cmems_obs-oc_glo_bgc-plankton_my_l4-multi-4km_P1M'
+        vsn = 'CHL'
+        outputDir = tmp_path / (vsn + '1' )
+        os.makedirs(outputDir)
+        CMEMSARCOArray.CreateArcGISRasters(username=username,
+                                           password=password,
+                                           datasetID=datasetID,
+                                           variableShortName=vsn,
+                                           outputWorkspace=outputDir,
+                                           spatialExtent='-82 25 -52 50',
+                                           startDate=datetime.datetime(2020,1,1),
+                                           endDate=datetime.datetime(2020,3,31))
+        for month in [1,2,3]:
+            assert (outputDir / datasetID / vsn / ('%s_2020%02i.img' % (vsn, month))).is_file()
+
+    def test_CreateArcGISRasters_tzyx_monthly(self, tmp_path):
+        username, password = getCMEMSCredentials()
+        datasetID = 'cmems_mod_glo_phy_my_0.083deg_P1M-m'
+        vsn = 'thetao'
+        outputDir = tmp_path / (vsn + '1' )
+        os.makedirs(outputDir)
+        CMEMSARCOArray.CreateArcGISRasters(username=username,
+                                           password=password,
+                                           datasetID=datasetID,
+                                           variableShortName=vsn,
+                                           outputWorkspace=outputDir,
+                                           spatialExtent='-82 25 -52 50',
+                                           minDepth=0.,
+                                           maxDepth=5.,
+                                           startDate=datetime.datetime(2020,1,1),
+                                           endDate=datetime.datetime(2020,3,31))
+        for depth in ['0000.5', '0001.5', '0002.6', '0003.8']:
+            for month in [1,2,3]:
+                assert (outputDir / datasetID / vsn / ('Depth_' + depth) / ('%s_%s_2020%02i.img' % (vsn, depth, month))).is_file()
+
+    # Test that products with temporal resolutions other than monthly (which we
+    # tested above) are created with appropriate file names.
+
+    def test_CreateArcGISRasters_tzyx_daily(self, tmp_path):
+        username, password = getCMEMSCredentials()
+        datasetID = 'cmems_mod_glo_phy_my_0.083deg_P1D-m'
+        vsn = 'thetao'
+        outputDir = tmp_path / (vsn + '1' )
+        os.makedirs(outputDir)
+        CMEMSARCOArray.CreateArcGISRasters(username=username,
+                                           password=password,
+                                           datasetID=datasetID,
+                                           variableShortName=vsn,
+                                           outputWorkspace=outputDir,
+                                           spatialExtent='-82 25 -52 50',
+                                           minDepth=0.,
+                                           maxDepth=5.,
+                                           startDate=datetime.datetime(2020,1,1,0,0,0),
+                                           endDate=datetime.datetime(2020,1,3,23,59,59))
+        for depth in ['0000.5', '0001.5', '0002.6', '0003.8']:
+            for day in [1,2,3]:
+                assert (outputDir / datasetID / vsn / ('Depth_' + depth) / '2020' / ('%s_%s_202001%02i.img' % (vsn, depth, day))).is_file()
+
+    def test_CreateArcGISRasters_tyx_hourly(self, tmp_path):
+        username, password = getCMEMSCredentials()
+        datasetID = 'cmems_mod_blk_phy-ssh_anfc_2.5km_PT1H-m'
+        vsn = 'zos'
+        outputDir = tmp_path / (vsn + '1' )
+        os.makedirs(outputDir)
+        CMEMSARCOArray.CreateArcGISRasters(username=username,
+                                           password=password,
+                                           datasetID=datasetID,
+                                           variableShortName=vsn,
+                                           outputWorkspace=outputDir,
+                                           startDate=datetime.datetime(2024,1,1,0,0,0),
+                                           endDate=datetime.datetime(2024,1,1,23,59,59))
+        for hour in range(24):
+            assert (outputDir / datasetID / vsn / '2024' / ('%s_20240101_%02i0000.img' % (vsn, hour))).is_file()
+
+    def test_CreateArcGISRasters_tyx_15min(self, tmp_path):
+        username, password = getCMEMSCredentials()
+        datasetID = 'cmems_mod_blk_phy-ssh_anfc_2.5km_PT15M-i'
+        vsn = 'zos'
+        outputDir = tmp_path / (vsn + '1' )
+        os.makedirs(outputDir)
+        CMEMSARCOArray.CreateArcGISRasters(username=username,
+                                           password=password,
+                                           datasetID=datasetID,
+                                           variableShortName=vsn,
+                                           outputWorkspace=outputDir,
+                                           startDate=datetime.datetime(2024,1,1,0,0,0),
+                                           endDate=datetime.datetime(2024,1,1,2,59,59))
+        for hour in range(3):
+            for minute in [0, 15, 30, 45]:
+                assert (outputDir / datasetID / vsn / '2024' / ('%s_20240101_%02i%02i00.img' % (vsn, hour, minute))).is_file()
+
+    # Test creation of seafloor grids.
+
+    def test_CreateArcGISRasters_tzyx_monthly_seafloor(self, tmp_path):
+        username, password = getCMEMSCredentials()
+        datasetID = 'cmems_mod_glo_phy_my_0.083deg_P1M-m'
+        vsn = 'thetao'
+        outputDir = tmp_path / (vsn + '1' )
+        os.makedirs(outputDir)
+        CMEMSARCOArray.CreateArcGISRasters(username=username,
+                                           password=password,
+                                           datasetID=datasetID,
+                                           variableShortName=vsn,
+                                           outputWorkspace=outputDir,
+                                           spatialExtent='-82 25 -52 50',
+                                           minDepth=20000.,
+                                           startDate=datetime.datetime(2020,1,1),
+                                           endDate=datetime.datetime(2020,2,28))
+        for month in [1,2]:
+            assert (outputDir / datasetID / vsn / 'Depth_20000.0' / ('%s_20000.0_2020%02i.img' % (vsn, month))).is_file()

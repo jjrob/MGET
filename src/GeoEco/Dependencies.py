@@ -307,14 +307,13 @@ class PythonModuleDependency(Dependency):
     _InstalledModules = {}        
 
     def Initialize(self):
-        from .Logging import Logger
-        Logger.Debug(_('Checking software dependency: Python module: %s') % self.ImportName)
-
         # If we already know that it is installed, return immediately.
-        # (Question: is this necessary now that 
 
         if self.ImportName in PythonModuleDependency._InstalledModules:
             return
+
+        from .Logging import Logger
+        Logger.Debug(_('Checking software dependency: Python module: %s') % self.ImportName)
 
         # If requested, start capturing stdout so we can log any messages that
         # are printed when we try to import the module. At the time this code

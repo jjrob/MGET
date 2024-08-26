@@ -162,7 +162,7 @@ class InpaintedGrid(Grid):
                     # NoData value to NaN.
 
                     data = grid.Data[:]
-                    data[data == grid.NoDataValue] = numpy.NaN
+                    data[Grid.numpy_equal_nan(data, grid.NoDataValue)] = numpy.NaN
 
                     # Inpaint the numpy array with the MATLAB function.
 

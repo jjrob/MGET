@@ -42,7 +42,9 @@ class Interpolator(object):
         
         value = grid.Data.__getitem__(tuple(nearestIndices))
 
-        if value is None or value == grid.NoDataValue:
+        import numpy
+
+        if value is None or value == grid.NoDataValue or numpy.isnan(value) and numpy.isnan(grid.NoDataValue):
             if loggingEnabled:
                 Logger.Debug(_('Nearest cell indices = %(nearestIndices)s, interpolated value = %(value)s. The cell nearest the coordinates has no data.') % {'nearestIndices': repr(nearestIndices), 'value': repr(noDataValue)})
             return noDataValue
@@ -80,7 +82,9 @@ class Interpolator(object):
         if loggingEnabled:
             Logger.Debug(_('Nearest cell indices = %(nearestIndices)s, value = %(value)s.') % {'nearestIndices': repr(nearestIndices), 'value': repr(value)})
 
-        if value is None or value == grid.NoDataValue:
+        import numpy
+
+        if value is None or value == grid.NoDataValue or numpy.isnan(value) and numpy.isnan(grid.NoDataValue):
             if loggingEnabled:
                 Logger.Debug(_('Interpolated value = %(value)s. The cell nearest the coordinates has no data.') % {'value': repr(noDataValue)})
             return noDataValue
@@ -517,7 +521,7 @@ class Interpolator(object):
                             indices[-3] = slice(None)
                             if None not in indices:
                                 dataForAllDepths = grids[i].Data.__getitem__(tuple(indices))
-                                zIndicesWithoutData = numpy.where(dataForAllDepths == grids[i].NoDataValue)[0]
+                                zIndicesWithoutData = numpy.where(Grid.numpy_equal_nan(dataForAllDepths, grids[i].NoDataValue))[0]
                                 if len(zIndicesWithoutData) > 0:
                                     zIndexOfDeepestWithData = max(0, zIndicesWithoutData[0] - 1)
                                 else:

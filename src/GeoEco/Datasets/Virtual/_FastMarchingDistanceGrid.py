@@ -185,8 +185,9 @@ class FastMarchingDistanceGrid(Grid):
                     allNoData = False
 
                     if grid.NoDataValue is not None:
-                        allNoData = (sliceData == grid.NoDataValue).all()
-                        mask = sliceData == grid.NoDataValue
+                        allNoData = Grid.numpy_equal_nan(sliceData, grid.NoDataValue).all()
+                        mask = Grid.numpy_equal_nan(sliceData, grid.NoDataValue)
+
                         phi = numpy.ma.MaskedArray(phi, mask)
 
                     del sliceData

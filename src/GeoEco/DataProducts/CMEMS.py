@@ -11,11 +11,14 @@
 
 import datetime
 import math
+import os
 import pprint
 import types
 
 from ..ArcGIS import GeoprocessorManager
 from ..Datasets import QueryableAttribute, Grid
+from ..Datasets.ArcGIS import ArcGISRaster, ArcGISWorkspace
+from ..Datasets.Virtual import GridSliceCollection, ClippedGrid, RotatedGlobalGrid, SeafloorGrid
 from ..DynamicDocString import DynamicDocString
 from ..Internationalization import _
 from ..Types import *
@@ -95,8 +98,6 @@ class CMEMSARCOArray(Grid):
         # If we haven't done so already, query the CMEMS catalog with the
         # dataset ID and extract the properties we can get from there.
 
-        debugLines = []
-
         if self._URI is None:
             self._LogInfo('Querying Copernicus Marine Service catalogue for dataset ID "%(datasetID)s".' % {'datasetID': self._DatasetID})
 
@@ -108,18 +109,20 @@ class CMEMSARCOArray(Grid):
             except Exception as e:
                 raise RuntimeError(_('Failed to query the Copernicus Marine Service catalogue for dataset ID "%(datasetID)s". The copernicusmarine.describe() function failed with %(e)s: %(msg)s.') % {'datasetID': self._DatasetID, 'e': e.__class__.__name__, 'msg': e})
 
-            if not isinstance(cat, (dict, types.NoneType)):
+            if not isinstance(cat, (dict, type(None))):
                 raise RuntimeError(_('Failed to query the Copernicus Marine Service catalogue with the copernicusmarine.describe() function. The function returned a %(type)s instance rather than a dictionary. This is unexpected; please contact the MGET development team for assistance.') % {'type': type(cat)})
 
             if cat is None or len(cat) <= 0:
                 raise RuntimeError(_('The Copernicus Marine Service catalogue does not contain a dataset with the ID "%(datasetID)s". Please check the ID and try again. Dataset IDs are case sensitive and must be given exactly as written on the Copernicus Marine Service website.') % {'datasetID': self._DatasetID})
 
-            # Extract the 'arco-geo-series' service record for the dataset.
+            # Extract the 'static-arco' or 'arco-geo-series' service record
+            # for the dataset.
 
             self._LogDebug('%(class)s 0x%(id)016X: Searching the returned catalogue for dataset.' % {'class': self.__class__.__name__, 'id': id(self)})
 
             service = None
             variable = None
+            debugLines = []
 
             if 'products' not in cat or not isinstance(cat['products'], list):
                 raise RuntimeError(_('The root level of the Copernicus Marine Service catalogue returned by copernicusmarine.describe() does not have a "products" key, or the "products" key does map to a list. This may indicate a problem with Copernicus Marine Service, the copernicusmarine Python package, or MGET. Please contact the MGET development team for assistance.'))
@@ -135,7 +138,7 @@ class CMEMSARCOArray(Grid):
                         continue
 
                     try:
-                        debugLines.extent(pprint.pformat(product['datasets'], width=160).split('\n'))
+                        debugLines.extend(pprint.pformat(product['datasets'], width=160, compact=True).split('\n'))
                     except:
                         pass
 
@@ -196,22 +199,22 @@ class CMEMSARCOArray(Grid):
                                 continue
 
                             if any([key not in s for key in ['service_format', 'service_type', 'uri', 'variables']]) or \
-                               not isinstance(s['service_format'], (str, types.NoneType)) or \
+                               not isinstance(s['service_format'], (str, type(None))) or \
                                not isinstance(s['service_type'], dict) or 'service_name' not in s['service_type'] or \
                                not isinstance(s['uri'], str) or len(s['uri']) <= 0 or \
                                not isinstance(s['variables'], list) or len(s['variables']) <= 0 or \
                                any([not isinstance(v, dict) or \
                                     not 'short_name' in v or not isinstance(v['short_name'], str) or len(v['short_name']) <= 0 or \
-                                    not 'standard_name' in v or not isinstance(v['standard_name'], (str, types.NoneType)) or \
+                                    not 'standard_name' in v or not isinstance(v['standard_name'], (str, type(None))) or \
                                     not 'coordinates' in v or not isinstance(v['coordinates'], list) \
                                     for v in s['variables']]):
                                 self._LogWarning(_('In the Copernicus Marine Service catalogue, the dataset dictionary for the "%(datasetID)s" contains a services list that contains a dictionary that does not contain all the required keys or has some unexpected values. This is unexpected and may indicate a problem with Copernicus Marine Service, the copernicusmarine Python package, or MGET. If your attempt to access this dataset is unsuccessful, contact the MGET development team for assistance.') % {'datasetID': self._DatasetID})
                                 continue
 
                             for v in s['variables']:
-                                if v['short_name'] == self._VariableShortName and s['service_format'] == 'zarr' and s['service_type']['service_name'] == 'arco-geo-series':
+                                if v['short_name'] == self._VariableShortName and s['service_format'] == 'zarr' and s['service_type']['service_name'] in ['static-arco', 'arco-geo-series']:
                                     if service is not None:
-                                        self._LogWarning(_('The Copernicus Marine Service catalogue contains multiple datasets with the ID "%(datasetID)s", or the the metadata for that dataset contains multiple "arco-geo-series" services, or the service contains multiple variables named "%(var)s". This is unexpected and may indicate a problem with Copernicus Marine Service, the copernicusmarine Python package, or MGET. The first variable of the first service for the first dataset will be used. Check your results carefully. If you suspect a problem, contact the MGET development team for assistance.') % {'datasetID': self._DatasetID, 'var': self._VariableShortName})
+                                        self._LogWarning(_('The Copernicus Marine Service catalogue contains multiple datasets with the ID "%(datasetID)s", or the the metadata for that dataset contains multiple "static-arco" or "arco-geo-series" services, or the service contains multiple variables named "%(var)s". This is unexpected and may indicate a problem with Copernicus Marine Service, the copernicusmarine Python package, or MGET. The first variable of the first service for the first dataset will be used. Check your results carefully. If you suspect a problem, contact the MGET development team for assistance.') % {'datasetID': self._DatasetID, 'var': self._VariableShortName})
                                         continue
                                     else:
                                         service = s
@@ -221,6 +224,11 @@ class CMEMSARCOArray(Grid):
 
                 if service is None:
                     raise RuntimeError(_('Could not find a suitable service in the Copernicus Marine Service catalogue from which to access the "%(var)s" variable of the "%(datasetID)s" dataset. If any warnings were reported above, they may indicate why. If none were reported, it may be that the dataset or variable does not exist. Please the dataset ID and variable name carefully.') % {'datasetID': self._DatasetID, 'var': self._VariableShortName})
+
+                self._LogDebug('%(class)s 0x%(id)016X: Found a suitable service with URI %(uri)s' % {'class': self.__class__.__name__, 'id': id(self), 'uri': service['uri']})
+                self._LogDebug('%(class)s 0x%(id)016X: Using this variable:' % {'class': self.__class__.__name__, 'id': id(self)})
+                for line in pprint.pformat(variable, width=160, compact=True).split('\n'):
+                    self._LogDebug('%(class)s 0x%(id)016X:    %(line)s' % {'class': self.__class__.__name__, 'id': id(self), 'line': line})
 
                 # Extract the lazy property values from the service and variable
                 # records. First, determine the dimensions. Note that we can't
@@ -528,9 +536,10 @@ class CMEMSARCOArray(Grid):
             # catalogue, so we can look at them.
 
             except:
-                self._LogDebug('%(class)s 0x%(id)016X: Got the following datasets:' % {'class': self.__class__.__name__, 'id': id(self)})
-                for line in lines:
-                    self._LogDebug('%(class)s 0x%(id)016X:    %(line)s' % {'class': self.__class__.__name__, 'id': id(self), 'line': line})
+                if len(debugLines) > 0:
+                    self._LogDebug('%(class)s 0x%(id)016X: Got the following datasets:' % {'class': self.__class__.__name__, 'id': id(self)})
+                    for line in debugLines:
+                        self._LogDebug('%(class)s 0x%(id)016X:    %(line)s' % {'class': self.__class__.__name__, 'id': id(self), 'line': line})
                 raise
 
             # We successfully extracted all of the values. Save them.
@@ -602,7 +611,7 @@ class CMEMSARCOArray(Grid):
             raise RuntimeError(_('The variable "%(var)s" of Copernicus Marine Service dataset "%(url)s" contains duplicate dimensions %(dims)s. MGET may not be compatible with this dataset, or there may be problem with Copernicus Marine Service or the copernicusmarine Python package. Please contact the MGET development team for assistance.') % {'url': self._URI, 'var': self._VariableShortName, 'dims': da.dims})
 
         if set(physicalDimensions) != set(self.GetLazyPropertyValue('Dimensions', allowPhysicalValue=False)):
-            raise RuntimeError(_('The dimensions %(dims)s for variable "%(var)s" of Copernicus Marine Service dataset "%(url)s" do not match what is in the Copernicus Marine Service catalogue. MGET may not be compatible with this dataset, or there may be problem with Copernicus Marine Service or the copernicusmarine Python package. Please contact the MGET development team for assistance.') % {'url': self._URI, 'var': self._VariableShortName, 'dims': da.dims})
+            raise RuntimeError(_('The dimensions %(physDims)s for variable "%(var)s" of Copernicus Marine Service dataset "%(url)s" do not match what is in the Copernicus Marine Service catalogue: %(dims)s. MGET may not be compatible with this dataset, or there may be problem with Copernicus Marine Service or the copernicusmarine Python package. Please contact the MGET development team for assistance.') % {'url': self._URI, 'var': self._VariableShortName, 'physDims': set(physicalDimensions), 'dims': set(self.GetLazyPropertyValue('Dimensions', allowPhysicalValue=False))})
 
         # Determine if any of the physical dimensions are flipped (i.e. in
         # descending order).
@@ -814,6 +823,7 @@ class CMEMSARCOArray(Grid):
                 # Otherwise it will construct a flat list of very long unique
                 # names.
 
+                GeoprocessorManager.InitializeGeoprocessor()
                 gp = GeoprocessorManager.GetWrappedGeoprocessor()
                 d = gp.Describe(outputWorkspace)
                 outputWorkspaceIsDir = os.path.isdir(outputWorkspace) and (str(d.DataType).lower() != 'workspace' or str(d.DataType).lower() == 'filesystem')
@@ -861,10 +871,10 @@ class CMEMSARCOArray(Grid):
                 # or equal to 20000, instantiate a grid representing the
                 # values at the seafloor.
 
-                if minDepth == 20000. or maxDepth >= 20000.:
+                if minDepth == 20000. or maxDepth is not None and maxDepth >= 20000.:
                     clippedGrid = cls._RotateAndClip(grid, rotationOffset, spatialExtent, None, None, startDate, endDate)
                     seafloorGrid = SeafloorGrid(clippedGrid, (QueryableAttribute('Depth', _('Depth'), FloatTypeMetadata()),), {'Depth': 20000.})
-                    grids.extend(GridSliceCollection(seafloorGrid, tQACoordType=grid._CornerCoordTypes[0] if 't' in grid.Dimensions else None).QueryDatasets())
+                    grids.extend(GridSliceCollection(seafloorGrid, tQACoordType=grid._CornerCoordTypes[0] if 't' in grid.Dimensions else None).QueryDatasets(reportProgress=False))
 
                 # Determine the QueryableAttributes and rasterNameExpressions.
 
@@ -1300,13 +1310,13 @@ AddArgumentMetadata(CMEMSARCOArray.CreateArcGISRasters, 'calculateStatistics',
     typeMetadata=BooleanTypeMetadata(),
     description=_CalculateStatisticsDescription,
     arcGISDisplayName=_('Calculate statistics'),
-    arcGISCategory=_('Additional raster processing options'))
+    arcGISCategory=_('Output raster options'))
 
 AddArgumentMetadata(CMEMSARCOArray.CreateArcGISRasters, 'buildPyramids',
     typeMetadata=BooleanTypeMetadata(),
     description=_BuildPyramidsDescription,
     arcGISDisplayName=_('Build pyramids'),
-    arcGISCategory=_('Additional raster processing options'))
+    arcGISCategory=_('Output raster options'))
 
 AddResultMetadata(CMEMSARCOArray.CreateArcGISRasters, 'updatedOutputWorkspace',
     typeMetadata=ArcGISWorkspaceTypeMetadata(),

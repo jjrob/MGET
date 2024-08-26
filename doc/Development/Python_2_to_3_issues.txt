@@ -22,6 +22,7 @@ os.path.splitunc was subsumed into os.path.splitdrive
 Look for '\\' and check it
 Where possible, switch to using "with" rather than try/finally: dataset.Close()
 Remove unnecessary calls to _Str()
+Comparison of NoDataValue and UnscaledNoDataValue must account for nan: Grid.numpy_equal_nan(a, b)
 
 
 ArcPro vs. Desktop issues to check for:
