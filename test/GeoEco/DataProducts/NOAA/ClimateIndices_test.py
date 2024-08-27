@@ -65,7 +65,7 @@ class TestPSLClimateIndices():
 
         # Classify the ONI values.
 
-        PSLClimateIndices.ClassifyONIEpisodesInTimeSeriesArcGISTable(table=gdbPath / 'ONI',
+        PSLClimateIndices.ClassifyONIEpisodesInTimeSeriesArcGISTable(table=gdbPath / 'ONITable',
                                                                      dateField='IndexDate',
                                                                      oniField='ONI',
                                                                      episodeField='Episode')

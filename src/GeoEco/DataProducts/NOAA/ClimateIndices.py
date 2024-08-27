@@ -1554,19 +1554,19 @@ AddArgumentMetadata(PSLClimateIndices.ClassifyONIEpisodesInTimeSeriesArcGISTable
     arcGISDisplayName=_('ONI time series table'))
 
 AddArgumentMetadata(PSLClimateIndices.ClassifyONIEpisodesInTimeSeriesArcGISTable, 'dateField',
-    typeMetadata=ArcGISFieldTypeMetadata(allowedFieldTypes=['DATE'], mustExist=True),
+    typeMetadata=ArcGISFieldTypeMetadata(allowedFieldTypes=['datetime'], mustExist=True),
     description=PSLClimateIndices.ClassifyONIEpisodesInTimeSeriesTable.__doc__.Obj.GetArgumentByName('dateField').Description,
     arcGISDisplayName=_('Input date field'),
     arcGISParameterDependencies=['table'])
 
 AddArgumentMetadata(PSLClimateIndices.ClassifyONIEpisodesInTimeSeriesArcGISTable, 'oniField',
-    typeMetadata=ArcGISFieldTypeMetadata(allowedFieldTypes=['FLOAT', 'DOUBLE'], mustExist=True),
+    typeMetadata=ArcGISFieldTypeMetadata(allowedFieldTypes=['float32', 'float64'], mustExist=True),
     description=PSLClimateIndices.ClassifyONIEpisodesInTimeSeriesTable.__doc__.Obj.GetArgumentByName('oniField').Description,
     arcGISDisplayName=_('Input ONI value field'),
     arcGISParameterDependencies=['table'])
 
 AddArgumentMetadata(PSLClimateIndices.ClassifyONIEpisodesInTimeSeriesArcGISTable, 'episodeField',
-    typeMetadata=ArcGISFieldTypeMetadata(allowedFieldTypes=['SHORT', 'LONG'], mustExist=True),
+    typeMetadata=ArcGISFieldTypeMetadata(allowedFieldTypes=['int8', 'uint8', 'int16', 'uint16', 'int32', 'uint32', 'int64', 'uint64'], mustExist=True),
     description=_(
 """Field to receive the ONI episode code. The field must have an integer data
 type. It will be calculated as described in the introductory documentation for
