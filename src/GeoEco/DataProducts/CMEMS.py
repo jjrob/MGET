@@ -18,7 +18,7 @@ import types
 from ..ArcGIS import GeoprocessorManager
 from ..Datasets import QueryableAttribute, Grid
 from ..Datasets.ArcGIS import ArcGISRaster, ArcGISWorkspace
-from ..Datasets.Virtual import GridSliceCollection, ClippedGrid, RotatedGlobalGrid, SeafloorGrid
+from ..Datasets.Virtual import GridSliceCollection, ClippedGrid, RotatedGlobalGrid, SeafloorGrid, ClimatologicalGridCollection
 from ..DynamicDocString import DynamicDocString
 from ..Internationalization import _
 from ..Types import *
@@ -799,12 +799,12 @@ class CMEMSARCOArray(Grid):
                     else:
                         timeSuffix = '_%%Y%%m%%d_%%H%%M%%S'
 
-                # If the grid contains a t dimension, determine whether any
+                # If the grid contains a z dimension, determine whether any
                 # digits should appear after the decimal point of the depth.
                 # Also determine the maximum length of the depth string, so we
                 # can zero pad it.
 
-                if rasterNameExpressions is None and 'z' in grid.Dimensions:
+                if 'z' in grid.Dimensions:
                     depths = grid.MinCoords['z', :] if zCoordType == 'min' else grid.CenterCoords['z', :] if zCoordType == 'center' else grid.MaxCoords['z', :]
                     if all(depth % 1 == 0 for depth in depths):
                         depthDecimalDigits = 0
@@ -897,6 +897,144 @@ class CMEMSARCOArray(Grid):
                         if 't' in grid.Dimensions:
                             rasterNameExpressions[-1] += timeSuffix
 
+            else:
+                raise ValueError(_('Unknown grid dimensions %(dim)s. This is likely a programming error in this tool. Please contact the MGET development team for assistance.') % {'dim': grid.Dimensions})
+
+            # If the output workspace is a directory, apply the
+            # rasterExtension, if it was given.
+
+            if outputWorkspaceIsDir and rasterExtension is not None:
+                if not rasterExtension.startswith('.') and not rasterNameExpressions[-1].endswith('.'):
+                    rasterNameExpressions[-1] += '.' 
+                rasterNameExpressions[-1] += rasterExtension
+
+            # Create the rasters.
+
+            workspace = ArcGISWorkspace(outputWorkspace, ArcGISRaster, pathCreationExpressions=rasterNameExpressions, cacheTree=True, queryableAttributes=tuple(grid.GetAllQueryableAttributes() + qa))
+            workspace.ImportDatasets(grids, mode, calculateStatistics=calculateStatistics, buildPyramids=buildPyramids)
+        
+        finally:
+            grid.Close()
+
+        return outputWorkspace
+
+    @classmethod
+    def CreateClimatologicalArcGISRasters(cls, username, password, datasetID, variableShortName,
+                                          statistic, binType,
+                                          outputWorkspace, mode='Add', 
+                                          xCoordType='center', yCoordType='center', zCoordType='center', tCoordType='min',
+                                          rotationOffset=None, spatialExtent=None, 
+                                          minDepth=None, maxDepth=None, startDate=None, endDate=None,
+                                          rasterExtension='.img', rasterNameExpressions=None, calculateStatistics=True, buildPyramids=False):
+        cls.__doc__.Obj.ValidateMethodInvocation()
+
+        # If rasterNameExpressions is not None, ignore rasterExtension.
+
+        if rasterNameExpressions is not None:
+            rasterExtension = None
+
+        # Instantiate the CMEMSARCOArray. 
+
+        grid = CMEMSARCOArray(username, password, datasetID, variableShortName, xCoordType=xCoordType, yCoordType=yCoordType, zCoordType=zCoordType, tCoordType=tCoordType)
+        try:
+            # Validate that the CMEMS grid has a t dimension.
+
+            if 't' not in grid.Dimensions:
+                raise ValueError(_('%(dn)s does not have a time dimension. In order to create a climatology, it must have a time dimension.') % {'dn': grid.DisplayName})
+
+            # If rasterNameExpressions is None, we will determine a default
+            # value. First, do some preliminary work related to this.
+
+            if rasterNameExpressions is None:
+
+                # If the grid contains a z dimension, determine whether any
+                # digits should appear after the decimal point of the depth.
+                # Also determine the maximum length of the depth string, so we
+                # can zero pad it.
+
+                if rasterNameExpressions is None and 'z' in grid.Dimensions:
+                    depths = grid.MinCoords['z', :] if zCoordType == 'min' else grid.CenterCoords['z', :] if zCoordType == 'center' else grid.MaxCoords['z', :]
+                    if all(depth % 1 == 0 for depth in depths):
+                        depthDecimalDigits = 0
+                    else:
+                        for depthDecimalDigits in range(1, 15):
+                            fmt = '%%0.%if' % depthDecimalDigits
+                            if len(set([fmt % depth for depth in depths])) == len(depths):
+                                break
+
+                    fmt = '%%0.%if' % depthDecimalDigits
+                    depthStrLen = max([len(fmt % depth) for depth in depths])
+
+                # Determine whether the outputWorkspace is a file system
+                # directory or not. If it is, then our default
+                # rasterNameExpressions will store the rasters in a tree.
+                # Otherwise it will construct a flat list of very long unique
+                # names.
+
+                GeoprocessorManager.InitializeGeoprocessor()
+                gp = GeoprocessorManager.GetWrappedGeoprocessor()
+                d = gp.Describe(outputWorkspace)
+                outputWorkspaceIsDir = os.path.isdir(outputWorkspace) and (str(d.DataType).lower() != 'workspace' or str(d.DataType).lower() == 'filesystem')
+
+            # Based on the dimensions of the grid, create a list of 2D slices
+            # to import, an additional QueryableAttribute for the z dimension
+            # as appropriate, and determine the default value of
+            # rasterNameExpressions if it was not provided.
+
+            if grid.Dimensions == 'tyx':
+                clippedGrid = cls._RotateAndClip(grid, rotationOffset, spatialExtent, startDate=startDate, endDate=endDate)
+                grids = ClimatologicalGridCollection(clippedGrid, statistic, binType, binDuration, startDayOfYear, reportProgress=False)
+                qa = []
+                if rasterNameExpressions is None:
+                    if outputWorkspaceIsDir:
+                        rasterNameExpressions = ['%(DatasetID)s', 
+                                                 '%(VariableShortName)s', 
+                                                 '%(ClimatologyBinType)s_Climatology', 
+                                                 '%(VariableShortName)s_%(ClimatologyBinName)s_%(Statistic)s.img']
+                    else:
+                        rasterNameExpressions = ['Copernicus_%(DatasetID)s_%(VariableShortName)s_%(ClimatologyBinType)s_Climatology_%(ClimatologyBinName)s_%(Statistic)s' + timeSuffix] 
+
+            elif grid.Dimensions == 'tzyx':
+
+                # If the caller requested a minimum depth that is within a
+                # realistic range, instantiate a ClimatologicalGridCollection
+                # from the clipped 4D (tzyx) grid, query the 3D grids (zyx)
+                # from it, and get the 2D (yx) slices of it.
+
+                grids = []
+                if minDepth is None or minDepth <= 5500.:
+                    clippedGrid = cls._RotateAndClip(grid, rotationOffset, spatialExtent, minDepth, maxDepth, startDate, endDate)
+                    collection = ClimatologicalGridCollection(clippedGrid, statistic, binType, binDuration, startDayOfYear, reportProgress=False)
+                    for g in collection.QueryDatasets(reportProgress=False):
+                        grids.extend(GridSliceCollection(g, zQACoordType=grid._CornerCoordTypes[-3]).QueryDatasets(reportProgress=False))
+
+                # If the caller requested a maximum depth that is greater than
+                # or equal to 20000, instantiate a 3D SeafloorGrid (tyx),
+                # create a ClimatologicalGridCollection from it, and query the
+                # 2D (yx) grids from it.
+
+                if minDepth == 20000. or maxDepth is not None and maxDepth >= 20000.:
+                    clippedGrid = cls._RotateAndClip(grid, rotationOffset, spatialExtent, None, None, startDate, endDate)
+                    seafloorGrid = SeafloorGrid(clippedGrid, (QueryableAttribute('Depth', _('Depth'), FloatTypeMetadata()),), {'Depth': 20000.})
+                    collection = ClimatologicalGridCollection(seafloorGrid, statistic, binType, binDuration, startDayOfYear, reportProgress=False)
+                    grids.extend(collection.QueryDatasets(reportProgress=False))
+
+                # Determine the QueryableAttributes and rasterNameExpressions.
+
+                qa = [QueryableAttribute('Depth', _('Depth'), FloatTypeMetadata())]
+                if rasterNameExpressions is None:
+                    if outputWorkspaceIsDir:
+                        rasterNameExpressions = ['%(DatasetID)s', 
+                                                 '%(VariableShortName)s', 
+                                                 'Depth_%%(Depth)0%i.%if' % (depthStrLen, depthDecimalDigits),
+                                                 '%(ClimatologyBinType)s_Climatology', 
+                                                 '%(VariableShortName)s_%(ClimatologyBinName)s_%(Statistic)s.img']
+                    else:
+                        rasterNameExpressions = ['Copernicus_%(DatasetID)s_%(VariableShortName)s_%%(Depth)0%i.%if_%(ClimatologyBinType)s_Climatology_%(ClimatologyBinName)s_%(Statistic)s' + timeSuffix] 
+
+            else:
+                raise ValueError(_('Unknown grid dimensions %(dim)s. This is likely a programming error in this tool. Please contact the MGET development team for assistance.') % {'dim': grid.Dimensions})
+
             # If the output workspace is a directory, apply the
             # rasterExtension, if it was given.
 
@@ -920,6 +1058,7 @@ class CMEMSARCOArray(Grid):
 # Metadata: module
 ###############################################################################
 
+from ..ArcGIS import ArcGISDependency
 from ..Datasets.ArcGIS import _CalculateStatisticsDescription, _BuildPyramidsDescription
 from ..Dependencies import PythonModuleDependency
 from ..Metadata import *
@@ -1124,7 +1263,7 @@ AddMethodMetadata(CMEMSARCOArray.CreateArcGISRasters,
     isExposedAsArcGISTool=True,
     arcGISDisplayName=_('Create Rasters for CMEMS Dataset'),
     arcGISToolCategory=_('Data Products\\Copernicus Marine Service (CMEMS)'),
-    dependencies=CMEMSARCOArray.__init__.__doc__.Obj.Dependencies)
+    dependencies=[ArcGISDependency()] + CMEMSARCOArray.__init__.__doc__.Obj.Dependencies)
 
 AddArgumentMetadata(CMEMSARCOArray.CreateArcGISRasters, 'cls',
     typeMetadata=ClassOrClassInstanceTypeMetadata(cls=CMEMSARCOArray),
@@ -1270,7 +1409,7 @@ AddArgumentMetadata(CMEMSARCOArray.CreateArcGISRasters, 'rasterNameExpressions',
 you do not provide anything, a default naming scheme will be used.
 
 If the output workspace is a file system directory, you may provide one or
-more expression. Each expression defines a level in a directory tree. The
+more expressions. Each expression defines a level in a directory tree. The
 final expression specifies the raster file name. If the output workspace is a
 geodatabase, you should provide only one expression, which specifies the
 raster name.
@@ -1280,27 +1419,27 @@ workspace. Each expression may optionally contain one or more of the following
 case-sensitive codes. The tool replaces the codes with appropriate values when
 creating each raster:
 
-* %(DatasetID)s - Copernicus dataset ID.
+* ``%(DatasetID)s`` - Copernicus dataset ID.
 
-* %(ShortVariableName)s - Copernicus short variable name.
+* ``%(ShortVariableName)s`` - Copernicus short variable name.
 
-* %(Depth)s - depth of the raster. Only avilable for datasets that have depth
+* ``%(Depth)s`` - depth of the raster. Only avilable for datasets that have depth
   coordinates.
 
-* %%Y - four-digit year of the raster. This and the following codes are only
-  available for datasets that have time coordinates.
+* ``%%Y`` - four-digit year of the raster. This and the following codes are
+  only available for datasets that have time coordinates.
 
-* %%m - two-digit month of the raster.
+* ``%%m`` - two-digit month of the raster.
 
-* %%d - two-digit day of the month of the raster.
+* ``%%d`` - two-digit day of the month of the raster.
 
-* %%j - three-digit day of the year of the raster.
+* ``%%j`` - three-digit day of the year of the raster.
 
-* %%H - two-digit hour of the raster.
+* ``%%H`` - two-digit hour of the raster.
 
-* %%M - two-digit minute of the raster.
+* ``%%M`` - two-digit minute of the raster.
 
-* %%S - two-digit second of the raster.
+* ``%%S`` - two-digit second of the raster.
 
 """),
     arcGISDisplayName=_('Raster name expressions'),
@@ -1323,6 +1462,137 @@ AddResultMetadata(CMEMSARCOArray.CreateArcGISRasters, 'updatedOutputWorkspace',
     description=_('Updated output workspace.'),
     arcGISDisplayName=_('Updated output workspace'),
     arcGISParameterDependencies=['outputWorkspace'])
+
+# Public method: CMEMSARCOArray.CreateClimatologicalArcGISRasters
+
+AddMethodMetadata(CMEMSARCOArray.CreateClimatologicalArcGISRasters,
+    shortDescription=_('Creates climatological rasters for a 3D, or 4D gridded time series dataset published by `Copernicus Marine Service <https://data.marine.copernicus.eu/products>`_.'),
+    isExposedAsArcGISTool=True,
+    arcGISDisplayName=_('Create Climatological Rasters for CMEMS Dataset'),
+    arcGISToolCategory=_('Data Products\\Copernicus Marine Service (CMEMS)'),
+    dependencies=[ArcGISDependency()] + CMEMSARCOArray.__init__.__doc__.Obj.Dependencies)
+
+CopyArgumentMetadata(CMEMSARCOArray.CreateArcGISRasters, 'cls', CMEMSARCOArray.CreateClimatologicalArcGISRasters, 'cls')
+CopyArgumentMetadata(CMEMSARCOArray.CreateArcGISRasters, 'username', CMEMSARCOArray.CreateClimatologicalArcGISRasters, 'username')
+CopyArgumentMetadata(CMEMSARCOArray.CreateArcGISRasters, 'password', CMEMSARCOArray.CreateClimatologicalArcGISRasters, 'password')
+CopyArgumentMetadata(CMEMSARCOArray.CreateArcGISRasters, 'datasetID', CMEMSARCOArray.CreateClimatologicalArcGISRasters, 'datasetID')
+CopyArgumentMetadata(CMEMSARCOArray.CreateArcGISRasters, 'variableShortName', CMEMSARCOArray.CreateClimatologicalArcGISRasters, 'variableShortName')
+CopyArgumentMetadata(ClimatologicalGridCollection.__init__, 'statistic', CMEMSARCOArray.CreateClimatologicalArcGISRasters, 'statistic')
+CopyArgumentMetadata(ClimatologicalGridCollection.__init__, 'binType', CMEMSARCOArray.CreateClimatologicalArcGISRasters, 'binType')
+CopyArgumentMetadata(CMEMSARCOArray.CreateArcGISRasters, 'outputWorkspace', CMEMSARCOArray.CreateClimatologicalArcGISRasters, 'outputWorkspace')
+CopyArgumentMetadata(CMEMSARCOArray.CreateArcGISRasters, 'mode', CMEMSARCOArray.CreateClimatologicalArcGISRasters, 'mode')
+CopyArgumentMetadata(CMEMSARCOArray.CreateArcGISRasters, 'xCoordType', CMEMSARCOArray.CreateClimatologicalArcGISRasters, 'xCoordType')
+CopyArgumentMetadata(CMEMSARCOArray.CreateArcGISRasters, 'yCoordType', CMEMSARCOArray.CreateClimatologicalArcGISRasters, 'yCoordType')
+CopyArgumentMetadata(CMEMSARCOArray.CreateArcGISRasters, 'zCoordType', CMEMSARCOArray.CreateClimatologicalArcGISRasters, 'zCoordType')
+CopyArgumentMetadata(CMEMSARCOArray.CreateArcGISRasters, 'tCoordType', CMEMSARCOArray.CreateClimatologicalArcGISRasters, 'tCoordType')
+CopyArgumentMetadata(CMEMSARCOArray.CreateArcGISRasters, 'rotationOffset', CMEMSARCOArray.CreateClimatologicalArcGISRasters, 'rotationOffset')
+CopyArgumentMetadata(CMEMSARCOArray.CreateArcGISRasters, 'spatialExtent', CMEMSARCOArray.CreateClimatologicalArcGISRasters, 'spatialExtent')
+CopyArgumentMetadata(CMEMSARCOArray.CreateArcGISRasters, 'minDepth', CMEMSARCOArray.CreateClimatologicalArcGISRasters, 'minDepth')
+CopyArgumentMetadata(CMEMSARCOArray.CreateArcGISRasters, 'maxDepth', CMEMSARCOArray.CreateClimatologicalArcGISRasters, 'maxDepth')
+
+AddArgumentMetadata(CMEMSARCOArray.CreateClimatologicalArcGISRasters, 'startDate',
+    typeMetadata=DateTimeTypeMetadata(canBeNone=True),
+    description=_(
+"""Start date of the range of time slices to include in the climatology. If
+you do not provide a start date, the climatology will start from the first
+time slice in the dataset."""),
+    arcGISDisplayName=_('Start date'),
+    arcGISCategory=_('Spatiotemporal extent'))
+
+AddArgumentMetadata(CMEMSARCOArray.CreateClimatologicalArcGISRasters, 'endDate',
+    typeMetadata=DateTimeTypeMetadata(canBeNone=True),
+    description=_(
+"""End date of the range of time slices to include in the climatology. If you
+do not provide an end date, the climatology will extend to the last time slice
+in the dataset."""),
+    arcGISDisplayName=_('End date'),
+    arcGISCategory=_('Spatiotemporal extent'))
+
+CopyArgumentMetadata(CMEMSARCOArray.CreateArcGISRasters, 'rasterExtension', CMEMSARCOArray.CreateClimatologicalArcGISRasters, 'rasterExtension')
+
+AddArgumentMetadata(CMEMSARCOArray.CreateClimatologicalArcGISRasters, 'rasterNameExpressions',
+    typeMetadata=ListTypeMetadata(elementType=UnicodeStringTypeMetadata(minLength=1), minLength=1, canBeNone=True),
+    description=_(
+"""List of expressions specifying how the output rasters should be named. If
+you do not provide anything, a default naming scheme will be used.
+
+If the output workspace is a file system directory, you may provide one or
+more expressions. Each expression defines a level in a directory tree. The
+final expression specifies the raster file name. If the output workspace is a
+geodatabase, you should provide only one expression, which specifies the
+raster name.
+
+Each expression may contain any sequence of characters permitted by the output
+workspace. Each expression may optionally contain one or more of the following
+case-sensitive codes. The tool replaces the codes with appropriate values when
+creating each raster:
+
+* ``%(DatasetID)s`` - Copernicus dataset ID.
+
+* ``%(ShortVariableName)s`` - Copernicus short variable name.
+
+* ``%(Depth)s`` - depth of the raster. Only avilable for datasets that have
+  depth coordinates.
+
+* ``%(ClimatologyBinType)s`` - type of the climatology bin, either ``Daily``
+  if 1-day bins, ``Xday`` if multi-day bins (``X`` is replaced by the
+  duration), ``Monthly`` if 1-month bins, ``Xmonth`` if multi-month bins, or
+  ``Cumulative``. If an ENSO bin type is used, ``ENSO_`` will be prepended to
+  those strings (e.g. ``ENSO_Daily``, ``ENSO_Monthly``).
+
+* ``%(ClimatologyBinName)s`` - name of the climatology bin corresponding
+  represented by the output raster, either ``dayXXX`` for 1-day bins (``XXX``
+  is replaced by the day of the year), ``daysXXXtoYYY`` for multi-day bins
+  (``XXX`` is replaced by the first day of the bin, ``YYY`` is replaced by the
+  last day), ``monthXX`` for 1-month bins (``XX`` is replaced by the month),
+  ``monthXXtoYY`` (``XX`` is replaced by the first month of the bin, ``YY`` by
+  the last month), or ``cumulative``. If an ENSO bin type is used,
+  ``neutral_``, ``ElNino_``, and ``LaNina_`` will be prepended to those
+  strings for each of the three ENSO phased rasters (e.g.
+  ``neutral_cumulative``, ``ElNino_cumulative``, and ``LaNina_cumulative``
+  when ``ENSO Cumulative`` bins are requested).
+
+* ``%(Statistic)s`` - statistic that was calculated, in lowercase and with
+  spaces replaced by underscores; one of: ``count``, ``maximum``, ``mean``,
+  ``minimum``, ``range``, ``standard_deviation``, ``sum``.
+
+If the Bin Type is ``Daily``, the following additional codes are available:
+
+* ``%(FirstDay)i`` - first day of the year of the climatology bin represented
+  by the output raster.
+
+* ``%(LastDay)i`` - last day of the year of the climatology bin represented by
+  the output raster. For 1-day climatologies, this will be the same as
+  ``%(FirstDay)i``.
+
+If the Bin Type is ``Monthly``, the following additional codes are available:
+
+* ``%(FirstMonth)i`` - first month of the climatology bin represented by the
+  output raster.
+
+* ``%(DayOfFirstMonth)i`` - first day of the first month of the climatology
+  bin represented by the output raster.
+
+* ``%(LastMonth)i`` - last month of the climatology bin represented by the
+  output raster.
+
+* ``%(DayOfLastMonth)i`` - last day of the last month of the climatology bin
+  represented by the output raster.
+
+Note that the additional codes are integers and may be formatted using
+"printf"-style formatting codes. For example, to format the ``FirstDay`` as a
+three-digit number with leading zeros::
+
+    %(FirstDay)03i
+
+"""),
+    arcGISDisplayName=_('Raster name expressions'),
+    arcGISCategory=_('Output raster options'))
+
+CopyArgumentMetadata(CMEMSARCOArray.CreateArcGISRasters, 'calculateStatistics', CMEMSARCOArray.CreateClimatologicalArcGISRasters, 'calculateStatistics')
+CopyArgumentMetadata(CMEMSARCOArray.CreateArcGISRasters, 'buildPyramids', CMEMSARCOArray.CreateClimatologicalArcGISRasters, 'buildPyramids')
+
+CopyResultMetadata(CMEMSARCOArray.CreateArcGISRasters, 'updatedOutputWorkspace', CMEMSARCOArray.CreateClimatologicalArcGISRasters, 'updatedOutputWorkspace')
 
 
 ###############################################################################
