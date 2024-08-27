@@ -1,4 +1,4 @@
-# _GridSliceCollection.py - A GridSliceCollection representing the 2D slices
+# _GridSliceCollection.py - A DatasetCollection representing the 2D slices
 # of a 3D or 4D Grid (or 3D slices of a 4D Grid).
 #
 # Copyright (C) 2024 Jason J. Roberts

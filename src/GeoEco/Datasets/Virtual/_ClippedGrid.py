@@ -15,6 +15,7 @@ from ...Internationalization import _
 
 from .. import Grid
 
+
 class ClippedGrid(Grid):
     __doc__ = DynamicDocString()
 
