@@ -835,7 +835,7 @@ AddModuleMetadata(shortDescription=_('Classes and functions that the GeoEco libr
 ###############################################################################
 
 AddClassMetadata(Logger,
-    shortDescription=_('Provides methods for reporting messages to the user from the GeoEco library.'),
+    shortDescription=_('Provides functions for reporting messages to the user from the GeoEco library.'),
     longDescription=(
 """This class wraps the Python :mod:`logging` module. Callers outside of the
 GeoEco library may use this class but we recommend they use :mod:`logging`

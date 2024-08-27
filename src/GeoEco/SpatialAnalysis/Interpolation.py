@@ -708,14 +708,14 @@ from ..Dependencies import PythonModuleDependency
 from ..Matlab import MatlabDependency
 from ..Metadata import *
 
-AddModuleMetadata(shortDescription=_('Provides methods for interpolating in space and time.'))
+AddModuleMetadata(shortDescription=_('Functions for interpolating in space and time.'))
 
 ###############################################################################
 # Metadata: Interpolator class
 ###############################################################################
 
 AddClassMetadata(Interpolator,
-    shortDescription=_('Provides methods for interpolating in space and time.'))
+    shortDescription=_('Functions for interpolating in space and time.'))
 
 # Public method: Interpolator.InterpolateGridsValuesForTableOfPoints
 
@@ -1693,7 +1693,7 @@ AddArgumentMetadata(Interpolator.InpaintArcGISRaster, 'overwriteExisting',
     description=_(
 """If True, the output raster will be overwritten, if it exists. If False, a
 :exc:`ValueError` will be raised if the output raster exists."""),
-    initializeToArcGISGeoprocessorVariable='OverwriteOutput')
+    initializeToArcGISGeoprocessorVariable='env.overwriteOutput')
 
 ###############################################################################
 # Batch processing versions of methods

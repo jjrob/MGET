@@ -699,13 +699,15 @@ class MethodMetadata(Metadata):
 
         results = None
         if len(self.Results) > 0:
-            # Google-style doc strings only support 1 result. Fail if we have more than 1.
-            assert len(self.Results) == 1, 'The method %s.%s.%s has %i ResultMetadata objects but currently GeoEco.Metadata.MethodMetadata._GetDocString() only supports a single ResultMetadata object, in conformance with Google-style docstrings. To work around this, you could use a single ResultMetadata with Type set to TupleTypeMetadata or ListTypeMetadata.' % (self.Class.Module.Name, self.Class.Name, self.Name, len(self.Results))
-
             results = 'Returns:\n'
-            for i in range(len(self.Results)):
-                descr = self.Results[i].Description.replace('\n','\n    ').replace('\n    \n','\n\n') if self.Results[i].Description is not None else 'No description available.'
-                results += '    %s: %s\n' % (self.Results[i].Type.SphinxMarkup, descr)
+            if len(self.Results) == 1:
+                descr = self.Results[0].Description.replace('\n','\n    ').replace('\n    \n','\n\n') if self.Results[0].Description is not None else 'No description available.'
+                results += '    %s: %s\n' % (self.Results[0].Type.SphinxMarkup, descr)
+            else:
+                results += '    :py:class:`tuple` of %i items:\n' % len(self.Results)
+                for i in range(len(self.Results)):
+                    descr = self.Results[i].Description.replace('\n','\n    ').replace('\n    \n','\n\n') if self.Results[i].Description is not None else 'No description available.'
+                    results += '\n    %i. %s: %s\n' % (i + 1, self.Results[i].Type.SphinxMarkup, descr)
 
         doc = '\n\n'.join(filter(None, [self.ShortDescription.strip() if self.ShortDescription is not None and self.Name != '__init__' else None,   # Omit ShortDescription for __init__, because it always says something uninformative, like "Construct a new XYZ instance"
                                         self.LongDescription,    # Do not strip() LongDescription; it might end in a code block, which will get messed up when we append deps

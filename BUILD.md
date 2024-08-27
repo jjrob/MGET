@@ -46,7 +46,7 @@ supported Python 3.9 or later.
 Install/upgrade packages the that are needed to build:
 
 ```ShellSession
-(.venv) ~/dev/MGET$ python3 -m pip install -U pip setuptools setuptools_scm build sphinx sphinx_rtd_theme
+(.venv) ~/dev/MGET$ python3 -m pip install -U pip setuptools setuptools_scm build sphinx sphinx_rtd_theme python-dotenv
 ...
 ```
 
@@ -188,7 +188,7 @@ Now you can proceed with installing/upgrading the packages the that are needed
 to build MGET:
 
 ```
-(.venv) C:\Users\Jason\Documents\dev\MGET>python -m pip install -U pip setuptools setuptools_scm build sphinx sphinx_rtd_theme
+(.venv) C:\Users\Jason\Documents\dev\MGET>python -m pip install -U pip setuptools setuptools_scm build sphinx sphinx_rtd_theme python-dotenv
 ...
 ```
 
