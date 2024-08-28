@@ -92,8 +92,8 @@ of:
   ``Del2b`` both fail due to insufficient memory or are too slow.
 
 * ``Del4`` - Same as ``Del2a`` but instead of the Laplace operator (also
-  called the ∇\ :sup:`2` operator) it uses the biharmoic operator (also
-  called the ∇\ :sup:`4` operator). May result in more accurate
+  called the ∇\\ :sup:`2` operator) it uses the biharmoic operator (also
+  called the ∇\\ :sup:`4` operator). May result in more accurate
   interpolations, at some cost in speed.
 
 * ``Spring`` - Uses a spring metaphor. Assumes springs (with a nominal length

@@ -217,7 +217,7 @@ class AggregateGrid(Grid):
                 data = self._Grids[i].Data.__getitem__(tuple(sliceList))
 
                 if self._Grids[i].NoDataValue is not None:
-                    hasData = data != self._Grids[i].NoDataValue
+                    hasData = numpy.invert(Grid.numpy_equal_nan(data, self._Grids[i].NoDataValue))
                 else:
                     hasData = numpy.ones(data.shape, dtype=bool)
 
@@ -271,6 +271,9 @@ class AggregateGrid(Grid):
             return largest, self.NoDataValue
 
         if self._Statistic == 'range':
+            if self.NoDataValue is not None:
+                largest[count == 0] = 0      # Try to prevent overflow/underflow warning when NoDataValue is large
+                smallest[count == 0] = 0
             result = largest - smallest
             if self.NoDataValue is not None:
                 result[count == 0] = self.NoDataValue

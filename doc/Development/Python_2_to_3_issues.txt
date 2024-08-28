@@ -5,6 +5,7 @@ time.clock() is replaced by time.perf_counter()
 Integer division can now return a float
 file() was removed; use open() instead
 Remove unnecessary calls to unicode() and str()
+sort() lost cmp argument; use key instead
 
 
 MGET issues to check for:

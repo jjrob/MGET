@@ -923,6 +923,7 @@ class CMEMSARCOArray(Grid):
                                           statistic, binType,
                                           outputWorkspace, mode='Add', 
                                           xCoordType='center', yCoordType='center', zCoordType='center', tCoordType='min',
+                                          binDuration=1, startDayOfYear=1,
                                           rotationOffset=None, spatialExtent=None, 
                                           minDepth=None, maxDepth=None, startDate=None, endDate=None,
                                           rasterExtension='.img', rasterNameExpressions=None, calculateStatistics=True, buildPyramids=False):
@@ -983,14 +984,15 @@ class CMEMSARCOArray(Grid):
 
             if grid.Dimensions == 'tyx':
                 clippedGrid = cls._RotateAndClip(grid, rotationOffset, spatialExtent, startDate=startDate, endDate=endDate)
-                grids = ClimatologicalGridCollection(clippedGrid, statistic, binType, binDuration, startDayOfYear, reportProgress=False)
+                collection = ClimatologicalGridCollection(clippedGrid, statistic, binType, binDuration, startDayOfYear, reportProgress=False)
+                grids = collection.QueryDatasets(reportProgress=False)
                 qa = []
                 if rasterNameExpressions is None:
                     if outputWorkspaceIsDir:
                         rasterNameExpressions = ['%(DatasetID)s', 
                                                  '%(VariableShortName)s', 
                                                  '%(ClimatologyBinType)s_Climatology', 
-                                                 '%(VariableShortName)s_%(ClimatologyBinName)s_%(Statistic)s.img']
+                                                 '%(VariableShortName)s_%(ClimatologyBinName)s_%(Statistic)s']
                     else:
                         rasterNameExpressions = ['Copernicus_%(DatasetID)s_%(VariableShortName)s_%(ClimatologyBinType)s_Climatology_%(ClimatologyBinName)s_%(Statistic)s' + timeSuffix] 
 
@@ -1028,7 +1030,7 @@ class CMEMSARCOArray(Grid):
                                                  '%(VariableShortName)s', 
                                                  'Depth_%%(Depth)0%i.%if' % (depthStrLen, depthDecimalDigits),
                                                  '%(ClimatologyBinType)s_Climatology', 
-                                                 '%(VariableShortName)s_%(ClimatologyBinName)s_%(Statistic)s.img']
+                                                 '%(VariableShortName)s_%(ClimatologyBinName)s_%(Statistic)s']
                     else:
                         rasterNameExpressions = ['Copernicus_%(DatasetID)s_%(VariableShortName)s_%%(Depth)0%i.%if_%(ClimatologyBinType)s_Climatology_%(ClimatologyBinName)s_%(Statistic)s' + timeSuffix] 
 
@@ -1045,7 +1047,7 @@ class CMEMSARCOArray(Grid):
 
             # Create the rasters.
 
-            workspace = ArcGISWorkspace(outputWorkspace, ArcGISRaster, pathCreationExpressions=rasterNameExpressions, cacheTree=True, queryableAttributes=tuple(grid.GetAllQueryableAttributes() + qa))
+            workspace = ArcGISWorkspace(outputWorkspace, ArcGISRaster, pathCreationExpressions=rasterNameExpressions, cacheTree=True, queryableAttributes=tuple(collection.GetAllQueryableAttributes() + qa))
             workspace.ImportDatasets(grids, mode, calculateStatistics=calculateStatistics, buildPyramids=buildPyramids)
         
         finally:
@@ -1485,6 +1487,8 @@ CopyArgumentMetadata(CMEMSARCOArray.CreateArcGISRasters, 'xCoordType', CMEMSARCO
 CopyArgumentMetadata(CMEMSARCOArray.CreateArcGISRasters, 'yCoordType', CMEMSARCOArray.CreateClimatologicalArcGISRasters, 'yCoordType')
 CopyArgumentMetadata(CMEMSARCOArray.CreateArcGISRasters, 'zCoordType', CMEMSARCOArray.CreateClimatologicalArcGISRasters, 'zCoordType')
 CopyArgumentMetadata(CMEMSARCOArray.CreateArcGISRasters, 'tCoordType', CMEMSARCOArray.CreateClimatologicalArcGISRasters, 'tCoordType')
+CopyArgumentMetadata(ClimatologicalGridCollection.__init__, 'binDuration', CMEMSARCOArray.CreateClimatologicalArcGISRasters, 'binDuration')
+CopyArgumentMetadata(ClimatologicalGridCollection.__init__, 'startDayOfYear', CMEMSARCOArray.CreateClimatologicalArcGISRasters, 'startDayOfYear')
 CopyArgumentMetadata(CMEMSARCOArray.CreateArcGISRasters, 'rotationOffset', CMEMSARCOArray.CreateClimatologicalArcGISRasters, 'rotationOffset')
 CopyArgumentMetadata(CMEMSARCOArray.CreateArcGISRasters, 'spatialExtent', CMEMSARCOArray.CreateClimatologicalArcGISRasters, 'spatialExtent')
 CopyArgumentMetadata(CMEMSARCOArray.CreateArcGISRasters, 'minDepth', CMEMSARCOArray.CreateClimatologicalArcGISRasters, 'minDepth')

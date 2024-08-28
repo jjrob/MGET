@@ -249,7 +249,7 @@ class ClimatologicalGridCollection(DatasetCollection):
                     if startMonth > 12:
                         startMonth -= 12
 
-                binMonthsAndDays.sort(cmp=lambda a, b: cmp(a[1], b[1]))
+                binMonthsAndDays.sort(key=lambda x: x[1])
 
                 self._LogDebug(_('ClimatologicalGridCollection 0x%(id)016X: Using bin [startMonthAndDay, endMonthAndDay] definitions: %(binMonthsAndDays)s.'), {'id': id(self), 'binMonthsAndDays': str(binMonthsAndDays)})
 
@@ -341,7 +341,7 @@ class ClimatologicalGridCollection(DatasetCollection):
                     if startDay >= 366:
                         startDay -= 365
 
-                binDays.sort(cmp=lambda a, b: cmp(a[1], b[1]))
+                binDays.sort(key=lambda x: x[1])
 
                 self._LogDebug(_('ClimatologicalGridCollection 0x%(id)016X: Using bin [startDay, endDay] definitions: %(binDays)s.'), {'id': id(self), 'binDays': str(binDays)})
 

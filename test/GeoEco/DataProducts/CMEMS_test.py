@@ -167,3 +167,81 @@ class TestCMEMSARCOArrayArcGIS():
                                            endDate=datetime.datetime(2020,2,28))
         for month in [1,2]:
             assert (outputDir / datasetID / vsn / 'Depth_20000.0' / ('%s_20000.0_2020%02i.img' % (vsn, month))).is_file()
+
+    def test_CreateClimatologicalArcGISRasters_tyx_monthly(self, tmp_path):
+        username, password = getCMEMSCredentials()
+        datasetID = 'cmems_obs-oc_glo_bgc-plankton_my_l4-multi-4km_P1M'
+        vsn = 'CHL'
+        outputDir = tmp_path / (vsn + '1' )
+        os.makedirs(outputDir)
+        for statistic in ['Count', 'Maximum', 'Mean', 'Minimum', 'Range', 'Standard Deviation', 'Sum']:
+            CMEMSARCOArray.CreateClimatologicalArcGISRasters(username=username,
+                                                             password=password,
+                                                             datasetID=datasetID,
+                                                             variableShortName=vsn,
+                                                             statistic=statistic,
+                                                             binType='Monthly',
+                                                             outputWorkspace=outputDir,
+                                                             spatialExtent='-82 25 -52 50',
+                                                             startDate=datetime.datetime(2020,1,1),
+                                                             endDate=datetime.datetime(2021,12,31))
+            for month in range(1,13):
+                assert (outputDir / datasetID / vsn / 'Monthly_Climatology' / ('%s_month%02i_%s.img' % (vsn, month, statistic.lower()))).is_file()
+
+    def test_CreateClimatologicalArcGISRasters_tyx_cumulative(self, tmp_path):
+        username, password = getCMEMSCredentials()
+        datasetID = 'cmems_obs-oc_glo_bgc-plankton_my_l4-multi-4km_P1M'
+        vsn = 'CHL'
+        outputDir = tmp_path / (vsn + '1' )
+        os.makedirs(outputDir)
+        CMEMSARCOArray.CreateClimatologicalArcGISRasters(username=username,
+                                                         password=password,
+                                                         datasetID=datasetID,
+                                                         variableShortName=vsn,
+                                                         statistic='Mean',
+                                                         binType='Cumulative',
+                                                         outputWorkspace=outputDir,
+                                                         spatialExtent='-82 25 -52 50',
+                                                         startDate=datetime.datetime(2020,1,1),
+                                                         endDate=datetime.datetime(2021,12,31))
+        assert (outputDir / datasetID / vsn / 'Cumulative_Climatology' / ('%s_cumulative_mean.img' % vsn)).is_file()
+
+    def test_CreateClimatologicalArcGISRasters_tyx_seasonal(self, tmp_path):
+        username, password = getCMEMSCredentials()
+        datasetID = 'cmems_obs-oc_glo_bgc-plankton_my_l4-multi-4km_P1M'
+        vsn = 'CHL'
+        outputDir = tmp_path / (vsn + '1' )
+        os.makedirs(outputDir)
+        CMEMSARCOArray.CreateClimatologicalArcGISRasters(username=username,
+                                                         password=password,
+                                                         datasetID=datasetID,
+                                                         variableShortName=vsn,
+                                                         statistic='Mean',
+                                                         binType='Monthly',
+                                                         binDuration=3,
+                                                         outputWorkspace=outputDir,
+                                                         spatialExtent='-82 25 -52 50',
+                                                         startDate=datetime.datetime(2020,1,1),
+                                                         endDate=datetime.datetime(2021,12,31))
+        for month in [1,4,7,10]:
+            assert (outputDir / datasetID / vsn / '3month_Climatology' / ('%s_months%02ito%02i_mean.img' % (vsn, month, month + 2))).is_file()
+
+    def test_CreateClimatologicalArcGISRasters_tyx_daily(self, tmp_path):
+        username, password = getCMEMSCredentials()
+        datasetID = 'cmems_obs-oc_glo_bgc-plankton_my_l4-gapfree-multi-4km_P1D'
+        vsn = 'CHL'
+        outputDir = tmp_path / (vsn + '1' )
+        os.makedirs(outputDir)
+        CMEMSARCOArray.CreateClimatologicalArcGISRasters(username=username,
+                                                         password=password,
+                                                         datasetID=datasetID,
+                                                         variableShortName=vsn,
+                                                         statistic='Mean',
+                                                         binType='Daily',
+                                                         binDuration=8,
+                                                         outputWorkspace=outputDir,
+                                                         spatialExtent='-82 25 -52 50',
+                                                         startDate=datetime.datetime(2020,1,1),
+                                                         endDate=datetime.datetime(2021,12,31))
+        for day in range(1, 366, 8):
+            assert (outputDir / datasetID / vsn / '8day_Climatology' / ('%s_days%03ito%03i_mean.img' % (vsn, day, min(day + 7, 366)))).is_file()
