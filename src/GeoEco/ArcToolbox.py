@@ -583,7 +583,13 @@ def _ExecuteMethodAsGeoprocessingTool(method):
     argValues = {}
     argValuesToLog = {}
 
-    for am in mm.Arguments:
+    for i, am in enumerate(mm.Arguments):
+
+        # If it is the first argument, which is cls or self, skip it. We do
+        # not provide a value for this argument directly.
+
+        if i == 0:
+            continue
 
         # If we are supposed to initialize this argument to a geoprocessor
         # variable (typically a member of arcpy.env), get that value. If the
@@ -604,7 +610,7 @@ def _ExecuteMethodAsGeoprocessingTool(method):
         # the argument is supposed to be a hidden string, use the unwrapped
         # geoprocessor so we don't log its value.
 
-        elif am.ArcGISDisplayName is None:
+        elif am.ArcGISDisplayName is not None:
             value = gp.GetParameterAsText(pni[am.Name]) if not isinstance(am.Type, UnicodeStringHiddenTypeMetadata) else gpUnwrapped.GetParameterAsText(pni[am.Name])
 
             if value == '#' or len(value) <= 0:
