@@ -48,6 +48,13 @@ with :class:`MatlabWorkerProcess` rather than
 :class:`~GeoEco.Matlab.MatlabFunctions`. which loads them into the caller's
 process.
 
+Note:
+    Because starting MATLAB or MATLAB Runtime can take several seconds, most
+    parts of the GeoEco library use :class:`SharedMatlabWorkerProcess` to
+    share a single instance of :class:`MatlabWorkerProcess`, to avoid having
+    to start the worker process over and over again. If you are implementing a
+    GeoEco component, consider using :class:`SharedMatlabWorkerProcess`.
+
 To use :class:`MatlabWorkerProcess`, you must first instantiate it, then call
 the GeoEco MATLAB functions of interest as methods of that instance. The first
 time you call a method, a worker process will be created and MATLAB will be

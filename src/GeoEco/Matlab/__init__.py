@@ -21,6 +21,10 @@ from . import _MatlabFunctionsMetadata
 from ._MatlabWorkerProcess import MatlabWorkerProcess
 from . import _MatlabWorkerProcessMetadata
 
+from ._SharedMatlabWorkerProcess import SharedMatlabWorkerProcess
+from . import _SharedMatlabWorkerProcessMetadata
+
 __all__ = ['MatlabDependency',
            'MatlabFunctions',
-           'MatlabWorkerProcess']
+           'MatlabWorkerProcess',
+           'SharedMatlabWorkerProcess']

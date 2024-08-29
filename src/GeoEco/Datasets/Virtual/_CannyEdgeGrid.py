@@ -12,7 +12,7 @@ import os
 
 from ...DynamicDocString import DynamicDocString
 from ...Internationalization import _
-from ...Matlab import MatlabWorkerProcess
+from ...Matlab import SharedMatlabWorkerProcess
 
 from .. import Grid
 from . import GridSlice
@@ -90,10 +90,7 @@ class CannyEdgeGrid(Grid):
         if hasattr(self, '_Grid') and self._Grid is not None:
             self._Grid.Close()
         if hasattr(self, '_MatlabWorkerProcess') and self._MatlabWorkerProcess is not None:
-            try:
-                self._MatlabWorkerProcess.Stop()
-            finally:
-                self._MatlabWorkerProcess = None
+            self._MatlabWorkerProcess = None   # Do not call _MatlabWorkerProcess.Stop() here. We want the shared process to keep running.
         self._TempDir = None
         super(CannyEdgeGrid, self)._Close()
 
@@ -150,7 +147,7 @@ class CannyEdgeGrid(Grid):
                     # already.
 
                     if self._MatlabWorkerProcess is None:
-                        self._MatlabWorkerProcess = MatlabWorkerProcess()
+                        self._MatlabWorkerProcess = SharedMatlabWorkerProcess.GetWorkerProcess()
 
                     # Extract the 2D slice.
 
