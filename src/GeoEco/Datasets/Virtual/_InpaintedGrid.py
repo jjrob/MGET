@@ -61,8 +61,11 @@ class InpaintedGrid(Grid):
     def _Close(self):
         if hasattr(self, '_Grid') and self._Grid is not None:
             self._Grid.Close()
-        if hasattr(self, '') and self._MatlabWorkerProcess is not None:
-            self._MatlabWorkerProcess.Stop()
+        if hasattr(self, '_MatlabWorkerProcess') and self._MatlabWorkerProcess is not None:
+            try:
+                self._MatlabWorkerProcess.Stop()
+            finally:
+                self._MatlabWorkerProcess = None
         self._TempDir = None
         super(InpaintedGrid, self)._Close()
 
@@ -166,7 +169,7 @@ class InpaintedGrid(Grid):
 
                     # Inpaint the numpy array with the MATLAB function.
 
-                    inpaintedArray = self._MatlabWorkerProcess.InpaintNaNs(data,                                                    # A
+                    inpaintedArray = self._MatlabWorkerProcess.InpaintNaNs(data,                                                            # A
                                                                            {'del2a': 1, 'del2b': 0, 'del2c': 2, 'del4': 3, 'spring': 4}[self._Method.lower()],   # method
                                                                            self._MaxHoleSize if self._MaxHoleSize is not None else 0.,      # maxHoleSize
                                                                            float(self._XEdgesWrap),                                         # edgesWrap

@@ -217,7 +217,7 @@ AddArgumentMetadata(GDALDataset.CreateRaster, 'options',
 * ``useArcGISSpatialReference`` (:py:class:`bool`) - If True, the
   ArcGIS-compatible WKT string will be used when defining the raster's spatial
   reference. Additionally, the ``FORCETOPESTRING=YES`` creation option will be
-  set if the output is ERDAS Imagine (.img) format.
+  set if the output is ERDAS IMAGINE (.img) format.
 
 * ``useUnscaledData`` (:py:class:`bool`) - If True and `grid` has a scaling
   equation, the underlying unscaled data will be written out, rather than the

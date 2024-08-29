@@ -16,8 +16,20 @@ from ...Metadata import AddModuleMetadata
 
 AddModuleMetadata(shortDescription=_(':class:`~GeoEco.Datasets.Grid`\\ s and :class:`~GeoEco.Datasets.DatasetCollection`\\ s that transform :class:`~GeoEco.Datasets.Grid`\\ s and :class:`~GeoEco.Datasets.DatasetCollection`\\ s, lazily if possible.'))
 
+from ._GridSlice import GridSlice
+from . import _GridSliceMetadata
+
+from ._GridSliceCollection import GridSliceCollection
+from . import _GridSliceCollectionMetadata
+
+from ._TimeSeriesGridStack import TimeSeriesGridStack
+from . import _TimeSeriesGridStackMetadata
+
 from ._AggregateGrid import AggregateGrid
 from . import _AggregateGridMetadata
+
+from ._CannyEdgeGrid import CannyEdgeGrid
+from . import _CannyEdgeGridMetadata
 
 from ._ClimatologicalGridCollection import ClimatologicalGridCollection
 from . import _ClimatologicalGridCollectionMetadata
@@ -28,12 +40,6 @@ from . import _ClippedGridMetadata
 from ._FastMarchingDistanceGrid import FastMarchingDistanceGrid
 from . import _FastMarchingDistanceGridMetadata
 
-from ._GridSlice import GridSlice
-from . import _GridSliceMetadata
-
-from ._GridSliceCollection import GridSliceCollection
-from . import _GridSliceCollectionMetadata
-
 from ._InpaintedGrid import InpaintedGrid
 from . import _InpaintedGridMetadata
 
@@ -43,9 +49,6 @@ from . import _RotatedGlobalGridMetadata
 from ._SeafloorGrid import SeafloorGrid
 from . import _SeafloorGridMetadata
 
-from ._TimeSeriesGridStack import TimeSeriesGridStack
-from . import _TimeSeriesGridStackMetadata
-
 from ._WindFetchGrid import WindFetchGrid
 from . import _WindFetchGridMetadata
 
@@ -54,6 +57,7 @@ from . import _WindFetchGridMetadata
 ###############################################################################
 
 __all__ = ['AggregateGrid',
+           'CannyEdgeGrid',
            'ClimatologicalGridCollection',
            'ClippedGrid',
            'FastMarchingDistanceGrid',

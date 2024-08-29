@@ -51,11 +51,12 @@ Example usage:
     # in size. This size was chosen arbitrarily for this example. You might
     # prefer a smaller or larger size for your application.
 
+    from GeoEco.Datasets.Virtual import InpaintedGrid
     inpaintedGrid = InpaintedGrid(grid, maxHoleSize=200)
 
     # Write the output raster.
 
-    GDALDataset.CreateRaster('/home/jason/inpaint_test/GSMChl_2006160_filled.img', grid)
+    GDALDataset.CreateRaster('/home/jason/inpaint_test/GSMChl_2006160_filled.img', inpaintedGrid)
 """))
 
 # Constructor

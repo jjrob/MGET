@@ -12,6 +12,7 @@
 
 import datetime
 import inspect
+import pathlib
 import re
 import time
 import xml.dom
@@ -1069,7 +1070,18 @@ class UnicodeStringTypeMetadata(TypeMetadata):
         node.appendChild(document.createElement('string')).appendChild(document.createTextNode(value))
 
     def ValidateValue(self, value, variableName, methodLocals=None, argMetadata=None):
-        (valueChanged, value) = super(UnicodeStringTypeMetadata, self).ValidateValue(value, variableName, methodLocals, argMetadata)
+        # For convenience, we accept a pathlib.Path object and automatically
+        # convert it as a string.
+
+        valueChanged = False
+
+        if isinstance(value, pathlib.Path):
+            value = str(value)
+            valueChanged = True
+
+        (valueChanged2, value) = super(UnicodeStringTypeMetadata, self).ValidateValue(value, variableName, methodLocals, argMetadata)
+        valueChanged = valueChanged or valueChanged2
+        
         if value is not None:
             if self.StripWhitespace:
                 value = value.strip()

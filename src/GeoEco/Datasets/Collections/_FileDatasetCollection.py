@@ -85,12 +85,15 @@ class FileDatasetCollection(DatasetCollection):
         # If we have a parent collection, instruct it to create a
         # local copy of the file, if it does not exist already.
 
+        isOriginalFile = True
+
         if self.ParentCollection is not None:
             pathComponents = list(os.path.split(self.Path))
             while pathComponents[1] != '':
                 pathComponents = list(os.path.split(pathComponents[0])) + pathComponents[1:]
             pathComponents = [s for s in pathComponents if s != '']
             localPath, deleteFileAfterDecompressing = self.ParentCollection._GetLocalFile(pathComponents)
+            isOriginalFile = False
         else:
             pathComponents = ['']
             localPath = os.path.join(self.Path)
@@ -129,10 +132,11 @@ class FileDatasetCollection(DatasetCollection):
                     pass
 
             localPath = decompressedFile
+            isOriginalFile = False
 
         # Return successfully.
 
-        return localPath, False
+        return localPath, isOriginalFile
 
 
 ###############################################################################################

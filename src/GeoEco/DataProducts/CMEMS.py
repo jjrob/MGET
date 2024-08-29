@@ -1113,7 +1113,7 @@ monthly chlorophyll concentration data:
     # Define a DirectoryTree that describes how we want to create the slices when
     # we import them: as GDAL datasets stored in subdirectories for the Copernicus
     # dataset, year, and variable short name, and named with the variable short
-    # name, year, and month. Store them in ERDAS Imagine raster format (.img). In
+    # name, year, and month. Store them in ERDAS IMAGINE raster format (.img). In
     # order for these expressions to work, QueryableAttributes have to be defined
     # for them; we can tak the definitions from the GridSliceCollection.
 
