@@ -48,7 +48,12 @@ class CMEMSARCOArray(Grid):
 
     VariableShortName = property(_GetVariableShortName, doc=DynamicDocString())
 
-    def __init__(self, username, password, datasetID, variableShortName, xCoordType='center', yCoordType='center', zCoordType='center', tCoordType='min', lazyPropertyValues=None):
+    def _GetLog10Transform(self):
+        return self._Log10Transform
+
+    Log10Transform = property(_GetLog10Transform, doc=DynamicDocString())
+
+    def __init__(self, username, password, datasetID, variableShortName, log10Transform=False, xCoordType='center', yCoordType='center', zCoordType='center', tCoordType='min', lazyPropertyValues=None):
         self.__doc__.Obj.ValidateMethodInvocation()
 
         # Initialize our properties.
@@ -57,7 +62,12 @@ class CMEMSARCOArray(Grid):
         self._Password = password
         self._DatasetID = datasetID
         self._VariableShortName = variableShortName
-        self._DisplayName = _('variable %(name)s of Copernicus Marine Service dataset %(datasetID)s') % {'name': variableShortName, 'datasetID': datasetID}
+        self._Log10Transform = log10Transform
+        self._Log10TransformWarningIssued = False
+        if log10Transform:
+            self._DisplayName = _('log10-transformed variable %(name)s of Copernicus Marine Service dataset %(datasetID)s') % {'name': variableShortName, 'datasetID': datasetID}
+        else:
+            self._DisplayName = _('variable %(name)s of Copernicus Marine Service dataset %(datasetID)s') % {'name': variableShortName, 'datasetID': datasetID}
         self._URI = None
         self._ZCoords = None
         self._VariableStandardName = None
@@ -728,13 +738,48 @@ class CMEMSARCOArray(Grid):
         return numpy.array(zCoords).__getitem__(*slices)
 
     def _ReadNumpyArray(self, sliceList):
+        import numpy
+
         self._Open()
         sliceName = ','.join([str(s.start) + ':' + str(s.stop) for s in sliceList])
         self._LogDebug(_('%(class)s 0x%(id)016X: Reading slice [%(slice)s] of %(dn)s.'), {'class': self.__class__.__name__, 'id': id(self), 'slice': sliceName, 'dn': self.DisplayName})
         try:
-            return self._Dataset[self._VariableShortName].__getitem__(tuple(sliceList)).data.compute(), self.GetLazyPropertyValue('UnscaledNoDataValue')
+            data = self._Dataset[self._VariableShortName].__getitem__(tuple(sliceList)).data.compute()
         except Exception as e:
             raise RuntimeError(_('Failed to read slice [%(slice)s] of %(dn)s. Detailed error information: %(e)s: %(msg)s.') % {'slice': sliceName, 'dn': self.DisplayName, 'e': e.__class__.__name__, 'msg': e})
+
+        if self._Log10Transform:
+            log10NonPositive = False
+
+            # Handle log10 transform of a single value (a scalar).
+
+            if not isinstance(data, numpy.ndarray) and data is not None and numpy.isfinite(data) and data != self.UnscaledNoDataValue:
+                if data > 0:
+                    data = numpy.cast[self.UnscaledDataType](numpy.log10(data))
+                else:
+                    data = self.UnscaledNoDataValue if self.UnscaledNoDataValue is not None else numpy.nan
+                    log10NonPositive = True
+
+            # Handle log10 transform of an array of values.
+
+            elif isinstance(data, numpy.ndarray):
+                hasData = numpy.logical_and(numpy.isfinite(data), numpy.invert(Grid.numpy_equal_nan(data, self.UnscaledNoDataValue)))
+                if hasData.any():
+                    hasDataAndIsPositive = numpy.where(hasData, data > 0, False)
+                    data[hasDataAndIsPositive] = numpy.log10(data[hasDataAndIsPositive])
+                    log10NonPositive = hasDataAndIsPositive.sum() < hasData.sum()
+                    if log10NonPositive:
+                        hasDataAndIsNonPositive = numpy.where(hasData, data <= 0, False)
+                        data[hasDataAndIsNonPositive] = self.UnscaledNoDataValue if self.UnscaledNoDataValue is not None else numpy.nan
+
+            # If we tried to transform a non-positive number and have not
+            # issued a warning about it before, do so now.
+
+            if log10NonPositive and not self._Log10TransformWarningIssued:
+                self._LogWarning(_('Some values of %(dn)s could not be log-transformed because the values were non-positive. These values will be treated as missing data. This warning will not be reported again for this dataset.')% {'dn': self.DisplayName})
+                self._Log10TransformWarningIssued = True
+
+        return data, self.UnscaledNoDataValue
 
     @classmethod
     def _RotateAndClip(cls, grid, rotationOffset=None, spatialExtent=None, minDepth=None, maxDepth=None, startDate=None, endDate=None):
@@ -766,7 +811,7 @@ class CMEMSARCOArray(Grid):
 
     @classmethod
     def CreateArcGISRasters(cls, username, password, datasetID, variableShortName, 
-                            outputWorkspace, mode='Add', 
+                            outputWorkspace, mode='Add', log10Transform=False, 
                             xCoordType='center', yCoordType='center', zCoordType='center', tCoordType='min',
                             rotationOffset=None, spatialExtent=None, 
                             minDepth=None, maxDepth=None, startDate=None, endDate=None,
@@ -778,7 +823,7 @@ class CMEMSARCOArray(Grid):
 
         grids, rasterNameExpressions, queryableAttributes = \
             cls._ConstructGrids(username, password, datasetID, variableShortName, 
-                                outputWorkspace,
+                                outputWorkspace, log10Transform,
                                 xCoordType, yCoordType, zCoordType, tCoordType,
                                 rotationOffset, spatialExtent, 
                                 minDepth, maxDepth, startDate, endDate,
@@ -791,7 +836,7 @@ class CMEMSARCOArray(Grid):
 
     @classmethod
     def _ConstructGrids(cls, username, password, datasetID, variableShortName, 
-                        outputWorkspace,
+                        outputWorkspace, log10Transform,
                         xCoordType, yCoordType, zCoordType, tCoordType,
                         rotationOffset, spatialExtent, 
                         minDepth, maxDepth, startDate, endDate,
@@ -805,7 +850,7 @@ class CMEMSARCOArray(Grid):
 
         # Instantiate the CMEMSARCOArray. 
 
-        grid = CMEMSARCOArray(username, password, datasetID, variableShortName, xCoordType=xCoordType, yCoordType=yCoordType, zCoordType=zCoordType, tCoordType=tCoordType)
+        grid = CMEMSARCOArray(username, password, datasetID, variableShortName, log10Transform=log10Transform, xCoordType=xCoordType, yCoordType=yCoordType, zCoordType=zCoordType, tCoordType=tCoordType)
         try:
             # If rasterNameExpressions is None, we will determine a default
             # value. First, do some preliminary work related to this.
@@ -861,6 +906,8 @@ class CMEMSARCOArray(Grid):
 
             if grid.Dimensions == 'yx':
                 grids = [cls._RotateAndClip(grid, rotationOffset, spatialExtent)]
+                if wrapperGridClass is not None:
+                    grids = [wrapperGridClass(grids[0], **wrapperGridParams)]
                 qa = []
                 if rasterNameExpressions is None:
                     if outputWorkspaceIsDir:
@@ -871,7 +918,8 @@ class CMEMSARCOArray(Grid):
 
             elif grid.Dimensions == 'tyx':
                 clippedGrid = cls._RotateAndClip(grid, rotationOffset, spatialExtent, startDate=startDate, endDate=endDate)
-                grids = GridSliceCollection(clippedGrid, tQACoordType='min').QueryDatasets(reportProgress=False)
+                wrappedGrid = wrapperGridClass(clippedGrid, **wrapperGridParams) if wrapperGridClass is not None else clippedGrid
+                grids = GridSliceCollection(wrappedGrid, tQACoordType='min').QueryDatasets(reportProgress=False)
                 qa = [QueryableAttribute('DateTime', _('Date'), DateTimeTypeMetadata())]
                 if rasterNameExpressions is None:
                     if outputWorkspaceIsDir:
@@ -915,13 +963,13 @@ class CMEMSARCOArray(Grid):
                         rasterNameExpressions = ['%(DatasetID)s', 
                                                  '%(VariableShortName)s' + vsnPostfix, 
                                                  'Depth_%%(Depth)0%i.%if' % (depthStrLen, depthDecimalDigits),
-                                                 '%%(VariableShortName)s%%(vsnPostfix)s_%%(Depth)0%i.%if' % (depthStrLen, vsnPostfix, depthDecimalDigits)]
+                                                 '%%(VariableShortName)s%s_%%(Depth)0%i.%if' % (vsnPostfix, depthStrLen, depthDecimalDigits)]
                         if 't' in grid.Dimensions:
                             rasterNameExpressions[-1] += timeSuffix
                             if '%%d' in timeSuffix:
                                 rasterNameExpressions.insert(-1, '%%Y')
                     else:
-                        rasterNameExpressions = ['Copernicus_%%(DatasetID)s_%%(VariableShortName)s%%(vsnPostfix)s_%%(Depth)0%i.%if' % (depthStrLen, vsnPostfix, depthDecimalDigits)] 
+                        rasterNameExpressions = ['Copernicus_%%(DatasetID)s_%%(VariableShortName)s%s_%%(Depth)0%i.%if' % (vsnPostfix, depthStrLen, depthDecimalDigits)] 
                         if 't' in grid.Dimensions:
                             rasterNameExpressions[-1] += timeSuffix
 
@@ -945,7 +993,7 @@ class CMEMSARCOArray(Grid):
 
     @classmethod
     def CannyEdgesAsArcGISRasters(cls, username, password, datasetID, variableShortName, 
-                                  outputWorkspace, mode='Add', 
+                                  outputWorkspace, mode='Add', log10Transform=False, 
                                   highThreshold=None, lowThreshold=None, sigma=1.4142, minSize=None,
                                   xCoordType='center', yCoordType='center', zCoordType='center', tCoordType='min',
                                   rotationOffset=None, spatialExtent=None, 
@@ -958,24 +1006,24 @@ class CMEMSARCOArray(Grid):
 
         grids, rasterNameExpressions, queryableAttributes = \
             cls._ConstructGrids(username, password, datasetID, variableShortName, 
-                                outputWorkspace,
+                                outputWorkspace, log10Transform,
                                 xCoordType, yCoordType, zCoordType, tCoordType,
                                 rotationOffset, spatialExtent, 
                                 minDepth, maxDepth, startDate, endDate,
                                 rasterExtension, rasterNameExpressions,
                                 wrapperGridClass=CannyEdgeGrid,
-                                wrapperGridParams={'minDepth': minDepth, 'maxDepth': maxDepth, 'startDate': startDate, 'endDate': endDate},
+                                wrapperGridParams={'highThreshold': highThreshold, 'lowThreshold': lowThreshold, 'sigma': sigma, 'minSize': minSize},
                                 vsnPostfix='_fronts')
 
         workspace = ArcGISWorkspace(outputWorkspace, ArcGISRaster, pathCreationExpressions=rasterNameExpressions, cacheTree=True, queryableAttributes=queryableAttributes)
-        workspace.ImportDatasets(grids, mode, calculateStatistics=calculateStatistics, buildPyramids=buildPyramids)
+        workspace.ImportDatasets(grids, mode, calculateStatistics=calculateStatistics, buildPyramids=buildPyramids, buildRAT=buildRAT)
 
         return outputWorkspace
 
     @classmethod
     def CreateClimatologicalArcGISRasters(cls, username, password, datasetID, variableShortName,
                                           statistic, binType,
-                                          outputWorkspace, mode='Add', 
+                                          outputWorkspace, mode='Add', log10Transform=False, 
                                           xCoordType='center', yCoordType='center', zCoordType='center', tCoordType='min',
                                           binDuration=1, startDayOfYear=1,
                                           rotationOffset=None, spatialExtent=None, 
@@ -990,7 +1038,7 @@ class CMEMSARCOArray(Grid):
 
         # Instantiate the CMEMSARCOArray. 
 
-        grid = CMEMSARCOArray(username, password, datasetID, variableShortName, xCoordType=xCoordType, yCoordType=yCoordType, zCoordType=zCoordType, tCoordType=tCoordType)
+        grid = CMEMSARCOArray(username, password, datasetID, variableShortName, log10Transform=log10Transform, xCoordType=xCoordType, yCoordType=yCoordType, zCoordType=zCoordType, tCoordType=tCoordType)
         try:
             # Validate that the CMEMS grid has a t dimension.
 
@@ -1218,6 +1266,21 @@ the Variables heading. Each variable has a long description in black font,
 followed by the variable short name and units (in brackets) in a lighter
 color. Do not include the units as part of the short name."""))
 
+AddPropertyMetadata(CMEMSARCOArray.Log10Transform,
+    typeMetadata=BooleanTypeMetadata(),
+    shortDescription=_(
+""""If True, a ``log10`` (base 10 logarithm) function will be applied to the
+data after it is downloaded before further processing. This transformation may
+be useful when working with data that are always positive but heavily skewed,
+such as chlorophyll concentration or other biological oceanographic data. For
+example, it is a common practice to ``log10`` transform chlorophyll data
+before detecting chlorophyll fronts or utilizing chlorophyll in a species
+distribution model.
+
+Note that it is only possible to take the logarithm of a positive number. If
+the data contain values less than or equal to zero, a warning will be issued
+and they will be treated as missing values."""))
+
 # Public constructor: CMEMSARCOArray.__init__
 
 AddMethodMetadata(CMEMSARCOArray.__init__,
@@ -1247,6 +1310,11 @@ AddArgumentMetadata(CMEMSARCOArray.__init__, 'variableShortName',
     typeMetadata=CMEMSARCOArray.VariableShortName.__doc__.Obj.Type,
     description=CMEMSARCOArray.VariableShortName.__doc__.Obj.ShortDescription,
     arcGISDisplayName=_('Variable short name'))
+
+AddArgumentMetadata(CMEMSARCOArray.__init__, 'log10Transform',
+    typeMetadata=CMEMSARCOArray.Log10Transform.__doc__.Obj.Type,
+    description=CMEMSARCOArray.Log10Transform.__doc__.Obj.ShortDescription,
+    arcGISDisplayName=_('Apply log10 transform'))
 
 AddArgumentMetadata(CMEMSARCOArray.__init__, 'xCoordType',
     typeMetadata=UnicodeStringTypeMetadata(allowedValues=['min', 'center', 'max'], makeLowercase=True),
@@ -1356,6 +1424,7 @@ The ArcGIS Overwrite Output environment setting has no effect on this tool. If
 ArcGIS Overwrite Output setting."""),
     arcGISDisplayName=_('Overwrite mode'))
 
+CopyArgumentMetadata(CMEMSARCOArray.__init__, 'log10Transform', CMEMSARCOArray.CreateArcGISRasters, 'log10Transform')
 CopyArgumentMetadata(CMEMSARCOArray.__init__, 'xCoordType', CMEMSARCOArray.CreateArcGISRasters, 'xCoordType')
 CopyArgumentMetadata(CMEMSARCOArray.__init__, 'yCoordType', CMEMSARCOArray.CreateArcGISRasters, 'yCoordType')
 CopyArgumentMetadata(CMEMSARCOArray.__init__, 'zCoordType', CMEMSARCOArray.CreateArcGISRasters, 'zCoordType')
@@ -1545,6 +1614,7 @@ or data were missing for some other reason."""),
     arcGISDisplayName=_('Output workspace'))
 
 CopyArgumentMetadata(CMEMSARCOArray.CreateArcGISRasters, 'mode', CMEMSARCOArray.CannyEdgesAsArcGISRasters, 'mode')
+CopyArgumentMetadata(CMEMSARCOArray.CreateArcGISRasters, 'log10Transform', CMEMSARCOArray.CannyEdgesAsArcGISRasters, 'log10Transform')
 CopyArgumentMetadata(CannyEdgeGrid.__init__, 'highThreshold', CMEMSARCOArray.CannyEdgesAsArcGISRasters, 'highThreshold')
 CopyArgumentMetadata(CannyEdgeGrid.__init__, 'lowThreshold', CMEMSARCOArray.CannyEdgesAsArcGISRasters, 'lowThreshold')
 CopyArgumentMetadata(CannyEdgeGrid.__init__, 'sigma', CMEMSARCOArray.CannyEdgesAsArcGISRasters, 'sigma')
@@ -1590,6 +1660,7 @@ CopyArgumentMetadata(ClimatologicalGridCollection.__init__, 'statistic', CMEMSAR
 CopyArgumentMetadata(ClimatologicalGridCollection.__init__, 'binType', CMEMSARCOArray.CreateClimatologicalArcGISRasters, 'binType')
 CopyArgumentMetadata(CMEMSARCOArray.CreateArcGISRasters, 'outputWorkspace', CMEMSARCOArray.CreateClimatologicalArcGISRasters, 'outputWorkspace')
 CopyArgumentMetadata(CMEMSARCOArray.CreateArcGISRasters, 'mode', CMEMSARCOArray.CreateClimatologicalArcGISRasters, 'mode')
+CopyArgumentMetadata(CMEMSARCOArray.CreateArcGISRasters, 'log10Transform', CMEMSARCOArray.CreateClimatologicalArcGISRasters, 'log10Transform')
 CopyArgumentMetadata(CMEMSARCOArray.CreateArcGISRasters, 'xCoordType', CMEMSARCOArray.CreateClimatologicalArcGISRasters, 'xCoordType')
 CopyArgumentMetadata(CMEMSARCOArray.CreateArcGISRasters, 'yCoordType', CMEMSARCOArray.CreateClimatologicalArcGISRasters, 'yCoordType')
 CopyArgumentMetadata(CMEMSARCOArray.CreateArcGISRasters, 'zCoordType', CMEMSARCOArray.CreateClimatologicalArcGISRasters, 'zCoordType')

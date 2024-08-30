@@ -8,14 +8,17 @@
 # full license text.
 
 import datetime
+import logging
 import os
 from pathlib import Path
 
 import dotenv
+import numpy
 import pytest
 
 from GeoEco.Logging import Logger
 from GeoEco.DataProducts.CMEMS import CMEMSARCOArray
+from GeoEco.Datasets.GDAL import GDALDataset
 
 Logger.Initialize()
 
@@ -168,6 +171,68 @@ class TestCMEMSARCOArrayArcGIS():
         for month in [1,2]:
             assert (outputDir / datasetID / vsn / 'Depth_20000.0' / ('%s_20000.0_2020%02i.img' % (vsn, month))).is_file()
 
+    # Test log10 transform.
+
+    def test_log10_transform(self, tmp_path):
+        username, password = getCMEMSCredentials()
+        datasetID = 'cmems_obs-oc_glo_bgc-plankton_my_l4-multi-4km_P1M'
+        vsn = 'CHL'
+        outputDir = tmp_path / vsn
+        os.makedirs(outputDir)
+        CMEMSARCOArray.CreateArcGISRasters(username=username,
+                                           password=password,
+                                           datasetID=datasetID,
+                                           variableShortName=vsn,
+                                           outputWorkspace=outputDir,
+                                           spatialExtent='-82 25 -52 50',
+                                           startDate=datetime.datetime(2020,1,1),
+                                           endDate=datetime.datetime(2020,3,31))
+        normalData = []
+        for month in [1,2,3]:
+            normalData.append(GDALDataset.GetRasterBand(outputDir / datasetID / vsn / ('%s_2020%02i.img' % (vsn, month))))
+
+        outputDir = tmp_path / (vsn + '_log10' )
+        os.makedirs(outputDir)
+        CMEMSARCOArray.CreateArcGISRasters(username=username,
+                                           password=password,
+                                           datasetID=datasetID,
+                                           variableShortName=vsn,
+                                           outputWorkspace=outputDir,
+                                           log10Transform=True,
+                                           spatialExtent='-82 25 -52 50',
+                                           startDate=datetime.datetime(2020,1,1),
+                                           endDate=datetime.datetime(2020,3,31))
+        log10Data = []
+        for month in [1,2,3]:
+            log10Data.append(GDALDataset.GetRasterBand(outputDir / datasetID / vsn / ('%s_2020%02i.img' % (vsn, month))))
+
+        for i in range(len(normalData)):
+            hasData = numpy.invert(normalData[i].numpy_equal_nan(normalData[i].Data[:], normalData[i].NoDataValue))
+            assert (numpy.log10(normalData[i].Data[:][hasData]) == log10Data[i].Data[:][hasData]).all()
+
+    def test_log10_transform_warning(self, tmp_path):
+        username, password = getCMEMSCredentials()
+        datasetID = 'cmems_mod_glo_phy_my_0.083deg_P1D-m'
+        vsn = 'thetao'
+        outputDir = tmp_path / (vsn + '1' )
+        os.makedirs(outputDir)
+        CMEMSARCOArray.CreateArcGISRasters(username=username,
+                                           password=password,
+                                           datasetID=datasetID,
+                                           variableShortName=vsn,
+                                           outputWorkspace=outputDir,
+                                           log10Transform=True,
+                                           spatialExtent='-82 25 -52 50',
+                                           minDepth=0.,
+                                           maxDepth=1.,
+                                           startDate=datetime.datetime(2020,1,1,0,0,0),
+                                           endDate=datetime.datetime(2020,1,3,23,59,59))
+        # I could not figure out how to capture the warning via caplog or
+        # capsys. But I did verify it was printed by examining the logging
+        # output.
+
+    # Test climatologies.
+
     def test_CreateClimatologicalArcGISRasters_tyx_monthly(self, tmp_path):
         username, password = getCMEMSCredentials()
         datasetID = 'cmems_obs-oc_glo_bgc-plankton_my_l4-multi-4km_P1M'
@@ -245,3 +310,40 @@ class TestCMEMSARCOArrayArcGIS():
                                                          endDate=datetime.datetime(2021,12,31))
         for day in range(1, 366, 8):
             assert (outputDir / datasetID / vsn / '8day_Climatology' / ('%s_days%03ito%03i_mean.img' % (vsn, day, min(day + 7, 366)))).is_file()
+
+    # Test Canny fronts.
+
+    def test_CannyEdgesAsArcGISRasters_tyx_monthly(self, tmp_path):
+        username, password = getCMEMSCredentials()
+        datasetID = 'cmems_obs-oc_glo_bgc-plankton_my_l4-gapfree-multi-4km_P1D'
+        vsn = 'CHL'
+        outputDir = tmp_path / (vsn + '1' )
+        os.makedirs(outputDir)
+        CMEMSARCOArray.CannyEdgesAsArcGISRasters(username=username,
+                                                 password=password,
+                                                 datasetID=datasetID,
+                                                 variableShortName=vsn,
+                                                 outputWorkspace=outputDir,
+                                                 spatialExtent='-82 25 -52 50',
+                                                 startDate=datetime.datetime(2020,1,1),
+                                                 endDate=datetime.datetime(2020,1,10))
+        for day in range(1, 10):
+            assert (outputDir / datasetID / (vsn + '_fronts') / '2020' / ('%s_fronts_202001%02i.img' % (vsn, day))).is_file()
+
+    def test_log10_CannyEdgesAsArcGISRasters_tyx_monthly(self, tmp_path):
+        username, password = getCMEMSCredentials()
+        datasetID = 'cmems_obs-oc_glo_bgc-plankton_my_l4-gapfree-multi-4km_P1D'
+        vsn = 'CHL'
+        outputDir = tmp_path / (vsn + '1' )
+        os.makedirs(outputDir)
+        CMEMSARCOArray.CannyEdgesAsArcGISRasters(username=username,
+                                                 password=password,
+                                                 datasetID=datasetID,
+                                                 variableShortName=vsn,
+                                                 outputWorkspace=outputDir,
+                                                 log10Transform=True,
+                                                 spatialExtent='-82 25 -52 50',
+                                                 startDate=datetime.datetime(2020,1,1),
+                                                 endDate=datetime.datetime(2020,1,10))
+        for day in range(1, 10):
+            assert (outputDir / datasetID / (vsn + '_fronts') / '2020' / ('%s_fronts_202001%02i.img' % (vsn, day))).is_file()
