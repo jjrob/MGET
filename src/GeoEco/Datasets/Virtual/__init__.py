@@ -28,7 +28,7 @@ from . import _TimeSeriesGridStackMetadata
 from ._AggregateGrid import AggregateGrid
 from . import _AggregateGridMetadata
 
-from ._CannyEdgeGrid import CannyEdgeGrid
+from ._CannyEdgeGrid import CannyEdgeGrid, _CannyEdgesOverview
 from . import _CannyEdgeGridMetadata
 
 from ._ClimatologicalGridCollection import ClimatologicalGridCollection
@@ -56,7 +56,8 @@ from . import _WindFetchGridMetadata
 # Names exported by this module
 ###############################################################################
 
-__all__ = ['AggregateGrid',
+__all__ = ['_CannyEdgesOverview',
+           'AggregateGrid',
            'CannyEdgeGrid',
            'ClimatologicalGridCollection',
            'ClippedGrid',

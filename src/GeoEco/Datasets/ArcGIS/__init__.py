@@ -28,7 +28,10 @@ from . import _ArcGISTableMetadata
 from ._ArcGISWorkspace import ArcGISWorkspace
 from . import _ArcGISWorkspaceMetadata
 
-__all__ = ['ArcGISCopyableTable',
+__all__ = ['_BuildPyramidsDescription',
+           '_BuildRATDescription',
+           '_CalculateStatisticsDescription',
+           'ArcGISCopyableTable',
            'ArcGISRaster',
            'ArcGISRasterBand',
            'ArcGISTable',

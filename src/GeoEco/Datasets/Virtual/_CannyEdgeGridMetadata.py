@@ -14,7 +14,7 @@ from ...Metadata import *
 from ...Types import *
 
 from .. import Grid
-from ._CannyEdgeGrid import CannyEdgeGrid
+from ._CannyEdgeGrid import CannyEdgeGrid, _CannyEdgesOverview
 
 
 ###############################################################################
@@ -24,22 +24,7 @@ from ._CannyEdgeGrid import CannyEdgeGrid
 AddClassMetadata(CannyEdgeGrid,
     module=__package__,
     shortDescription=_('A :class:`~GeoEco.Datasets.Grid` that represents the edges in another :class:`~GeoEco.Datasets.Grid` using the Canny edge detection algorithm..'),
-    longDescription=_(
-"""To run this tool, you either must have MATLAB 2024a or MATLAB Runtime 2024a
-installed. The MATLAB Runtime is free and may be downloaded from
-https://www.mathworks.com/help/compiler/install-the-matlab-runtime.html.
-Please follow the installation instructions carefully. Version 2024a must be
-used; other versions will not work. MATLAB Runtime allows multiple versions
-can be installed at the same time.
-
-The Canny edge detection algorithm is a generic, widely-used algorithm for
-delineating edges between objects in digital images. The algorithm may be
-successfully applied to a wide variety of problems, including the problem of
-detecting fronts between water masses. Canny (1986) describes the algorithm in
-full detail, including its mathematical derivation. Some readers may find the
-paper difficult due to its length and technical detail. Shorter, more
-approachable descriptions may be found by searching the Internet for "Canny
-algorithm".
+    longDescription=_CannyEdgesOverview + _("""
 
 Example usage:
 
@@ -81,15 +66,14 @@ edges will be detected in each 2D time and/or depth slice."""))
 AddArgumentMetadata(CannyEdgeGrid.__init__, 'highThreshold',
     typeMetadata=FloatTypeMetadata(mustBeGreaterThan=0., mustBeLessThan=1., canBeNone=True),
     description=_(
-"""High threshold for the Canny edge detection algorithm.
-
-The Canny algorithm uses the high threshold to find "strong edges", which are
-pixels that have such a high gradient magnitude that they may confidently be
-classified as edges. These are pixels where those that surround them show a
-strong increase or decrease in value as you move across the image in some
-direction. The units of the Canny thresholds are the change in the units of
-the image per pixel traveled. For example, if the image represents sea
-surface temperature in degrees C, the units are change in degrees C per pixel.
+"""High threshold for the Canny edge detection algorithm. The Canny algorithm
+uses the high threshold to find "strong edges", which are pixels that have
+such a high gradient magnitude that they may confidently be classified as
+edges. These are pixels where those that surround them show a strong increase
+or decrease in value as you move across the image in some direction. The units
+of the Canny thresholds are the change in the units of the image per pixel
+traveled. For example, if the image represents sea surface temperature in
+degrees C, the units are change in degrees C per pixel.
 
 If you do not provide a value, one will be chosen automatically based on the
 data within the image. If you are detecting edges in multiple images, a value
@@ -103,15 +87,15 @@ help with this, if necessary.)
 
 Increasing the high threshold will reduce the number of edges detected;
 reducing it will increase the number of edges detected."""),
-    arcGISDisplayName=_('High threshold'))
+    arcGISDisplayName=_('High threshold'),
+    arcGISCategory=_('Canny algorithm parameters'))
 
 AddArgumentMetadata(CannyEdgeGrid.__init__, 'lowThreshold',
     typeMetadata=FloatTypeMetadata(mustBeGreaterThan=0., mustBeLessThan=1., canBeNone=True),
     description=_(
-"""Low threshold for the Canny edge detection algorithm.
-
-If you supply a low threshold, you must also supply a high threshold. The low
-threshold must be less than the high threshold.
+"""Low threshold for the Canny edge detection algorithm. If you supply a low
+threshold, you must also supply a high threshold. The low threshold must be
+less than the high threshold.
 
 After using the high threshold to find "strong edges", the Canny algorithm
 uses the low threshold to find "weak edges", which are those that have a
@@ -141,17 +125,16 @@ help with this, if necessary.)
 
 Increasing the low threshold will reduce the number of edges detected;
 reducing it will increase the number of edges detected."""),
-    arcGISDisplayName=_('Low threshold'))
+    arcGISDisplayName=_('Low threshold'),
+    arcGISCategory=_('Canny algorithm parameters'))
 
 AddArgumentMetadata(CannyEdgeGrid.__init__, 'sigma',
     typeMetadata=FloatTypeMetadata(mustBeGreaterThan=0., canBeNone=True),
     description=_(
 """Sigma parameter for the Gaussian filter applied by the Canny edge detection
-algorithm.
-
-As its first step, before performing edge detection, the Canny algorithm
-applies a Gaussian filter to the image to smooth out noise. The sigma
-parameter controls the degree of smoothing. Higher values producing more
+algorithm. As its first step, before performing edge detection, the Canny
+algorithm applies a Gaussian filter to the image to smooth out noise. The
+sigma parameter controls the degree of smoothing. Higher values producing more
 smoothing, resulting in fewer detected edges. Lower values yield less
 smoothing and more detected edges.
 
@@ -167,22 +150,22 @@ however).
 It is not necessary to specify the window size of the Gaussian filter; the
 algorithm automatically selects the optimal window size based on the value of
 the sigma parameter."""),
-    arcGISDisplayName=_('Sigma'))
+    arcGISDisplayName=_('Sigma'),
+    arcGISCategory=_('Canny algorithm parameters'))
 
 AddArgumentMetadata(CannyEdgeGrid.__init__, 'minSize',
     typeMetadata=IntegerTypeMetadata(mustBeGreaterThan=0, canBeNone=True),
     description=_(
 """Minimum number of pixels an individual edge must occupy for it to be
-retained. Edges with fewer number of pixels will be discarded.
-
-For this option, an "edge" is defined as the chain of pixels that are
-8-connected (i.e. they are connected horizontally, vertically, or diagonally).
-The edge may be any shape, such as long and thin and branching or short and
-blob-like.
+retained. Edges with fewer number of pixels will be discarded. For this
+option, an "edge" is defined as the chain of pixels that are 8-connected (i.e.
+they are connected horizontally, vertically, or diagonally). The edge may be
+any shape, such as long and thin and branching or short and blob-like.
 
 This option is applied after the Canny algorithm is complete. If a value is
 not provided, all edges will be retained."""),
-    arcGISDisplayName=_('Minimum edge size'))
+    arcGISDisplayName=_('Minimum edge size'),
+    arcGISCategory=_('Canny algorithm parameters'))
 
 AddResultMetadata(CannyEdgeGrid.__init__, 'obj',
     typeMetadata=ClassInstanceTypeMetadata(cls=CannyEdgeGrid),
@@ -193,4 +176,4 @@ AddResultMetadata(CannyEdgeGrid.__init__, 'obj',
 # This module is not meant to be imported directly. Import GeoEco.Datasets.Virtual instead.
 ###########################################################################################
 
-__all__ = []
+__all__ = ['_CannyEdgesOverview']

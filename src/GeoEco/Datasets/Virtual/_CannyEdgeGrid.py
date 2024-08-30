@@ -18,6 +18,24 @@ from .. import Grid
 from . import GridSlice
 
 
+_CannyEdgesOverview = (
+"""To run this tool, you either must have MATLAB 2024a or MATLAB Runtime 2024a
+installed. The MATLAB Runtime is free and may be downloaded from
+https://www.mathworks.com/help/compiler/install-the-matlab-runtime.html.
+Please follow the installation instructions carefully. Version 2024a must be
+used; other versions will not work. MATLAB Runtime allows multiple versions
+can be installed at the same time.
+
+The Canny edge detection algorithm is a generic, widely-used algorithm for
+delineating edges between objects in digital images. The algorithm may be
+successfully applied to a wide variety of problems, including the problem of
+detecting fronts between water masses. Canny (1986) describes the algorithm in
+full detail, including its mathematical derivation. Some readers may find the
+paper difficult due to its length and technical detail. Shorter, more
+approachable descriptions may be found by searching the Internet for "Canny
+algorithm".""")
+
+
 class CannyEdgeGrid(Grid):
     __doc__ = DynamicDocString()
 

@@ -18,9 +18,10 @@ import types
 from ..ArcGIS import GeoprocessorManager
 from ..Datasets import QueryableAttribute, Grid
 from ..Datasets.ArcGIS import ArcGISRaster, ArcGISWorkspace
-from ..Datasets.Virtual import GridSliceCollection, ClippedGrid, RotatedGlobalGrid, SeafloorGrid, ClimatologicalGridCollection
+from ..Datasets.Virtual import GridSliceCollection, ClippedGrid, RotatedGlobalGrid, SeafloorGrid, CannyEdgeGrid, _CannyEdgesOverview, ClimatologicalGridCollection
 from ..DynamicDocString import DynamicDocString
 from ..Internationalization import _
+from ..Matlab import MatlabDependency
 from ..Types import *
 
 
@@ -772,6 +773,31 @@ class CMEMSARCOArray(Grid):
                             rasterExtension='.img', rasterNameExpressions=None, calculateStatistics=True, buildPyramids=False):
         cls.__doc__.Obj.ValidateMethodInvocation()
 
+        # Construct a list of grids to import and import them to the output
+        # workspace as rasters.
+
+        grids, rasterNameExpressions, queryableAttributes = \
+            cls._ConstructGrids(username, password, datasetID, variableShortName, 
+                                outputWorkspace,
+                                xCoordType, yCoordType, zCoordType, tCoordType,
+                                rotationOffset, spatialExtent, 
+                                minDepth, maxDepth, startDate, endDate,
+                                rasterExtension, rasterNameExpressions)
+
+        workspace = ArcGISWorkspace(outputWorkspace, ArcGISRaster, pathCreationExpressions=rasterNameExpressions, cacheTree=True, queryableAttributes=queryableAttributes)
+        workspace.ImportDatasets(grids, mode, calculateStatistics=calculateStatistics, buildPyramids=buildPyramids)
+
+        return outputWorkspace
+
+    @classmethod
+    def _ConstructGrids(cls, username, password, datasetID, variableShortName, 
+                        outputWorkspace,
+                        xCoordType, yCoordType, zCoordType, tCoordType,
+                        rotationOffset, spatialExtent, 
+                        minDepth, maxDepth, startDate, endDate,
+                        rasterExtension, rasterNameExpressions,
+                        wrapperGridClass=None, wrapperGridParams={}, vsnPostfix=''):
+
         # If rasterNameExpressions is not None, ignore rasterExtension.
 
         if rasterNameExpressions is not None:
@@ -839,9 +865,9 @@ class CMEMSARCOArray(Grid):
                 if rasterNameExpressions is None:
                     if outputWorkspaceIsDir:
                         rasterNameExpressions = ['%(DatasetID)s', 
-                                                 '%(VariableShortName)s']
+                                                 '%(VariableShortName)s' + vsnPostfix]
                     else:
-                        rasterNameExpressions = ['Copernicus_%(DatasetID)s_%(VariableShortName)s'] 
+                        rasterNameExpressions = ['Copernicus_%(DatasetID)s_%(VariableShortName)s' + vsnPostfix] 
 
             elif grid.Dimensions == 'tyx':
                 clippedGrid = cls._RotateAndClip(grid, rotationOffset, spatialExtent, startDate=startDate, endDate=endDate)
@@ -850,12 +876,12 @@ class CMEMSARCOArray(Grid):
                 if rasterNameExpressions is None:
                     if outputWorkspaceIsDir:
                         rasterNameExpressions = ['%(DatasetID)s', 
-                                                 '%(VariableShortName)s', 
-                                                 '%(VariableShortName)s' + timeSuffix]
+                                                 '%(VariableShortName)s' + vsnPostfix, 
+                                                 '%(VariableShortName)s' + vsnPostfix + timeSuffix]
                         if '%%d' in timeSuffix:
                             rasterNameExpressions.insert(-1, '%%Y')
                     else:
-                        rasterNameExpressions = ['Copernicus_%(DatasetID)s_%(VariableShortName)s' + timeSuffix] 
+                        rasterNameExpressions = ['Copernicus_%(DatasetID)s_%(VariableShortName)s' + vsnPostfix + timeSuffix] 
 
             elif grid.Dimensions in ['zyx', 'tzyx']:
 
@@ -865,7 +891,8 @@ class CMEMSARCOArray(Grid):
                 grids = []
                 if minDepth is None or minDepth <= 5500.:
                     clippedGrid = cls._RotateAndClip(grid, rotationOffset, spatialExtent, minDepth, maxDepth, startDate if 't' in grid.Dimensions else None, endDate if 't' in grid.Dimensions else None)
-                    grids.extend(GridSliceCollection(clippedGrid, tQACoordType=grid._CornerCoordTypes[0] if 't' in grid.Dimensions else None, zQACoordType=grid._CornerCoordTypes[-3]).QueryDatasets(reportProgress=False))
+                    wrappedGrid = wrapperGridClass(clippedGrid, **wrapperGridParams) if wrapperGridClass is not None else clippedGrid
+                    grids.extend(GridSliceCollection(wrappedGrid, tQACoordType=grid._CornerCoordTypes[0] if 't' in grid.Dimensions else None, zQACoordType=grid._CornerCoordTypes[-3]).QueryDatasets(reportProgress=False))
 
                 # If the caller requested a maximum depth that is greater than
                 # or equal to 20000, instantiate a grid representing the
@@ -874,7 +901,8 @@ class CMEMSARCOArray(Grid):
                 if minDepth == 20000. or maxDepth is not None and maxDepth >= 20000.:
                     clippedGrid = cls._RotateAndClip(grid, rotationOffset, spatialExtent, None, None, startDate, endDate)
                     seafloorGrid = SeafloorGrid(clippedGrid, (QueryableAttribute('Depth', _('Depth'), FloatTypeMetadata()),), {'Depth': 20000.})
-                    grids.extend(GridSliceCollection(seafloorGrid, tQACoordType=grid._CornerCoordTypes[0] if 't' in grid.Dimensions else None).QueryDatasets(reportProgress=False))
+                    wrappedGrid = wrapperGridClass(seafloorGrid, **wrapperGridParams) if wrapperGridClass is not None else seafloorGrid
+                    grids.extend(GridSliceCollection(wrappedGrid, tQACoordType=grid._CornerCoordTypes[0] if 't' in grid.Dimensions else None).QueryDatasets(reportProgress=False))
 
                 # Determine the QueryableAttributes and rasterNameExpressions.
 
@@ -885,15 +913,15 @@ class CMEMSARCOArray(Grid):
                 if rasterNameExpressions is None:
                     if outputWorkspaceIsDir:
                         rasterNameExpressions = ['%(DatasetID)s', 
-                                                 '%(VariableShortName)s', 
+                                                 '%(VariableShortName)s' + vsnPostfix, 
                                                  'Depth_%%(Depth)0%i.%if' % (depthStrLen, depthDecimalDigits),
-                                                 '%%(VariableShortName)s_%%(Depth)0%i.%if' % (depthStrLen, depthDecimalDigits)]
+                                                 '%%(VariableShortName)s%%(vsnPostfix)s_%%(Depth)0%i.%if' % (depthStrLen, vsnPostfix, depthDecimalDigits)]
                         if 't' in grid.Dimensions:
                             rasterNameExpressions[-1] += timeSuffix
                             if '%%d' in timeSuffix:
                                 rasterNameExpressions.insert(-1, '%%Y')
                     else:
-                        rasterNameExpressions = ['Copernicus_%%(DatasetID)s_%%(VariableShortName)s_%%(Depth)0%i.%if' % (depthStrLen, depthDecimalDigits)] 
+                        rasterNameExpressions = ['Copernicus_%%(DatasetID)s_%%(VariableShortName)s%%(vsnPostfix)s_%%(Depth)0%i.%if' % (depthStrLen, vsnPostfix, depthDecimalDigits)] 
                         if 't' in grid.Dimensions:
                             rasterNameExpressions[-1] += timeSuffix
 
@@ -908,13 +936,39 @@ class CMEMSARCOArray(Grid):
                     rasterNameExpressions[-1] += '.' 
                 rasterNameExpressions[-1] += rasterExtension
 
-            # Create the rasters.
+            # Return successfully.
 
-            workspace = ArcGISWorkspace(outputWorkspace, ArcGISRaster, pathCreationExpressions=rasterNameExpressions, cacheTree=True, queryableAttributes=tuple(grid.GetAllQueryableAttributes() + qa))
-            workspace.ImportDatasets(grids, mode, calculateStatistics=calculateStatistics, buildPyramids=buildPyramids)
+            return grids, rasterNameExpressions, tuple(grid.GetAllQueryableAttributes() + qa)
         
         finally:
             grid.Close()
+
+    @classmethod
+    def CannyEdgesAsArcGISRasters(cls, username, password, datasetID, variableShortName, 
+                                  outputWorkspace, mode='Add', 
+                                  highThreshold=None, lowThreshold=None, sigma=1.4142, minSize=None,
+                                  xCoordType='center', yCoordType='center', zCoordType='center', tCoordType='min',
+                                  rotationOffset=None, spatialExtent=None, 
+                                  minDepth=None, maxDepth=None, startDate=None, endDate=None,
+                                  rasterExtension='.img', rasterNameExpressions=None, calculateStatistics=True, buildPyramids=False, buildRAT=True):
+        cls.__doc__.Obj.ValidateMethodInvocation()
+
+        # Construct a list of grids to import and import them to the output
+        # workspace as rasters.
+
+        grids, rasterNameExpressions, queryableAttributes = \
+            cls._ConstructGrids(username, password, datasetID, variableShortName, 
+                                outputWorkspace,
+                                xCoordType, yCoordType, zCoordType, tCoordType,
+                                rotationOffset, spatialExtent, 
+                                minDepth, maxDepth, startDate, endDate,
+                                rasterExtension, rasterNameExpressions,
+                                wrapperGridClass=CannyEdgeGrid,
+                                wrapperGridParams={'minDepth': minDepth, 'maxDepth': maxDepth, 'startDate': startDate, 'endDate': endDate},
+                                vsnPostfix='_fronts')
+
+        workspace = ArcGISWorkspace(outputWorkspace, ArcGISRaster, pathCreationExpressions=rasterNameExpressions, cacheTree=True, queryableAttributes=queryableAttributes)
+        workspace.ImportDatasets(grids, mode, calculateStatistics=calculateStatistics, buildPyramids=buildPyramids)
 
         return outputWorkspace
 
@@ -1061,7 +1115,7 @@ class CMEMSARCOArray(Grid):
 ###############################################################################
 
 from ..ArcGIS import ArcGISDependency
-from ..Datasets.ArcGIS import _CalculateStatisticsDescription, _BuildPyramidsDescription
+from ..Datasets.ArcGIS import _CalculateStatisticsDescription, _BuildPyramidsDescription, _BuildRATDescription
 from ..Dependencies import PythonModuleDependency
 from ..Metadata import *
 
@@ -1464,6 +1518,59 @@ AddResultMetadata(CMEMSARCOArray.CreateArcGISRasters, 'updatedOutputWorkspace',
     description=_('Updated output workspace.'),
     arcGISDisplayName=_('Updated output workspace'),
     arcGISParameterDependencies=['outputWorkspace'])
+
+# Public method: CMEMSARCOArray.CannyEdgesAsArcGISRasters
+
+AddMethodMetadata(CMEMSARCOArray.CannyEdgesAsArcGISRasters,
+    shortDescription=_('Creates rasters indicating the positions of fronts identified with the Canny edge detection algorithm in a 2D, 3D, or 4D gridded dataset published by `Copernicus Marine Service <https://data.marine.copernicus.eu/products>`_.'),
+    longDescription=_CannyEdgesOverview,
+    isExposedAsArcGISTool=True,
+    arcGISDisplayName=_('Find Canny Fronts in CMEMS Dataset'),
+    arcGISToolCategory=_('Data Products\\Copernicus Marine Service (CMEMS)'),
+    dependencies=[ArcGISDependency(), MatlabDependency()] + CMEMSARCOArray.__init__.__doc__.Obj.Dependencies)
+
+CopyArgumentMetadata(CMEMSARCOArray.CreateArcGISRasters, 'cls', CMEMSARCOArray.CannyEdgesAsArcGISRasters, 'cls')
+CopyArgumentMetadata(CMEMSARCOArray.CreateArcGISRasters, 'username', CMEMSARCOArray.CannyEdgesAsArcGISRasters, 'username')
+CopyArgumentMetadata(CMEMSARCOArray.CreateArcGISRasters, 'password', CMEMSARCOArray.CannyEdgesAsArcGISRasters, 'password')
+CopyArgumentMetadata(CMEMSARCOArray.CreateArcGISRasters, 'datasetID', CMEMSARCOArray.CannyEdgesAsArcGISRasters, 'datasetID')
+CopyArgumentMetadata(CMEMSARCOArray.CreateArcGISRasters, 'variableShortName', CMEMSARCOArray.CannyEdgesAsArcGISRasters, 'variableShortName')
+
+AddArgumentMetadata(CMEMSARCOArray.CannyEdgesAsArcGISRasters, 'outputWorkspace',
+    typeMetadata=ArcGISWorkspaceTypeMetadata(createParentDirectories=True),
+    description=CMEMSARCOArray.CreateArcGISRasters.__doc__.Obj.GetArgumentByName('outputWorkspace').Description + _("""
+
+The rasters will have an integer data type, with the value 1 where a front was
+detected, 0 where a front was not detected, and NoData where there was land,
+or data were missing for some other reason."""),
+    arcGISDisplayName=_('Output workspace'))
+
+CopyArgumentMetadata(CMEMSARCOArray.CreateArcGISRasters, 'mode', CMEMSARCOArray.CannyEdgesAsArcGISRasters, 'mode')
+CopyArgumentMetadata(CannyEdgeGrid.__init__, 'highThreshold', CMEMSARCOArray.CannyEdgesAsArcGISRasters, 'highThreshold')
+CopyArgumentMetadata(CannyEdgeGrid.__init__, 'lowThreshold', CMEMSARCOArray.CannyEdgesAsArcGISRasters, 'lowThreshold')
+CopyArgumentMetadata(CannyEdgeGrid.__init__, 'sigma', CMEMSARCOArray.CannyEdgesAsArcGISRasters, 'sigma')
+CopyArgumentMetadata(CannyEdgeGrid.__init__, 'minSize', CMEMSARCOArray.CannyEdgesAsArcGISRasters, 'minSize')
+CopyArgumentMetadata(CMEMSARCOArray.CreateArcGISRasters, 'xCoordType', CMEMSARCOArray.CannyEdgesAsArcGISRasters, 'xCoordType')
+CopyArgumentMetadata(CMEMSARCOArray.CreateArcGISRasters, 'yCoordType', CMEMSARCOArray.CannyEdgesAsArcGISRasters, 'yCoordType')
+CopyArgumentMetadata(CMEMSARCOArray.CreateArcGISRasters, 'zCoordType', CMEMSARCOArray.CannyEdgesAsArcGISRasters, 'zCoordType')
+CopyArgumentMetadata(CMEMSARCOArray.CreateArcGISRasters, 'tCoordType', CMEMSARCOArray.CannyEdgesAsArcGISRasters, 'tCoordType')
+CopyArgumentMetadata(CMEMSARCOArray.CreateArcGISRasters, 'rotationOffset', CMEMSARCOArray.CannyEdgesAsArcGISRasters, 'rotationOffset')
+CopyArgumentMetadata(CMEMSARCOArray.CreateArcGISRasters, 'spatialExtent', CMEMSARCOArray.CannyEdgesAsArcGISRasters, 'spatialExtent')
+CopyArgumentMetadata(CMEMSARCOArray.CreateArcGISRasters, 'minDepth', CMEMSARCOArray.CannyEdgesAsArcGISRasters, 'minDepth')
+CopyArgumentMetadata(CMEMSARCOArray.CreateArcGISRasters, 'maxDepth', CMEMSARCOArray.CannyEdgesAsArcGISRasters, 'maxDepth')
+CopyArgumentMetadata(CMEMSARCOArray.CreateArcGISRasters, 'startDate', CMEMSARCOArray.CannyEdgesAsArcGISRasters, 'startDate')
+CopyArgumentMetadata(CMEMSARCOArray.CreateArcGISRasters, 'endDate', CMEMSARCOArray.CannyEdgesAsArcGISRasters, 'endDate')
+CopyArgumentMetadata(CMEMSARCOArray.CreateArcGISRasters, 'rasterExtension', CMEMSARCOArray.CannyEdgesAsArcGISRasters, 'rasterExtension')
+CopyArgumentMetadata(CMEMSARCOArray.CreateArcGISRasters, 'rasterNameExpressions', CMEMSARCOArray.CannyEdgesAsArcGISRasters, 'rasterNameExpressions')
+CopyArgumentMetadata(CMEMSARCOArray.CreateArcGISRasters, 'calculateStatistics', CMEMSARCOArray.CannyEdgesAsArcGISRasters, 'calculateStatistics')
+CopyArgumentMetadata(CMEMSARCOArray.CreateArcGISRasters, 'buildPyramids', CMEMSARCOArray.CannyEdgesAsArcGISRasters, 'buildPyramids')
+
+AddArgumentMetadata(CMEMSARCOArray.CannyEdgesAsArcGISRasters, 'buildRAT',
+    typeMetadata=BooleanTypeMetadata(),
+    description=_BuildRATDescription,
+    arcGISDisplayName=_('Build raster attribute tables'),
+    arcGISCategory=_('Output raster options'))
+
+CopyResultMetadata(CMEMSARCOArray.CreateArcGISRasters, 'updatedOutputWorkspace', CMEMSARCOArray.CannyEdgesAsArcGISRasters, 'updatedOutputWorkspace')
 
 # Public method: CMEMSARCOArray.CreateClimatologicalArcGISRasters
 
