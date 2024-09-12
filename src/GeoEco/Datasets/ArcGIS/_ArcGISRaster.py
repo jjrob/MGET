@@ -19,6 +19,7 @@ from ...Types import IntegerTypeMetadata
 
 from .. import Dataset, DatasetCollection, QueryableAttribute, Grid
 from ..GDAL import GDALDataset, GDALRasterBand
+from ._ArcGISRasterBand import ArcGISRasterBand
 
 
 _CalculateStatisticsDescription = _(

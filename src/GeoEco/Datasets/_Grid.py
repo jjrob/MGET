@@ -119,6 +119,8 @@ class Grid(Dataset):
     @staticmethod
     def numpy_equal_nan(a, b):
         import numpy
+        if a is None or b is None:    # Do not check for nan if either is None. numpy.isnan(None) fails with TypeError.
+            return a == b
         return (a == b) | (numpy.isnan(a) & numpy.isnan(b))
 
     def GetIndicesForCoords(self, coords):
