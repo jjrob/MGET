@@ -125,7 +125,16 @@ AddArgumentMetadata(MatlabWorkerProcess.__init__, 'self',
 
 AddArgumentMetadata(MatlabWorkerProcess.__init__, 'timeout',
     typeMetadata=FloatTypeMetadata(mustBeGreaterThan=0., canBeNone=True),
-    description=_('Number of seconds to wait when starting MATLAB before failing.'))
+    description=_('Number of seconds to wait for MATLAB to start before assuming it has failed.'))
+
+AddArgumentMetadata(MatlabWorkerProcess.__init__, 'idle',
+    typeMetadata=FloatTypeMetadata(minValue=0., canBeNone=True),
+    description=_(
+"""Number of seconds to the worker process should wait after completing the
+execution of a MATLAB function to be commanded to execute another function. If
+it does not receive a new command after this idle time, it will shut down to
+save memory. If a new command is issued after it is shut down, it will be
+restared automatically."""))
 
 AddResultMetadata(MatlabWorkerProcess.__init__, 'obj',
     typeMetadata=ClassInstanceTypeMetadata(cls=MatlabWorkerProcess),
@@ -146,7 +155,11 @@ AddArgumentMetadata(MatlabWorkerProcess.Stop, 'self',
 
 AddArgumentMetadata(MatlabWorkerProcess.Stop, 'timeout',
     typeMetadata=FloatTypeMetadata(mustBeGreaterThan=0., canBeNone=True),
-    description=_('Number of seconds to wait when stopping the MATLAB worker process before failing. Because the process will be idle when :func:`Stop` is called, a long timeout should not be necessary, but we use a relatively long default in case the machine is busy.'))
+    description=_(
+"""Number of seconds to wait when stopping the MATLAB worker process before
+failing. Because the process will be idle when :func:`Stop` is called, a long
+timeout should not be necessary, but we use a relatively long default
+in case the machine is busy."""))
 
 
 #################################################################################

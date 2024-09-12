@@ -15,8 +15,10 @@ from dataclasses import dataclass
 import logging
 import multiprocessing
 import multiprocessing.shared_memory
+import multiprocessing.spawn
 import os
 import queue
+import subprocess
 import sys
 import threading
 import time
@@ -40,10 +42,13 @@ class _SharedNumpyArray:
 class MatlabWorkerProcess(object):
     __doc__ = DynamicDocString()
 
-    def __init__(self, timeout=30.):
+    _TimeoutExitCode = 987654321
+
+    def __init__(self, timeout=30., idle=60.):
         self.__doc__.Obj.ValidateMethodInvocation()
 
         self._Timeout = timeout
+        self._Idle = idle
         self._State = 'STOPPED'
         self._WorkerProcess = None
         self._InputQueue = None
@@ -78,6 +83,24 @@ class MatlabWorkerProcess(object):
                 # If necessary, start the worker process.
 
                 if self._State != 'READY':
+                    self._Start()
+
+                # If it was supposed to be already running but is not, it
+                # might have exited after being idle for too long, or the
+                # user might have killed it manually. Handle this gracefully
+                # by silently starting it again.
+
+                elif self._WorkerProcess.exitcode is not None:
+                    if self._WorkerProcess.exitcode == self._TimeoutExitCode:
+                        Logger.Debug('%(class)s 0x%(id)016X: Worker process %(pid)s was idle for more than %(idle)s seconds and shut down. Starting a new worker process.', {'class': self.__class__.__name__, 'id': id(self), 'funcName': funcName, 'pid': self._WorkerProcess.pid, 'idle': self._Idle})
+                    else:
+                        Logger.Debug('%(class)s 0x%(id)016X: Worker process %(pid)s unexpectedly stopped with exit code %(exitcode)i. Starting a new worker process.', {'class': self.__class__.__name__, 'id': id(self), 'funcName': funcName, 'pid': self._WorkerProcess.pid, 'exitcode': self._WorkerProcess.exitcode})
+
+                    self._State = 'STOPPED'
+                    self._InputQueue = None
+                    self._OutputQueue = None
+                    self._WorkerProcess = None
+
                     self._Start()
 
                 Logger.Debug('%(class)s 0x%(id)016X: Calling function %(funcName)s in worker process %(pid)s.', {'class': self.__class__.__name__, 'id': id(self), 'funcName': funcName, 'pid': self._WorkerProcess.pid})
@@ -138,7 +161,14 @@ class MatlabWorkerProcess(object):
 
                     if message is None:
                         if self._WorkerProcess.exitcode is not None:
-                            raise RuntimeError(_('MATLAB worker process %(pid)s unexpectedly exited with exit code %(exitcode)i. If this problem keeps happening, please contact the developer of this tool for assistance.') % {'pid': self._WorkerProcess.pid, 'exitcode': self._WorkerProcess.exitcode })
+                            try:
+                                raise RuntimeError(_('MATLAB worker process %(pid)s unexpectedly exited with exit code %(exitcode)i. If this problem keeps happening, please contact the developer of this tool for assistance.') % {'pid': self._WorkerProcess.pid, 'exitcode': self._WorkerProcess.exitcode })
+                            finally:
+                                self._State = 'STOPPED'
+                                self._InputQueue = None
+                                self._OutputQueue = None
+                                self._WorkerProcess = None
+
                         raise RuntimeError(_('MATLAB worker process %(pid)s did not respond within %(timeout)s seconds. Verify that the system is not overloaded by other processes. If the system seems idle and this problem keeps happening, please contact the developer of this tool for assistance.') % {'pid': self._WorkerProcess.pid, 'timeout': self._Timeout})
 
                     if isinstance(message, (list, tuple)) and len(message) == 2 and message[0] == 'EXCEPTION':
@@ -157,7 +187,13 @@ class MatlabWorkerProcess(object):
                 message = self._WaitForMessage(['RESULT', 'EXCEPTION'], timeout=None)
 
                 if message is None:
-                    raise RuntimeError(_('MATLAB worker process %(pid)s unexpectedly exited with exit code %(exitcode)i. If this problem keeps happening, please contact the developer of this tool for assistance.') % {'pid': self._WorkerProcess.pid, 'exitcode': self._WorkerProcess.exitcode })
+                    try:
+                        raise RuntimeError(_('MATLAB worker process %(pid)s unexpectedly exited with exit code %(exitcode)i. If this problem keeps happening, please contact the developer of this tool for assistance.') % {'pid': self._WorkerProcess.pid, 'exitcode': self._WorkerProcess.exitcode })
+                    finally:
+                        self._State = 'STOPPED'
+                        self._InputQueue = None
+                        self._OutputQueue = None
+                        self._WorkerProcess = None
 
                 if isinstance(message, (list, tuple)) and len(message) == 2 and message[0] == 'EXCEPTION':
                     raise message[1]
@@ -197,15 +233,74 @@ class MatlabWorkerProcess(object):
         # receiving output from it.
 
         try:
-            ctx = multiprocessing.get_context('spawn')    # VERY IMPORTANT: we want to 'spawn' a new process, not fork. Otherwise we'll have the shared object conflicts we're trying to avoid, among other problems.
+            ctx = self._GetMultiprocessingContext()
 
             self._InputQueue = ctx.Queue(maxsize=100)     # maxsizes chosen to be larger than ever reasonably expected, but low enough to have a chance of avoiding running out of memory if a bug prevents prompt dequeueing 
             self._OutputQueue = ctx.Queue(maxsize=10000)
 
-            # Create and start the worker process.
+            # If we're running on Windows and the current executable is not
+            # python.exe, instruct multiprocessing.spawn to use python.exe.
+            # When we're running as a geoprocessing tool within ArcGIS Pro,
+            # the executable is ArcGISPro.exe. If we allow spawn to proceed
+            # with that, it will start another copy of ArcGISPro.exe, which
+            # will come up as a GUI and not execute the Python interpreter as
+            # expected. We need to prevent that from happening and have
+            # python.exe start instead.
+            #
+            # Note: we must use python.exe, not pythonw.exe, because
+            # multiprocessing communicates with the child process via the
+            # stdin/stdout pipes, and pythonw.exe immediately closes them.
+            # However, python.exe does start a console window. To avoid
+            # having it displayed, we define a custom class derived from
+            # multiprocessing.context.BaseContext.
+            # See _GetMultiprocessingContext() defined below.
 
-            self._WorkerProcess = ctx.Process(target=MatlabWorkerProcess._Worker, args=(self._InputQueue, self._OutputQueue), daemon=True)
-            self._WorkerProcess.start()
+            oldExecutable = None
+
+            if sys.platform == 'win32' and os.path.basename(multiprocessing.spawn.get_executable()).lower() != 'python.exe':
+                oldExecutable = multiprocessing.spawn.get_executable()
+                newExecutable = os.path.join(sys.exec_prefix, 'python.exe')
+                Logger.Debug('%(class)s 0x%(id)016X: multiprocessing.spawn.get_executable() returned %(old)s. Calling multiprocessing.spawn.set_executable(%(new)s).', {'class': self.__class__.__name__, 'id': id(self), 'old': oldExecutable, 'new': newExecutable})
+                multiprocessing.spawn.set_executable(newExecutable)
+
+            try:
+                # Create and start the worker process.
+
+                self._WorkerProcess = ctx.Process(target=MatlabWorkerProcess._Worker, args=(self._InputQueue, self._OutputQueue, self._Idle), daemon=True)
+                self._WorkerProcess.start()
+
+            # Revert the multiprocessing.spawn executable, if needed.
+
+            finally:
+                if oldExecutable is not None:
+                    Logger.Debug('%(class)s 0x%(id)016X: Calling multiprocessing.spawn.set_executable() with previous value %(old)s.', {'class': self.__class__.__name__, 'id': id(self), 'old': oldExecutable})
+                    multiprocessing.spawn.set_executable(oldExecutable)
+
+            Logger.Debug('%(class)s 0x%(id)016X: Worker process %(pid)i started.', {'class': self.__class__.__name__, 'id': id(self), 'pid': self._WorkerProcess.pid})
+
+            # Wait up to self._Timeout seconds until it is ready.
+
+            message = self._WaitForMessage(['READY', 'EXCEPTION'], timeout=self._Timeout)
+
+            if self._WorkerProcess.exitcode is not None:
+                raise RuntimeError(_('MATLAB worker process %(pid)s unexpectedly exited with exit code %(exitcode)i. If this problem keeps happening, please contact the developer of this tool for assistance.') % {'pid': self._WorkerProcess.pid, 'exitcode': self._WorkerProcess.exitcode })
+
+            try:
+                if message is None:
+                    raise RuntimeError(_('MATLAB worker process %(pid)s did not respond within %(timeout)s seconds of being started. Verify that the system is not overloaded by other processes. If the system seems idle and this problem keeps happening, please contact the developer of this tool for assistance.') % {'pid': self._WorkerProcess.pid, 'timeout': self._Timeout})
+
+                if isinstance(message, (list, tuple)) and len(message) == 2 and message[0] == 'EXCEPTION':
+                    Logger.Error(_('MATLAB worker process %(pid)s failed while trying to initialize MATLAB. Please review the preceding and following log messages for more information.') % {'pid': self._WorkerProcess.pid})
+                    raise message[1]
+
+                if message != 'READY':
+                    raise RuntimeError(_('MATLAB worker process %(pid)s responded with unknown message %(message)r after being started. Please contact the developer of this tool for assistance.') % {'pid': self._WorkerProcess.pid, 'message': message})
+            except:
+                try:
+                    self._WorkerProcess.terminate()
+                except:
+                    pass
+                raise
 
         except:
             self._InputQueue = None
@@ -213,27 +308,28 @@ class MatlabWorkerProcess(object):
             self._WorkerProcess = None
             raise
 
-        self._State = 'STARTED'
-
-        Logger.Debug('%(class)s 0x%(id)016X: Worker process %(pid)i started.', {'class': self.__class__.__name__, 'id': id(self), 'pid': self._WorkerProcess.pid})
-
-        # Wait up to self._Timeout seconds until it is ready.
-
-        message = self._WaitForMessage(['READY', 'EXCEPTION'], timeout=self._Timeout)
-
-        if message is None:
-            if self._WorkerProcess.exitcode is not None:
-                raise RuntimeError(_('MATLAB worker process %(pid)s unexpectedly exited with exit code %(exitcode)i. If this problem keeps happening, please contact the developer of this tool for assistance.') % {'pid': self._WorkerProcess.pid, 'exitcode': self._WorkerProcess.exitcode })
-            raise RuntimeError(_('MATLAB worker process %(pid)s did not respond within %(timeout)s seconds of being started. Verify that the system is not overloaded by other processes. If the system seems idle and this problem keeps happening, please contact the developer of this tool for assistance.') % {'pid': self._WorkerProcess.pid, 'timeout': self._Timeout})
-
-        if isinstance(message, (list, tuple)) and len(message) == 2 and message[0] == 'EXCEPTION':
-            Logger.Error(_('MATLAB worker process %(pid)s failed while trying to initialize MATLAB. Please review the preceding and following log messages for more information.') % {'pid': self._WorkerProcess.pid})
-            raise message[1]
-
-        if message != 'READY':
-            raise RuntimeError(_('MATLAB worker process %(pid)s responded with unknown message %(message)r after being started. Please contact the developer of this tool for assistance.') % {'pid': self._WorkerProcess.pid, 'message': message})
-
         self._State = 'READY'
+
+    @classmethod
+    def _GetMultiprocessingContext(cls):
+
+        # If we are not on win32, we can get a 'spawn' context as implemented
+        # by the Python Standard Library. This context will allow creation of
+        # a child process with no GUI, within which we'll run the MATLAB
+        # Runtime via its Python API.
+
+        if sys.platform != 'win32':
+            return multiprocessing.get_context('spawn')
+
+        # Othewise (we're on win32), we have a problem. The 'spawn' context as
+        # implemented by the Python Standard Library
+        # calls _winapi.CreateProcess() without specifying the creation flag
+        # needed to hide the window. Define a new 'spawnhidden' context that
+        # the Standard Library's multiprocessing.context module can use, and
+        # add 'spawnhidden' to that module's _concrete_contexts dictonary.
+        # Now get the 'spawnhidden' context and return it.
+
+        return multiprocessing.get_context('spawnhidden')
 
     def _WaitForMessage(self, desiredMessages, timeout):
         started = time.perf_counter()
@@ -257,7 +353,7 @@ class MatlabWorkerProcess(object):
         # Only allow one thread to interact with the worker process at a time.
 
         with self._Lock:
-            if self._State not in ['STARTED', 'READY']:
+            if self._State != 'READY':
                 Logger.Debug('%(class)s 0x%(id)016X: Stop() called while in state %(state)s. There is no process to stop.', {'class': self.__class__.__name__, 'id': id(self), 'state': self._State})
                 return
 
@@ -429,7 +525,7 @@ class MatlabWorkerProcess(object):
             value.sharedMemory = None
 
     @staticmethod
-    def _Worker(inputQueue, outputQueue):
+    def _Worker(inputQueue, outputQueue, idle):
 
         # Initialize MatlabFunctions and import numpy
 
@@ -438,7 +534,7 @@ class MatlabWorkerProcess(object):
             import numpy
         except Exception as e:
             MatlabWorkerProcess._ReportWorkerException(e, outputQueue)
-            return
+            return    # This will cause the process to exit with exit code 0.
 
         # Tell the parent process we're ready.
 
@@ -447,8 +543,18 @@ class MatlabWorkerProcess(object):
         # Now loop, servicing requests to call methods of MatlabFunctions
         # until we're told to stop.
 
-        for funcName, args, kwargs in iter(inputQueue.get, 'STOP'):
+        while True:
             try:
+                request = inputQueue.get(block=True, timeout=idle)
+            except queue.Empty:
+                sys.exit(MatlabWorkerProcess._TimeoutExitCode)   # This will cause the process to exit with the timeout exit code.
+
+            if request == 'STOP':
+                return    # This will cause the process to exit with exit code 0.
+
+            try:
+                (funcName, args, kwargs) = request
+
                 try:
                     func = getattr(MatlabFunctions, funcName)
                     newArgs = MatlabWorkerProcess._SHMToNumpyArrays(args, copy=False)
@@ -485,6 +591,207 @@ class MatlabWorkerProcess(object):
         stackTrace = ''.join(traceback.format_exception(excType, excValue, excTraceback))
         outputQueue.put(('LOG', logging.DEBUG, stackTrace))
         outputQueue.put(('EXCEPTION', e))
+
+
+# If we're on win32, we need to define a custom
+# multiprocessing.context.BaseContext class so that we can spawn hidden child
+# processes. See the comment in
+# MatlabWorkerProcess._GetMultiprocessingContext() for more information. Note
+# that the _SpawnHiddenProcess class we define below must be pickable, which
+# is why we define it at module level here rather than privately within
+# MatlabWorkerProcess._GetMultiprocessingContext(). 
+
+if sys.platform == 'win32':
+    import multiprocessing.context
+    import multiprocessing.popen_spawn_win32
+    import multiprocessing.process
+    import multiprocessing.spawn
+    import multiprocessing.util
+
+    class _PopenHidden(multiprocessing.popen_spawn_win32.Popen):
+        '''
+        Start a hidden subprocess to run the code of a process object
+        '''
+        method = 'spawnhidden'
+
+        def __init__(self, process_obj):
+
+            # The following implementation of __init__ was duplicated from
+            # multiprocessing.popen_spawn_win32.Popen and then modified.
+
+            import ctypes
+            import msvcrt
+            import _winapi
+
+            prep_data = multiprocessing.spawn.get_preparation_data(process_obj._name)
+
+            # read end of pipe will be duplicated by the child process
+            # -- see spawn_main() in spawn.py.
+            #
+            # bpo-33929: Previously, the read end of pipe was "stolen" by the child
+            # process, but it leaked a handle if the child process had been
+            # terminated before it could steal the handle from the parent process.
+            rhandle, whandle = _winapi.CreatePipe(None, 0)
+            wfd = msvcrt.open_osfhandle(whandle, 0)
+            cmd = multiprocessing.spawn.get_command_line(parent_pid=os.getpid(),
+                                                         pipe_handle=rhandle)
+            cmd = ' '.join('"%s"' % x for x in cmd)
+
+            python_exe = multiprocessing.spawn.get_executable()
+
+            # bpo-35797: When running in a venv, we bypass the redirect
+            # executor and launch our base Python.
+            if multiprocessing.popen_spawn_win32.WINENV and multiprocessing.popen_spawn_win32._path_eq(python_exe, sys.executable):
+                python_exe = sys._base_executable
+                env = os.environ.copy()
+                env["__PYVENV_LAUNCHER__"] = sys.executable
+            else:
+                env = None
+
+            with open(wfd, 'wb', closefd=True) as to_child:
+
+                ##### Beginning of main modifications
+
+                try:
+                    # After the child process is started (below), it will
+                    # remain running until MatlabWorkerProcess.Stop() sends
+                    # a 'STOP' message to it and it exits of its own accord.
+                    # But if this never happens, by default it will keep
+                    # running, even if the parent process exits. We do not
+                    # want to do this; we want the child to be terminated if
+                    # the parent exits. To accomplish this, we add the child
+                    # process to a win32 Job object with the
+                    # JOB_OBJECT_LIMIT_KILL_ON_JOB_CLOSE flag, so that when
+                    # the parent releases the job's handle automatically when
+                    # the parent exits, the child will be terminated.
+                    # 
+                    # Thanks to the author of https://stackoverflow.com/a/16791778
+                    # for the example code working with Job objects.
+                    #
+                    # Also, configure STARTUPINFO and the creation flags to
+                    # hide the child process's window.
+
+                    JobObjectExtendedLimitInformation = 9
+                    JOB_OBJECT_LIMIT_KILL_ON_JOB_CLOSE = 0x00002000
+                    CREATE_BREAKAWAY_FROM_JOB = 0x01000000
+                    CREATE_NO_WINDOW = 0x08000000
+
+                    class IO_COUNTERS(ctypes.Structure):
+                        _fields_ = [('ReadOperationCount', ctypes.c_uint64),
+                                    ('WriteOperationCount', ctypes.c_uint64),
+                                    ('OtherOperationCount', ctypes.c_uint64),
+                                    ('ReadTransferCount', ctypes.c_uint64),
+                                    ('WriteTransferCount', ctypes.c_uint64),
+                                    ('OtherTransferCount', ctypes.c_uint64)]
+
+                    class JOBOBJECT_BASIC_LIMIT_INFORMATION(ctypes.Structure):
+                        _fields_ = [('PerProcessUserTimeLimit', ctypes.c_int64),
+                                    ('PerJobUserTimeLimit', ctypes.c_int64),
+                                    ('LimitFlags', ctypes.c_uint32),
+                                    ('MinimumWorkingSetSize', ctypes.c_void_p),
+                                    ('MaximumWorkingSetSize', ctypes.c_void_p),
+                                    ('ActiveProcessLimit', ctypes.c_uint32),
+                                    ('Affinity', ctypes.c_void_p),
+                                    ('PriorityClass', ctypes.c_uint32),
+                                    ('SchedulingClass', ctypes.c_uint32)]
+
+                    class JOBOBJECT_EXTENDED_LIMIT_INFORMATION(ctypes.Structure):
+                        _fields_ = [('BasicLimitInformation', JOBOBJECT_BASIC_LIMIT_INFORMATION),
+                                    ('IoInfo', IO_COUNTERS),
+                                    ('ProcessMemoryLimit', ctypes.c_void_p),
+                                    ('JobMemoryLimit', ctypes.c_void_p),
+                                    ('PeakProcessMemoryUsed', ctypes.c_void_p),
+                                    ('PeakJobMemoryUsed', ctypes.c_void_p)]
+
+                    jobInfo = JOBOBJECT_EXTENDED_LIMIT_INFORMATION()
+                    outSize = ctypes.c_uint32()
+
+                    hJob = ctypes.windll.kernel32.CreateJobObjectW(None, None)
+                    if hJob == 0:
+                        raise RuntimeError('Failed to create Win32 Job object: ctypes.windll.kernel32.CreateJobObjectW() failed.')
+
+                    try:
+                        success = ctypes.windll.kernel32.QueryInformationJobObject(hJob,
+                                                                                   JobObjectExtendedLimitInformation,
+                                                                                   ctypes.POINTER(JOBOBJECT_EXTENDED_LIMIT_INFORMATION)(jobInfo),
+                                                                                   ctypes.sizeof(JOBOBJECT_EXTENDED_LIMIT_INFORMATION),
+                                                                                   ctypes.POINTER(ctypes.c_uint32)(outSize))
+                        if success == 0:
+                            raise RuntimeError('Failed to create Win32 Job object: ctypes.windll.kernel32.CreateJobObjectW() failed.')
+
+                        jobInfo.BasicLimitInformation.LimitFlags |= JOB_OBJECT_LIMIT_KILL_ON_JOB_CLOSE
+
+                        success = ctypes.windll.kernel32.SetInformationJobObject(hJob,
+                                                                                 JobObjectExtendedLimitInformation,
+                                                                                 ctypes.POINTER(JOBOBJECT_EXTENDED_LIMIT_INFORMATION)(jobInfo),
+                                                                                 ctypes.sizeof(JOBOBJECT_EXTENDED_LIMIT_INFORMATION))
+                        if success == 0:
+                            raise RuntimeError('Failed to set LimitFlags on Win32 Job object: ctypes.windll.kernel32.SetInformationJobObject() failed.')
+
+                        flags = CREATE_BREAKAWAY_FROM_JOB | CREATE_NO_WINDOW
+
+                        startupInfo = subprocess.STARTUPINFO()
+                        startupInfo.dwFlags = subprocess.STARTF_USESHOWWINDOW
+                        startupInfo.wShowWindow = subprocess.SW_HIDE
+
+                        hp, ht, pid, tid = _winapi.CreateProcess(python_exe,    # Application name
+                                                                 cmd,           # Command line
+                                                                 None,          # Proces security attributes
+                                                                 None,          # Thread security attributes
+                                                                 False,         # Inherit handles
+                                                                 flags,         # Creation flags
+                                                                 env,           # Environment 
+                                                                 None,          # Current directory
+                                                                 startupInfo)   # Startup information
+                        _winapi.CloseHandle(ht)
+
+                        success = ctypes.windll.kernel32.AssignProcessToJobObject(hJob, hp)
+                        if success == 0:
+                            raise RuntimeError('Failed to assign the child process to a Win32 Job object: ctypes.windll.kernel32.AssignProcessToJobObject() failed.')
+
+                    except:
+                        try:
+                            _winapi.CloseHandle(hJob)
+                        except:
+                            pass
+                        raise
+                except:
+                    try:
+                        _winapi.CloseHandle(rhandle)
+                    except:
+                        pass
+                    raise
+
+                # set attributes of self
+                self.pid = pid
+                self.returncode = None
+                self._handle = hp
+                self.sentinel = int(hp)
+                self.finalizer = multiprocessing.util.Finalize(self, multiprocessing.popen_spawn_win32._close_handles,
+                                                               (self.sentinel, int(rhandle), hJob))
+
+                ##### End of main modifications
+
+                # send information to child
+                multiprocessing.context.set_spawning_popen(self)
+                try:
+                    multiprocessing.context.reduction.dump(prep_data, to_child)
+                    multiprocessing.context.reduction.dump(process_obj, to_child)
+                finally:
+                    multiprocessing.context.set_spawning_popen(None)
+
+    class _SpawnHiddenProcess(multiprocessing.process.BaseProcess):
+        _start_method = 'spawnhidden'
+        @staticmethod
+        def _Popen(process_obj):
+            return _PopenHidden(process_obj)
+
+    class _SpawnHiddenContext(multiprocessing.context.BaseContext):
+        _name = 'spawnhidden'
+        Process = _SpawnHiddenProcess
+
+    multiprocessing.context._concrete_contexts['spawnhidden'] = _SpawnHiddenContext()
+
 
 
 #################################################################################
