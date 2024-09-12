@@ -56,13 +56,13 @@ class MatlabFunctions(object):
             try:
                 import GeoEco.Matlab._Matlab
             except Exception as e:
-                raise RuntimeError(_('Failed to import the GeoEco.Matlab._Matlab Python module. This may indicate an installation or configuration problem with MATLAB 2024a or the MATLAB Runtime 2024a. "import GeoEco.Matlab._Matlab" failed with %(e)s: %(msg)s') % {'e': e.__class__.__name__, 'msg': e})
+                raise RuntimeError(_('Failed to import the GeoEco.Matlab._Matlab Python module. This may indicate an installation or configuration problem with MATLAB 2024b or the MATLAB Runtime 2024b. "import GeoEco.Matlab._Matlab" failed with %(e)s: %(msg)s') % {'e': e.__class__.__name__, 'msg': e})
 
             _LogDebug('Importing matlab.')
             try:
                 import matlab
             except Exception as e:
-                raise RuntimeError(_('Failed to import the matlab Python module. This may indicate an installation or configuration problem with MATLAB 2024a or the MATLAB Runtime 2024a. "import matlab" failed with %(e)s: %(msg)s') % {'e': e.__class__.__name__, 'msg': e})
+                raise RuntimeError(_('Failed to import the matlab Python module. This may indicate an installation or configuration problem with MATLAB 2024b or the MATLAB Runtime 2024b. "import matlab" failed with %(e)s: %(msg)s') % {'e': e.__class__.__name__, 'msg': e})
 
             # Initialize MATLAB. Store the resulting handle as a class
             # attribute. Currently, we never call terminate on this handle,
@@ -72,7 +72,7 @@ class MatlabFunctions(object):
             try:
                 MatlabFunctions._MatlabModuleHandle = GeoEco.Matlab._Matlab.initialize()
             except Exception as e:
-                raise RuntimeError(_('Failed to initialize the GeoEco.Matlab._Matlab Python module. This may indicate an installation or configuration problem with MATLAB 2024a or the MATLAB Runtime 2024a. "GeoEco.Matlab._Matlab.initialize()" failed with %(e)s: %(msg)s') % {'e': e.__class__.__name__, 'msg': e})
+                raise RuntimeError(_('Failed to initialize the GeoEco.Matlab._Matlab Python module. This may indicate an installation or configuration problem with MATLAB 2024b or the MATLAB Runtime 2024b. "GeoEco.Matlab._Matlab.initialize()" failed with %(e)s: %(msg)s') % {'e': e.__class__.__name__, 'msg': e})
 
             # Enumerate the GeoEco functions implemented in MATLAB by the
             # GeoEco.Matlab._Matlab module.

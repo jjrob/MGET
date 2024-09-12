@@ -31,10 +31,10 @@ function developed by John D'Errico. Many thanks to him for developing and
 sharing this function. Please see GeoEco's LICENSE file for the relevant
 copyright statement.
 
-To run this tool, you either must have MATLAB 2024a or MATLAB Runtime 2024a
+To run this tool, you either must have MATLAB 2024b or MATLAB Runtime 2024b
 installed. The MATLAB Runtime is free and may be downloaded from
 https://www.mathworks.com/help/compiler/install-the-matlab-runtime.html.
-Please follow the installation instructions carefully. Version 2024a must be
+Please follow the installation instructions carefully. Version 2024b must be
 used; other versions will not work. MATLAB Runtime allows multiple versions
 can be installed at the same time.
 

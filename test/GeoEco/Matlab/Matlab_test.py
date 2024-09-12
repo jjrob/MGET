@@ -33,7 +33,7 @@ def isMatlabInstalled():
 class TestMatlab():
 
     def test_None(self):
-        with pytest.raises(TypeError, match='.*None cannot be passed to MATLAB.*'):
+        with pytest.raises(TypeError, match='.*None cannot be passed to MATLAB.*|.*passing \'None\' to MATLAB not supported.*'):
             with MatlabWorkerProcess() as matlab:
                 matlab.TestParameterType(None)
 
@@ -67,7 +67,7 @@ class TestMatlab():
                 output = matlab.TestParameterType(input)
                 self._OutputEqualsInput(input, output)
 
-            with pytest.raises(ValueError, match='.*invalid field for MATLAB struct.*'):  # Only string keys are supported
+            with pytest.raises(ValueError, match='.*invalid field for MATLAB struct.*|.*field name of Python dict object passed to MATLAB must be a nonempty string.*'):  # Only string keys are supported
                 matlab.TestParameterType({1:2})
 
     def test_tuple(self):

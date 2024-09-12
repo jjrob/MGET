@@ -1540,10 +1540,10 @@ CopyResultMetadata(Interpolator.InterpolateArcGISRasterValuesAtPoints, 'updatedP
 AddMethodMetadata(Interpolator.InpaintArcGISRaster,
     shortDescription=_('Interpolates values for the NoData cells of a raster.'),
     longDescription=_(
-"""To run this tool, you either must have MATLAB 2024a or MATLAB Runtime 2024a
+"""To run this tool, you either must have MATLAB 2024b or MATLAB Runtime 2024b
 installed. The MATLAB Runtime is free and may be downloaded from
 https://www.mathworks.com/help/compiler/install-the-matlab-runtime.html.
-Please follow the installation instructions carefully. Version 2024a must be
+Please follow the installation instructions carefully. Version 2024b must be
 used; other versions will not work. MATLAB Runtime allows multiple versions
 can be installed at the same time.
 

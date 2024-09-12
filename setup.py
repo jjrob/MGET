@@ -16,7 +16,7 @@ class BuildMatlabFunctions(setuptools.Command):
 
     This SubCommand creates the files __init__.py, _Matlab.ctf, and
     MatlabFunctions.txt in src/GeoEco/Matlab/_Matlab from the .m files there
-    using the MATLAB Compiler. A full version of MATLAB 2024a must be
+    using the MATLAB Compiler. A full version of MATLAB 2024b must be
     installed. Even though the three files are generated programmatically,
     they are considered source files, not build outputs, and thus are updated
     directly in the source tree by this SubCommand as part of the setuputils
@@ -54,7 +54,7 @@ class BuildMatlabFunctions(setuptools.Command):
 
         if self.matlab_path is None:
             if sys.platform == 'linux':
-                self.matlab_path = '/usr/local/MATLAB/R2024a/bin/matlab'
+                self.matlab_path = '/usr/local/MATLAB/R2024b/bin/matlab'
             else:
                 self.matlab_path = NotImplementedError(f'This script does not currently support the {sys.platform} platform (but adding support would probably be easy).')
 
@@ -147,14 +147,10 @@ class BuildMatlabFunctions(setuptools.Command):
             raise RuntimeError('Cannot rebuild the MATLAB functions. The MATLAB executable %s does not exist.' % self.matlab_path)
 
         mFilesStr = '[' + ','.join(['"' + f + '"' for f in self.m_files]) + ']'
-        command = f'compiler.build.pythonPackage({mFilesStr}, "PackageName", "GeoEco.Matlab._Matlab", "Verbose", "on"); quit'
-        args = [self.matlab_path, '-nodesktop', '-nosplash', '-r', command]
+        command = f'compiler.build.pythonPackage({mFilesStr}, "PackageName", "GeoEco.Matlab._Matlab", "Verbose", "on")'
+        args = [self.matlab_path, '-nodesktop', '-nosplash', '-batch', command]
 
         # Execute the MATLAB Compiler from the command line.
-
-        mFilesStr = '[' + ','.join(['"' + f + '"' for f in self.m_files]) + ']'
-        command = f'compiler.build.pythonPackage({mFilesStr}, "PackageName", "GeoEco.Matlab._Matlab", "Verbose", "on"); quit'
-        args = [self.matlab_path, '-nodesktop', '-nosplash', '-r', command]
 
         print(f'Executing: {" ".join(args)}')
 
