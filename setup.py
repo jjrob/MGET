@@ -219,7 +219,12 @@ class BuildArcGISToolbox(setuptools.Command):
 
     def finalize_options(self):
         """Set final values for all options/attributes used by the command."""
-        self.build_toolbox = True
+
+        # If it appears that an editable installation is being performed, do
+        # not build the ArcGIS toolbox. Doing so will fail when setuptools
+        # tries to build an editable wheel.
+
+        self.build_toolbox = 'editable_wheel' not in self.distribution.command_options
         self.set_undefined_options('build', ('build_lib', 'build_lib'))
 
     def ensure_finalized(self):
@@ -314,16 +319,17 @@ class DeleteFilesFromBDist(setuptools.Command):
         return []
 
     def run(self):
-        globsToDelete = [
-            os.path.join('GeoEco', 'DocutilsToEsriXdoc.xsl'),
-            os.path.join('GeoEco', '_MetadataUtils.cpp'),
-            os.path.join('GeoEco', 'Matlab', '_Matlab', '*.m'),
-        ]
+        if self.build_lib is not None:
+            globsToDelete = [
+                os.path.join('GeoEco', 'DocutilsToEsriXdoc.xsl'),
+                os.path.join('GeoEco', '_MetadataUtils.cpp'),
+                os.path.join('GeoEco', 'Matlab', '_Matlab', '*.m'),
+            ]
 
-        for g in globsToDelete:
-            for f in glob.glob(os.path.join(self.build_lib, g)):
-                print(f'Deleting {f} so it is not included in the bdist')
-                os.remove(f)
+            for g in globsToDelete:
+                for f in glob.glob(os.path.join(self.build_lib, g)):
+                    print(f'Deleting {f} so it is not included in the bdist')
+                    os.remove(f)
 
 
 setuptools.command.sdist.sdist.sub_commands.append(('build_matlab_functions', None))
