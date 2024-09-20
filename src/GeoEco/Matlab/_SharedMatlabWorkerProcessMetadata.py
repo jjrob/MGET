@@ -24,10 +24,10 @@ AddClassMetadata(SharedMatlabWorkerProcess,
     shortDescription=_('Manages a singleton instance of :class:`MatlabWorkerProcess` that may be shared by multiple callers.'),
     longDescription=_(
 """Certain functions in GeoEco are implemented in MATLAB code. In order for
-these functions to run, either MATLAB 2024b or the MATLAB Runtime 2024b must
+these functions to run, either MATLAB R2024b or the MATLAB Runtime R2024b must
 be installed. The MATLAB Runtime is free and may be downloaded from
 https://www.mathworks.com/help/compiler/install-the-matlab-runtime.html.
-Please follow the installation instructions carefully. Version 2024b must be
+Please follow the installation instructions carefully. Version R2024b must be
 used; other versions will not work. MATLAB Runtime allows multiple versions
 can be installed at the same time.
 

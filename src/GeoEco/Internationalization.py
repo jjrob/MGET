@@ -21,25 +21,14 @@ def _InitializeTranslationsClass():
 
     languages = []
 
-    # First use the current process-wide locale. If we're being called from a
-    # language-aware application, it may have set the locale. If not, this
-    # function will return None.
+    # First use the current process-wide locale.
     
     lc = locale.getlocale()[0]
     if lc is not None:
         languages.append(lc)
 
-    # Next try the default locale.
-    
-    lc = locale.getdefaultlocale()[0]
-    if lc is not None:
-        languages.append(lc)
-
     # Next search the environment variables that might specify languages. These
-    # are typically only present on UNIX. locale.getdefaultlocale also searches
-    # these but returns only the first one it finds. We want the others to be in
-    # our list, so if the first one is not available, we'll fall back to the
-    # others.
+    # are typically only present on UNIX.
 
     for variable in ['LANGUAGE', 'LC_ALL', 'LC_MESSAGES', 'LANG']:
         if variable in os.environ:
@@ -66,11 +55,6 @@ if _Translations is not None:
     _ = _Translations.ugettext
 else:
     _ = _gettext
-
-def _DecodeList(obj):
-    for i in range(len(obj)):
-        obj[i] = UserPreferredEncodingToUnicode(obj[i])
-    return obj
         
 
 ###############################################################################

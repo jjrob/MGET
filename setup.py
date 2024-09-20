@@ -16,7 +16,7 @@ class BuildMatlabFunctions(setuptools.Command):
 
     This SubCommand creates the files __init__.py, _Matlab.ctf, and
     MatlabFunctions.txt in src/GeoEco/Matlab/_Matlab from the .m files there
-    using the MATLAB Compiler. A full version of MATLAB 2024b must be
+    using the MATLAB Compiler. A full version of MATLAB R2024b must be
     installed. Even though the three files are generated programmatically,
     they are considered source files, not build outputs, and thus are updated
     directly in the source tree by this SubCommand as part of the setuputils

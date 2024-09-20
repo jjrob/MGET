@@ -1179,60 +1179,15 @@ AddClassMetadata(CMEMSARCOArray,
     shortDescription=_('A :class:`~GeoEco.Datasets.Grid` for accessing 2D, 3D, and 4D gridded datasets published by `Copernicus Marine Service <https://data.marine.copernicus.eu/products>`_.'),
     longDescription=_(
 """Copernicus Marine Service is also known as Copernicus Marine Environmental
-Monitoring Service (CMEMS).
-
-This example shows how to create a time series of rasters for `Copernicus GlobColour
+Monitoring Service (CMEMS). :ref:`This example
+<python-downloading-cmems-rasters>` shows how to use this class to create time
+series of chlorophyll concentration rasters from `Copernicus GlobColour
 <https://data.marine.copernicus.eu/product/OCEANCOLOUR_GLO_BGC_L4_MY_009_104>`_
-monthly chlorophyll concentration data:
-
-.. code-block:: python
-
-    import os
-
-    from GeoEco.Datasets.Collections import DirectoryTree
-    from GeoEco.Datasets.GDAL import GDALDataset
-    from GeoEco.Datasets.Virtual import GridSliceCollection
-    from GeoEco.DataProducts.CMEMS import CMEMSARCOArray
-    from GeoEco.Logging import Logger
-
-    # Initialize GeoEco's logging.
-
-    Logger.Initialize()
-
-    # Define a CMEMSARCOArray for Copernicus monthly GlobColour chlorophyll
-    # concentration, which is 3D with dimensions time, latitude, and longitude.
-
-    grid = CMEMSARCOArray(username='**********', 
-                          password='**********',
-                          datasetID='cmems_obs-oc_glo_bgc-plankton_my_l4-multi-4km_P1M',
-                          variableShortName='CHL')
-
-    # Define a GridSliceCollection that slices the CMEMSARCOArray into a
-    # collection of 3D (latitude, longitude) grids.
-
-    slices = GridSliceCollection(grid)
-
-    # Define a DirectoryTree that describes how we want to create the slices when
-    # we import them: as GDAL datasets stored in subdirectories for the Copernicus
-    # dataset, year, and variable short name, and named with the variable short
-    # name, year, and month. Store them in ERDAS IMAGINE raster format (.img). In
-    # order for these expressions to work, QueryableAttributes have to be defined
-    # for them; we can tak the definitions from the GridSliceCollection.
-
-    dirTree = DirectoryTree(path=r'C:\\Data_Products\\CMEMS',
-                            datasetType=GDALDataset,
-                            pathCreationExpressions=['%(DatasetID)s',
-                                                     '%(VariableShortName)s',
-                                                     '%%Y',
-                                                     '%(VariableShortName)s_%%Y%%m.img',],
-                            queryableAttributes=slices.GetAllQueryableAttributes())
-
-    # Query the slices for datasets within a range of years and import them into
-    # the directory tree. Also calculate statistics for the rasters.
-
-    dirTree.ImportDatasets(datasets=slices.QueryDatasets('Year >= 2020 AND Year <= 2022'),
-                           calculateStatistics=True)
-"""))
+and ocean temperature rasters from the `Global Ocean Physics Reanalysis
+<https://data.marine.copernicus.eu/product/GLOBAL_MULTIYEAR_PHY_001_030>`_.
+There is :ref:`another example <arcgis-downloading-cmems-rasters>` showing how
+to do this in ArcGIS with the **Create Rasters for CMEMS Dataset**
+geoprocessing tool."""))
 
 # Public properties
 

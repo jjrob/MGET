@@ -42,13 +42,13 @@ AddArgumentMetadata(ClippedGrid.__init__, 'clipBy',
 """Specifies the type of extent values that will be used to clip the grid, one
 of:
 
-* ``Coordinates`` - the values are coordinates in space and time. Typically
-  this means that x and y coordinates will be in degrees (if a geographic
-  coordinate system is used) or a linear unit such as meters (if a projected
-  coordinate system is used), the z (depth) coordinate will be in a linear
-  unit such as meters, and the t (time) coordinate will be a date and time
-  string in a standard format such as ``YYYY-MM-DD HH:MM:SS``, or a Python
-  :py:class:`~datetime.datetime` instance.
+* ``Map coordinates`` - the values are coordinates in space and time.
+  Typically this means that x and y coordinates will be in degrees (if a
+  geographic coordinate system is used) or a linear unit such as meters (if a
+  projected coordinate system is used), the z (depth) coordinate will be in a
+  linear unit such as meters, and the t (time) coordinate will be a date and
+  time string in a standard format such as ``YYYY-MM-DD HH:MM:SS``, or a
+  Python :py:class:`~datetime.datetime` instance.
 
 * ``Indices`` - the values are integer indices of cells in the grid, starting
   at 0 and ending at the maximum index value. For example, if a 2D grid has
@@ -59,8 +59,8 @@ If ``Indices`` is specified but floating point numbers are provided for the
 extent values, the decimal portions of the numbers will be truncated (e.g. the
 value 1.7 will be truncated to 1).
 
-If ``Coordinates`` is specified and a coordinate value falls within a cell,
-rather than exactly on a boundary between two cells, the cell will be
+If ``Map coordinates`` is specified and a coordinate value falls within a
+cell, rather than exactly on a boundary between two cells, the cell will be
 included in the clipped grid (it will not be clipped out). Because computers
 cannot represent all floating-point numbers at full precision, the resulting
 rounding errors can sometimes produce unexpected results. For example,
@@ -71,8 +71,8 @@ computer rounds it to 0.10000000000000001. Therefore, if you were to clip the
 grid a maximum coordinate of 0.10000000000000001, you would expect that the
 cell centered at 1.5 would be included in the resulting grid, because
 0.10000000000000001 falls within that cell. But the computer actually
-considers the boundary between the two cells to be at
-0.10000000000000001, not 0.1, so that cell would be clipped out."""),
+considers the boundary between the two cells to be at 0.10000000000000001, not
+0.1, so that cell would be clipped out."""),
     arcGISDisplayName=_('Clip by'))
 
 _ClipMaxParameterDescription = _(

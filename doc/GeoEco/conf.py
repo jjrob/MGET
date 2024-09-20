@@ -38,6 +38,7 @@ exclude_patterns = [
 
 root_doc = 'Index'
 show_warning_types = True
+highlight_language = 'none'
 
 # Options for HTML output
 
