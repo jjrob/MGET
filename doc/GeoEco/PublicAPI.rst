@@ -48,7 +48,7 @@ particularly convenient or provide something the standard libraries are
 missing. The purpose of these is to expose some basic operations as ArcGIS
 geoprocessing tools, to fill in what we considered to be gaps in ArcGIS's
 collection of tools circa 2010 or so. These functions also wrap these basic
-operations with logging, so that other modules in the GeoEco library can
+operations with logging, so that other modules in the GeoEco package can
 use them and gain automatic logging of basic operations.
 
 .. autosummary::

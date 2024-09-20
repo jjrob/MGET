@@ -40,9 +40,9 @@ installing them.
 Windows with ArcGIS Pro installation instructions
 -------------------------------------------------
 
-MGET is a Python library. ArcGIS Pro utilizes `conda
-<https://docs.conda.io/>`_ to manage Python libraries, which works best for
-libraries that have been specifically packaged for deployment with conda. We
+MGET is a Python package. ArcGIS Pro utilizes `conda
+<https://docs.conda.io/>`_ to manage Python packages, which works best for
+projects that have been specifically packaged for deployment with conda. We
 have not packaged MGET with conda yet. Until that time, you can use `pip
 <https://pypi.org/project/pip/>`_ to install MGET into an existing ArcGIS Pro
 conda environment. The practice of installing packages with pip into conda

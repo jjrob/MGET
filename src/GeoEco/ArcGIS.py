@@ -934,7 +934,7 @@ AddModuleMetadata(shortDescription=_('Utility functions for interacting with ESR
 ###############################################################################
 
 AddClassMetadata(GeoprocessorManager,
-    shortDescription=_('Manages GeoEco\'s interface to ArcGIS\'s Python library, known historically as the "geoprocessor", and more recently as `arcpy <https://www.esri.com/en-us/arcgis/products/arcgis-python-libraries/libraries/arcpy>`_.'),
+    shortDescription=_('Manages GeoEco\'s interface to ArcGIS\'s Python package, known historically as the "geoprocessor", and more recently as `arcpy <https://www.esri.com/en-us/arcgis/products/arcgis-python-libraries/libraries/arcpy>`_.'),
     longDescription=_(
 """Note:
 
@@ -954,7 +954,7 @@ AddClassMetadata(GeoprocessorManager,
 # Public method: GeoprocessorManager.GetGeoprocessor
 
 AddMethodMetadata(GeoprocessorManager.GetGeoprocessor,
-    shortDescription=_('Returns a :py:mod:`weakref` to the ArcGIS geoprocessor that the GeoEco library is using.'),
+    shortDescription=_('Returns a :py:mod:`weakref` to the ArcGIS geoprocessor that the GeoEco package is using.'),
     longDescription=_(
 """This function will return None until :func:`InitializeGeoprocessor` or
 :func:`SetGeoprocessor` has been called. In general, GeoEco functions that
@@ -973,18 +973,18 @@ AddArgumentMetadata(GeoprocessorManager.GetGeoprocessor, 'cls',
 
 AddResultMetadata(GeoprocessorManager.GetGeoprocessor, 'geoprocessor',
     typeMetadata=AnyObjectTypeMetadata(canBeNone=True),
-    description=_('A :py:mod:`weakref` to the ArcGIS geoprocessor that the GeoEco library is using, or None if neither :func:`InitializeGeoprocessor` nor :func:`SetGeoprocessor` has been called yet.'))
+    description=_('A :py:mod:`weakref` to the ArcGIS geoprocessor that the GeoEco package is using, or None if neither :func:`InitializeGeoprocessor` nor :func:`SetGeoprocessor` has been called yet.'))
 
 # Public method: GeoprocessorManager.SetGeoprocessor
 
 AddMethodMetadata(GeoprocessorManager.SetGeoprocessor,
-    shortDescription=_('Instructs the GeoEco library to use the provided object as the ArcGIS geoprocessor.'),
+    shortDescription=_('Instructs the GeoEco package to use the provided object as the ArcGIS geoprocessor.'),
     longDescription=_(
 """In general, :func:`SetGeoprocessor` should never be used and is provided
 for testing purposes or very unusual scenarios in which it is necessary to
 substitute something for the real geoprocessor. Instead of using this
 function, call :func:`InitializeGeoprocessor` instead, to allow the GeoEco
-library to instantiate the geoprocessor itself.
+package to instantiate the geoprocessor itself.
 
 If :func:`InitializeGeoprocessor` or :func:`SetGeoprocessor` has already been
 called and you call :func:`SetGeoprocessor` again, the
@@ -997,7 +997,7 @@ AddArgumentMetadata(GeoprocessorManager.SetGeoprocessor, 'cls',
 
 AddArgumentMetadata(GeoprocessorManager.SetGeoprocessor, 'geoprocessor',
     typeMetadata=AnyObjectTypeMetadata(),
-    description=_('The instance to be used as the geoprocessor by the GeoEco library from now on.'))
+    description=_('The instance to be used as the geoprocessor by the GeoEco package from now on.'))
 
 # Public method: GeoprocessorManager.GetWrappedGeoprocessor
 
@@ -1044,7 +1044,7 @@ AddArgumentMetadata(GeoprocessorManager.GetWrappedGeoprocessor, 'cls',
 
 AddResultMetadata(GeoprocessorManager.GetWrappedGeoprocessor, 'geoprocessor',
     typeMetadata=AnyObjectTypeMetadata(canBeNone=True),
-    description=_('A :py:mod:`weakref` to the wrapped ArcGIS geoprocessor that the GeoEco library is using, or None if neither :func:`InitializeGeoprocessor` nor :func:`SetGeoprocessor` has been called yet.'))
+    description=_('A :py:mod:`weakref` to the wrapped ArcGIS geoprocessor that the GeoEco package is using, or None if neither :func:`InitializeGeoprocessor` nor :func:`SetGeoprocessor` has been called yet.'))
 
 # Public method: GeoprocessorManager.GetArcGISVersion
 
@@ -1173,7 +1173,7 @@ AddResultMetadata(GeoprocessorManager.GetArcGISLicenseLevel, 'licenseLevel',
 # Public method: GeoprocessorManager.InitializeGeoprocessor
 
 AddMethodMetadata(GeoprocessorManager.InitializeGeoprocessor,
-    shortDescription=_('Initializes the ArcGIS geoprocessor so that the GeoEco library can access ArcGIS functionality.'),
+    shortDescription=_('Initializes the ArcGIS geoprocessor so that the GeoEco package can access ArcGIS functionality.'),
     longDescription=_(
 """It is usually not necessary for methods within GeoEco to call
 :func:`InitializeGeoprocessor` directly. The usual pattern for implementing
@@ -1385,7 +1385,7 @@ AddResultMetadata(GeoprocessorManager.GetUniqueLayerName, 'name',
 ###############################################################################
 
 AddClassMetadata(ArcGISDependency,
-    shortDescription=_('A :class:`~GeoEco.Dependencies.Dependency` that checks that ArcGIS and its Python library is installed, and its version.'),
+    shortDescription=_('A :class:`~GeoEco.Dependencies.Dependency` that checks that ArcGIS and its Python package is installed, and its version.'),
     longDescription=_(
 """When :func:`Initialize` is called and the version numbers are checked, they
 will be extracted from the `Version` key of the dictionary returned by

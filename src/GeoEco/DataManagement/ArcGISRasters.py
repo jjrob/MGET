@@ -1108,14 +1108,14 @@ from ..Datasets import Database, InsertCursor
 from ..Metadata import *
 from ..Types import *
 
-AddModuleMetadata(shortDescription=_('Functions for common operations with rasters, implemented using ArcGIS\'s `arcpy <https://www.esri.com/en-us/arcgis/products/arcgis-python-libraries/libraries/arcpy>`_ Python library.'))
+AddModuleMetadata(shortDescription=_('Functions for common operations with rasters, implemented using ArcGIS\'s `arcpy <https://www.esri.com/en-us/arcgis/products/arcgis-python-libraries/libraries/arcpy>`_ Python package.'))
 
 ###############################################################################
 # Metadata: ArcGISRaster class
 ###############################################################################
 
 AddClassMetadata(ArcGISRaster,
-    shortDescription=_('Functions for common operations with rasters, implemented using ArcGIS\'s `arcpy <https://www.esri.com/en-us/arcgis/products/arcgis-python-libraries/libraries/arcpy>`_ Python library.'))
+    shortDescription=_('Functions for common operations with rasters, implemented using ArcGIS\'s `arcpy <https://www.esri.com/en-us/arcgis/products/arcgis-python-libraries/libraries/arcpy>`_ Python package.'))
 
 # Public method: ArcGISRaster.Copy
 

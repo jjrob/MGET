@@ -30,14 +30,14 @@ class GeoEcoError(Exception):
 from .Metadata import *
 from .Types import *
 
-AddModuleMetadata(shortDescription=_('Defines the base class for all exceptions defined by the GeoEco library.'))
+AddModuleMetadata(shortDescription=_('Defines the base class for all exceptions defined by the GeoEco package.'))
 
 ###############################################################################
 # Metadata: GeoEcoError class
 ###############################################################################
 
 AddClassMetadata(GeoEcoError,
-    shortDescription=_('Base class for all exceptions defined by the GeoEco library.'))
+    shortDescription=_('Base class for all exceptions defined by the GeoEco package.'))
 
 # Constructor
 

@@ -5,7 +5,7 @@ Marine Geospatial Ecology Tools / GeoEco
 ========================================
 
 **Marine Geospatial Ecology Tools (MGET)**, also known as the **GeoEco**
-Python library, helps researchers access, manipulate, and analyze ecological
+Python package, helps researchers access, manipulate, and analyze ecological
 and oceanographic data. MGET can be accessed through the GeoEco Python API or
 an associated ArcGIS geoprocessing toolbox.
 

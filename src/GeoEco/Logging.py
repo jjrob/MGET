@@ -828,21 +828,21 @@ except:
 from .Metadata import *
 from .Types import *
 
-AddModuleMetadata(shortDescription=_('Classes and functions that the GeoEco library uses to report activity to the user.'))
+AddModuleMetadata(shortDescription=_('Classes and functions that the GeoEco package uses to report activity to the user.'))
 
 ###############################################################################
 # Metadata: Logger class
 ###############################################################################
 
 AddClassMetadata(Logger,
-    shortDescription=_('Provides functions for reporting messages to the user from the GeoEco library.'),
+    shortDescription=_('Provides functions for reporting messages to the user from the GeoEco package.'),
     longDescription=(
 """This class wraps the Python :mod:`logging` module. Callers outside of the
-GeoEco library may use this class but we recommend they use :mod:`logging`
+GeoEco package may use this class but we recommend they use :mod:`logging`
 directly instead.
 
 This class logs all messages to the ``GeoEco`` logging channel. Parts of the
-GeoEco library log to other channels. To see what these are, consult the file
+GeoEco package log to other channels. To see what these are, consult the file
 ``GeoEco/Configuration/Logging.ini``.
 
 Note:
@@ -1110,7 +1110,7 @@ AddMethodMetadata(Logger.RaiseException,
     shortDescription=_('Raises a Python exception and logs it as an error message and additional information as debug messages.'),
     longDescription=_(
 """Rather than raising excpetions with the Python ``raise`` statement, code in
-the GeoEco library can use :func:`RaiseException` instead. This method will
+the GeoEco package can use :func:`RaiseException` instead. This method will
 raise the exception, log it as an error (or warning, if
 :func:`SetLogErrorsAsWarnings` has been called with :py:data:`True`), and also
 log a bunch of debugging information as debug messages."""))
@@ -1285,7 +1285,7 @@ logged to the console (i.e. the stdout stream)."""))
 AddMethodMetadata(Logger.ActivateArcGISLogging,
     shortDescription=_('Instructs :class:`Logger` to stop queuing messages destined for ArcGIS and release any that are currently queued up.'),
     longDescription=_(
-"""This method is intended to be called only by the GeoEco library itself,
+"""This method is intended to be called only by the GeoEco package itself,
 from code that wraps GeoEco Python functions and exposes them as ArcGIS
 geoprocessing tools."""))
 

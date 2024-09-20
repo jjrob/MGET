@@ -2,8 +2,8 @@ Windows without ArcGIS
 ======================
 
 Although parts of MGET require ArcGIS, you can still install MGET and use its
-much of its Python library without ArcGIS. MGET will report an error message
-if you try to use a function that requires ArcGIS and it is not available.
+much of its Python API without ArcGIS. MGET will report an error message if
+you try to use a function that requires ArcGIS and it is not available.
 
 
 Prerequisites

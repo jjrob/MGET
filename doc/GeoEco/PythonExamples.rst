@@ -1,4 +1,4 @@
-GeoEco Python Library
+GeoEco Python Package
 =====================
 
 These examples illustrate some ways to utilize MGET from Python. Unless

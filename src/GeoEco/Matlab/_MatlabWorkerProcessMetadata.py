@@ -50,7 +50,7 @@ process.
 
 Note:
     Because starting MATLAB or MATLAB Runtime can take several seconds, most
-    parts of the GeoEco library use :class:`SharedMatlabWorkerProcess` to
+    parts of the GeoEco package use :class:`SharedMatlabWorkerProcess` to
     share a single instance of :class:`MatlabWorkerProcess`, to avoid having
     to start the worker process over and over again. If you are implementing a
     GeoEco component, consider using :class:`SharedMatlabWorkerProcess`.
