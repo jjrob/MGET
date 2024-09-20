@@ -20,14 +20,19 @@ later if desired. MGET will report detailed error messages when missing
 optional software is needed. Be sure to shut down all ArcGIS programs before
 installing them.
 
- - `MATLAB Runtime R2024b
-   <https://www.mathworks.com/products/compiler/matlab-runtime.html>`_ (free)
-   or the full version of MATLAB R2024b (not free). Either one is OK. These are
-   required for front detection, larval dispersal simulation, and certain
-   interpolation tools. You must install version R2024b; other versions will
-   not work. Multiple versions can be installed at the same time, so if you
-   use a different version of MATLAB for your own work, you can continue to do
-   so, providing you install the R2024b Runtime for MGET's use.
+- `ArcGIS Spatial Analyst extension <https://www.esri.com/spatialanalyst>`_.
+  This is required by a number of MGET tools produce rasters. If your ArcGIS
+  license includes this extension but you did not install it, you can re-run
+  the ArcGIS setup program to add it to your installation.
+
+- `MATLAB Runtime R2024b
+  <https://www.mathworks.com/products/compiler/matlab-runtime.html>`_ (free)
+  or the full version of MATLAB R2024b (not free). Either one is OK. These are
+  required for front detection, larval dispersal simulation, and certain
+  interpolation tools. You must install version R2024b; other versions will
+  not work. Multiple versions can be installed at the same time, so if you
+  use a different version of MATLAB for your own work, you can continue to do
+  so, providing you install the R2024b Runtime for MGET's use.
 
 
 .. _arcgis-pro-install:
