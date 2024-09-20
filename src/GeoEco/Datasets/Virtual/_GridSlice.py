@@ -185,7 +185,7 @@ class GridSlice(Grid):
 
     @classmethod
     def _TestCapability(cls, capability):
-        return cls._Grid._TestCapability(capability)        # TODO: Reject writing
+        return cls._Grid._TestCapability(capability)
 
     @classmethod
     def _GetSRTypeForSetting(cls):

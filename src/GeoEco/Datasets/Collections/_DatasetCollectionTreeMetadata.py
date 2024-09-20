@@ -29,8 +29,6 @@ instantiated directly; instead, users should instantiate one of the many
 derived classes representing the type of dataset collection they're interested
 in."""))
 
-# TODO: Improve documentation
-
 # Public properties
 
 AddPropertyMetadata(DatasetCollectionTree.PathParsingExpressions,

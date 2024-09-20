@@ -643,8 +643,6 @@ class Grid(Dataset):
                     tPrev = t
                     t = tNext
 
-            # TODO: elif self.TIncrementUnit == 'season':
-
             elif self.TIncrementUnit == 'year':
                 tOffsetFromParsedTime = self.GetLazyPropertyValue('TOffsetFromParsedTime')
                 if tOffsetFromParsedTime is not None:
@@ -1067,7 +1065,7 @@ class Grid(Dataset):
         # numpy to do the striding), and write it back.
 
         if largeStep:
-            existingData, actualNoDataValue = self._ReadNumpyArray(reorderedSliceList)      # TODO: What about actualNoDataValue here?
+            existingData, actualNoDataValue = self._ReadNumpyArray(reorderedSliceList)
             
             if existingData.dtype.name != value.dtype.name:
                 self._LogDebug(_('%(class)s 0x%(id)016X: Changing the data type of the returned data from %(t1)s to %(t2)s.') % {'class': self.__class__.__name__, 'id': id(self), 't1': existingData.dtype.name, 't2': value.dtype.name})

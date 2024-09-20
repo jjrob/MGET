@@ -716,51 +716,6 @@ class _ArcGISObjectWrapper(object):
 
     def _CallWrappedFunction(self, func, funcName, args, kwargs):
 
-        # TODO:
-        #
-        # Before invoking the method, check whether it is a Spatial
-        # Analyst tool, which is indicated by it ending in "_sa". If
-        # it is, create a temp directory and set the ScratchWorkspace
-        # to it.
-        #
-        # We do this because some Spatial Analyst tools, particularly
-        # the Map Algebra tools, create temporary ArcInfo binary grids
-        # as part of their processing, but they do not delete them
-        # upon completion. These will accumulate in the user's TEMP
-        # directory unless a ScratchWorkspace has been set. Once
-        # several thousand exist, the Spatial Analyst tools will stop
-        # working (ArcCatalog or ArcMap will crash) until they are
-        # deleted.
-        #
-        # Users typically encounter this only after running several
-        # thousand Spatial Analyst tools without logging off. Windows
-        # deletes the contents of the TEMP directory at logoff.
-        # Nonetheless, certain batch jobs, such as converting
-        # thousands of HDFs to rasters, are common scenarios for
-        # GeoEco users so we must protect them from this problem.
-
-        # try:
-        #     tempDir = None
-        #     scratchDir = None
-        #     if self._Name == 'Geoprocessor' and methodName.endswith('_sa'):
-        #         scratchDir = self.ScratchWorkspace
-        #         from GeoEco.DataManagement.Directories import TemporaryDirectory
-        #         tempDir = TemporaryDirectory()
-        #         self.ScratchWorkspace = tempDir.Path
-
-        #     # Invoke the method.
-
-        # # If we created a temporary directory to manage the rasters
-        # # leaked by the Spatial Analyst tools, delete it now.
-
-        # finally:
-        #     if tempDir is not None:
-        #         try:
-        #             del tempDir
-        #         except:
-        #             pass
-        #         self.ScratchWorkspace = scratchDir
-
         # Convert the arguments to the geoprocessor's preferred types.
 
         if args is not None:

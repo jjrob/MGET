@@ -1,7 +1,12 @@
 Public API
 ==========
 
-TODO: Write introduction
+These are the classes and functions we support being called from outside
+GeoEco itself. We do our best to document them well and refrain from changing
+them in ways that would break external callers once they've been defined.
+There are some examples of using these classes and functions
+:doc:`here <PythonExamples>`. Some classes also have example code in their
+class documentation.
 
 Datasets
 --------

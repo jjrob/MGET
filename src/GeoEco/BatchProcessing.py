@@ -190,7 +190,7 @@ class BatchProcessing(object):
                 assert isinstance(name, str), 'All elements of derivedResultsForArcGIS must be strings'
                 assert methodMetadata.GetResultByName(name) is not None, 'The name %s appeared in the derivedResultsForArcGIS list but %s.%s does not have a ResultMetadata for that name.' % (name, argMetadata.Method.Class.Name, argMetadata.Method.Name)
 
-        # TODO: "find and process" method validation:
+        # Still need "find and process" method validation:
         # - findMethod is a method with metadata
         # - findMethod has 1 mandatory arg and the rest are optional with defaults
         # - outputLocationTypeMetadata is a StoredObjectTypeMetadata

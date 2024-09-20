@@ -21,8 +21,7 @@ from ._GridSlice import GridSlice
 
 AddClassMetadata(GridSlice,
     module=__package__,
-    shortDescription=_('A :class:`~GeoEco.Datasets.Grid` representing a time or depth slice of a 3D or 4D :class:`~GeoEco.Datasets.Grid`.'),
-    longDescription=None)       # TODO: Write the longDescription.
+    shortDescription=_('A :class:`~GeoEco.Datasets.Grid` representing a time or depth slice of a 3D or 4D :class:`~GeoEco.Datasets.Grid`.'))
 
 # Constructor
 

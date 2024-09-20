@@ -87,7 +87,7 @@ class ArcGISWorkspace(DatasetCollectionTree, Database):
             self.SetLazyPropertyValue('workspaceFactoryProgID', d.workspaceFactoryProgID)
 
     def ToRasterCatalog(self, rasterCatalog, arcGISSpatialRefString, tQACoordType=None, tCoordFunction=None, managed=False, projectOnTheFly=False, overwriteExisting=False):
-        # TODO: self.__doc__.Obj.ValidateMethodInvocation()
+        # self.__doc__.Obj.ValidateMethodInvocation()
 
         # Create the raster catalog.
 
