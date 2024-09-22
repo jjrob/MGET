@@ -33,8 +33,7 @@ jobs:
           # Christoph Gohlke's collection of geospatial library wheels.
 
           CIBW_BEFORE_TEST_LINUX: >
-            apt-get update -y &&
-            apt-get install gdal -y
+            yum install -y gdal
 
           # Install dependencies required to run MGET's tests
           
