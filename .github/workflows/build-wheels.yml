@@ -70,19 +70,29 @@ jobs:
           echo ""
           echo "python3 --version:"
           python3 --version
+ 
+      - name: Install GDAL if needed
+        run: |
+          if which gdalinfo > /dev/null 2>&1; then
+            echo "GDAL is already installed"
+          else
+            echo "Installing GDAL"
+            apt-get update -y
+            apt-get install gdal -y
+          fi
           echo ""
           echo "which gdalinfo:"
           which gdalinfo
-
-      - name: Install GDAL
-        run: |
-          apt-get update -y
-          apt-get install gdal -y
 
       - name: Install Python packages needed to install GDAL's Python bindings
         run: |
           python -m pip install --upgrade pip
           python -m pip install "numpy<2" setuptools wheel
+
+      - name: Install GDAL's Python package
+        run: |
+          GDAL_VERSION_NEEDED=$(gdalinfo --version | awk '{print $2}' | sed 's/,//')
+          python -m pip install gdal==$GDAL_VERSION_NEEDED
 
       - name: Download built wheels
         uses: actions/download-artifact@v4
