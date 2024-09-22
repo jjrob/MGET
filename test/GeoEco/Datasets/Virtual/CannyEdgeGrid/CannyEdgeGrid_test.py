@@ -16,8 +16,18 @@ import pytest
 from GeoEco.Logging import Logger
 from GeoEco.Datasets.GDAL import GDALDataset
 from GeoEco.Datasets.Virtual import CannyEdgeGrid
+from GeoEco.Matlab import MatlabDependency
 
 Logger.Initialize()
+
+
+def isMatlabInstalled():
+    d = MatlabDependency()
+    try:
+        d.Initialize()
+    except:
+        return False
+    return True
 
 
 @pytest.fixture
@@ -25,6 +35,7 @@ def testRasterPath():
     return pathlib.Path(__file__).parent / 'thetao_0000.5_20210101.img'
 
 
+@pytest.mark.skipif(not isMatlabInstalled(), reason='MATLAB or MATLAB Runtime is not installed, or initialization of interoperability with it failed')
 class TestCannyEdgeGrid():
 
     def test_Canny(self, testRasterPath):
