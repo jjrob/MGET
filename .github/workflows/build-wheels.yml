@@ -71,18 +71,12 @@ jobs:
           echo "python3 --version:"
           python3 --version
  
-      - name: Install GDAL if needed
-        run: |
-          if which gdalinfo > /dev/null 2>&1; then
-            echo "GDAL is already installed"
-          else
-            echo "Installing GDAL"
-            apt-get update -y
-            apt-get install gdal -y
-          fi
-          echo ""
-          echo "which gdalinfo:"
-          which gdalinfo
+      - name: Install GDAL
+        uses: awalsh128/cache-apt-pkgs-action@latest
+        with:
+          packages: gdal
+          version: 1.0
+          execute_install_scripts: true    # Not sure if this is needed for gdal
 
       - name: Install Python packages needed to install GDAL's Python bindings
         run: |
