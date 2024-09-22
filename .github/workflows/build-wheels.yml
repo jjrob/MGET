@@ -89,16 +89,19 @@ jobs:
       #
       # So call apt-get ourselves. The line with curl installs apt-fast.
 
+      - name: Install apt-fast
+        run: |
+          sudo /bin/bash -c "$(curl -sL https://git.io/vokNn)"
+          sudo apt-get update -y
+
       - name: Install GDAL on ubuntu-22.04
         if: ${{ matrix.os == 'ubuntu-22.04' }}
         run: |
-          sudo /bin/bash -c "$(curl -sL https://git.io/vokNn)"
           sudo apt-fast install -y gdal-bin gdal-data libgdal-dev libgdal30
 
       - name: Install GDAL on ubuntu-24.04
         if: ${{ matrix.os == 'ubuntu-24.04' }}
         run: |
-          sudo /bin/bash -c "$(curl -sL https://git.io/vokNn)"
           sudo apt-fast install -y gdal-bin gdal-data gdal-plugins libgdal-dev libgdal34t64
 
       - name: Install Python packages needed to install GDAL's Python bindings
