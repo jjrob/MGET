@@ -24,8 +24,24 @@ jobs:
       - name: Build and test wheels
         run: python -m cibuildwheel --output-dir wheelhouse
         env:
+          # Only build 64-bit architectures
+          
           CIBW_ARCHS: "auto64"
+
+          # Install GDAL before testing MGET. On Linux, install GDAL's Debian
+          # package. On Windows, install the latest GDAL Python package from
+          # Christoph Gohlke's collection of geospatial library wheels.
+
+          CIBW_BEFORE_TEST_LINUX: >
+            apt-get update -y &&
+            apt-get install gdal -y
+
+          # Install dependencies required to run MGET's tests
+          
           CIBW_TEST_REQUIRES: pytest python-dotenv
+
+          # Run MGET's tests
+          
           CIBW_TEST_COMMAND: "echo Wheel installed"
 
       - uses: actions/upload-artifact@v4
