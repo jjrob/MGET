@@ -51,7 +51,7 @@ jobs:
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
-        os: [ubuntu-22.04]
+        os: [ubuntu-latest]
         python-version: ["3.12"]
 
     steps:
@@ -87,9 +87,17 @@ jobs:
         run: |
           GDAL_VERSION_NEEDED=$(gdalinfo --version | awk '{print $2}' | sed 's/,//')
           python -m pip install gdal==$GDAL_VERSION_NEEDED
+          echo ""
+          echo "Testing GDAL's python bindings"
+          python -c "from osgeo import _gdal_array"
 
       - name: Download built wheels
         uses: actions/download-artifact@v4
         with:
           name: cibw-wheels-ubuntu-latest
           path: ./wheels
+
+      - name: Installing wheel
+        run: |
+          GEOECO_VERSION=$(ls ./wheels | grep -m 1 mget3 | sed 's/.*mget3-\(.*\)-cp.*-cp.*.whl/\1/)
+          python -m pip install mget3==$GEOECO_VERSION --find-links=./wheels
