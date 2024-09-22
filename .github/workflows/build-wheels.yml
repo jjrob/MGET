@@ -51,7 +51,7 @@ jobs:
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
-        os: [ubuntu-latest]
+        os: [ubuntu-22.04]
         python-version: ["3.12"]
 
     steps:
@@ -74,7 +74,7 @@ jobs:
       - name: Install GDAL
         uses: awalsh128/cache-apt-pkgs-action@latest
         with:
-          packages: gdal
+          packages: gdal-bin gdal-data gdal-plugins libgdal-dev   # Only install these, not the rest
           version: 1.0
           execute_install_scripts: true    # Not sure if this is needed for gdal
 
