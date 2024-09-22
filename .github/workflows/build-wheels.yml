@@ -70,7 +70,11 @@ jobs:
           echo ""
           echo "python3 --version:"
           python3 --version
- 
+
+      - name: Dispaly GDAL versions available for installation
+        run: |
+          apt-cache policy gdal-bin gdal-data gdal-plugins libgdal-dev 
+
       - name: Install GDAL
         uses: awalsh128/cache-apt-pkgs-action@latest
         with:
