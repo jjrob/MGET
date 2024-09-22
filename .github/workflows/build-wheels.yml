@@ -53,6 +53,9 @@ jobs:
       matrix:
         os: [ubuntu-22.04, ubuntu-24.04]
         python-version: ["3.12"]
+    concurrency:
+      group: ${{ github.workflow }}-${{ github.ref }}
+      cancel-in-progress: false
 
     steps:
       - name: Set up Python ${{ matrix.python-version }}
@@ -71,16 +74,25 @@ jobs:
           echo "python3 --version:"
           python3 --version
 
-      - name: Dispaly GDAL versions available for installation
+      - name: Display GDAL versions available for installation
         run: |
           apt-cache policy gdal-bin gdal-data gdal-plugins libgdal-dev 
 
       - name: Install GDAL
-        uses: awalsh128/cache-apt-pkgs-action@latest
-        with:
-          packages: gdal-bin gdal-data gdal-plugins libgdal-dev   # Only install these, not the rest
-          version: 1.0
-          execute_install_scripts: true    # Not sure if this is needed for gdal
+        # Unfortunately, we cannot use awalsh128/cache-apt-pkgs-action for
+        # this, at least on ubuntu-24.04, because it appears that GDAL has a
+        # post-install script that sets LD_LIBRARY_PATH, and that script does
+        # not appear to run even if execute_install_scripts is true for
+        # cache-apt-pkgs-action. At least, I THINK that is the problem. In any
+        # case, if we use cache-apt-pkgs-action, we get the following error
+        # when we try to run gdalinfo later below:
+        #
+        #     gdalinfo: error while loading shared libraries: libblas.so.3: cannot open shared object file: No such file or directory
+        #
+        # So call apt-get ourselves. Use apt-fast to speed it up.
+        run: |
+          apt-get install -y apt-fast
+          apt-fast install -y gdal-bin gdal-data gdal-plugins libgdal-dev
 
       - name: Install Python packages needed to install GDAL's Python bindings
         run: |
