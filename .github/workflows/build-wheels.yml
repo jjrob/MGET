@@ -29,11 +29,16 @@ jobs:
           CIBW_ARCHS: "auto64"
 
           # Install GDAL before testing MGET. On Linux, install GDAL's Debian
-          # package. On Windows, install the latest GDAL Python package from
+          # package. libgdal-dev appears to also be required, because when
+          # MGET is installed, pip fulfills its dependency on the GDAL Python
+          # package by installing and building GDAL's sdist, which apparently
+          # can't be done without libgdal-dev.
+          #
+          # On Windows, install the latest GDAL Python package from
           # Christoph Gohlke's collection of geospatial library wheels.
 
           CIBW_BEFORE_TEST_LINUX: >
-            yum install -y gdal
+            yum install -y gdal libgdal-dev
 
           # Install dependencies required to run MGET's tests
           
