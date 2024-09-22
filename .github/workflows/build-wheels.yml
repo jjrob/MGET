@@ -24,33 +24,11 @@ jobs:
       - name: Build and test wheels
         run: python -m cibuildwheel --output-dir wheelhouse
         env:
-          # Only build 64-bit architectures
-          
           CIBW_ARCHS: "auto64"
-
-          # Install GDAL before testing MGET. On Linux, install GDAL's Debian
-          # package. libgdal-dev appears to also be required, because when
-          # MGET is installed, pip fulfills its dependency on the GDAL Python
-          # package by installing and building GDAL's sdist, which apparently
-          # can't be done without libgdal-dev.
-          #
-          # On Windows, install the latest GDAL Python package from
-          # Christoph Gohlke's collection of geospatial library wheels.
-
-          CIBW_BEFORE_TEST_LINUX: >
-            yum install -y gdal libgdal-dev
-
-          # Install dependencies required to run MGET's tests
-          
-          CIBW_TEST_REQUIRES: pytest python-dotenv
-
-          # Run MGET's tests
-          
-          CIBW_TEST_COMMAND: "echo Wheel installed"
 
       - uses: actions/upload-artifact@v4
         with:
-          name: cibw-wheels-${{ matrix.os }}-${{ strategy.job-index }}
+          name: cibw-wheels-${{ matrix.os }}
           path: ./wheelhouse/*.whl
 
   build_sdist:
@@ -64,4 +42,44 @@ jobs:
 
       - uses: actions/upload-artifact@v4
         with:
+          name: sdist
           path: dist/*.tar.gz
+
+  test_wheels:
+    name: Test wheel on ${{ matrix.os }} ${{ matrix.python-version }}
+    needs: build_wheels
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [ubuntu-latest]
+        python-version: ["3.12"]
+
+    steps:
+     - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v4
+        with:
+          python-version: ${{ matrix.python-version }}
+
+      - name: Display system information
+        run: |
+          uname -a
+          hostnamectl
+          python3 --version
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install "numpy<2" setuptools wheel
+
+      - name: Download built wheels
+        uses: actions/download-artifact@v4
+        with:
+          name: cibw-wheels-ubuntu-latest
+          path: ./wheels
+
+      - name: Unzip wheels
+        run: |
+          ls -l ./wheels
+          mkdir -p ./wheelhouse
+          unzip ./wheels/* -d ./wheelhouse
+          ls -l ./wheelhouse
