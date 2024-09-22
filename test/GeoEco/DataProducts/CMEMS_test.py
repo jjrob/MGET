@@ -12,7 +12,6 @@ import logging
 import os
 from pathlib import Path
 
-import dotenv
 import numpy
 import pytest
 
@@ -24,8 +23,12 @@ Logger.Initialize()
 
 
 def getCMEMSCredentials():
-    dotenv.load_dotenv(Path(__file__).parent.parent.parent / '.env')
-    return (os.getenv('CMEMS_USERNAME'), os.getenv('CMEMS_PASSWORD'))
+    try:
+        import dotenv
+        dotenv.load_dotenv(Path(__file__).parent.parent.parent / '.env')
+        return (os.getenv('CMEMS_USERNAME'), os.getenv('CMEMS_PASSWORD'))
+    except:
+        return None, None
 
 
 def isArcPyInstalled():
