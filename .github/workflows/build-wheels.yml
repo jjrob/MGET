@@ -99,5 +99,5 @@ jobs:
 
       - name: Installing wheel
         run: |
-          GEOECO_VERSION=$(ls ./wheels | grep -m 1 mget3 | sed 's/.*mget3-\(.*\)-cp.*-cp.*.whl/\1/)
+          GEOECO_VERSION=$(ls ./wheels | grep -m 1 mget3 | sed 's/.*mget3-\(.*\)-cp.*-cp.*.whl/\1/')
           python -m pip install mget3==$GEOECO_VERSION --find-links=./wheels
