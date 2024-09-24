@@ -20,6 +20,7 @@ jobs:
           python-version: ${{ matrix.python-version }}
 
       - name: Install scikit-fmm from PyPI
+        if: false
         run: |
           python -m pip install --upgrade pip
           python -m pip install numpy<2
@@ -33,7 +34,7 @@ jobs:
           echo "Finding cfmm*.pyd"
           python -c "import site, glob, os; p = [glob.glob(os.path.join(s, 'skfmm', 'cfmm*.pyd')) for s in site.getsitepackages()]; print([item for sublist in p for item in sublist])"
           echo "Finding dumpbin.exe"
-          "C:\\Program Files (x86)\\Microsoft Visual Studio\\Installer\\vswhere.exe" -latest -find "**/dumpbin.exe"
+          dir "C:\Program Files\Microsoft Visual Studio"
 
       - name: Try to import skfmm (this will fail)
         run: |
