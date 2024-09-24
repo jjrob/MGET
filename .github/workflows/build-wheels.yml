@@ -1,6 +1,6 @@
 name: Build
 
-on: [push, pull_request]    # Temporary disable this from running on every push
+on: [push, pull_request]
 
 jobs:
   build_wheels:
@@ -46,7 +46,6 @@ jobs:
           path: dist/*.tar.gz
 
   test_wheels_linux:
-    if: false   # Temporarily disable 
     name: Test wheel on ${{ matrix.os }} Python ${{ matrix.python-version }}
     needs: build_wheels
     runs-on: ${{ matrix.os }}
@@ -172,7 +171,7 @@ jobs:
         # much of an advantage to testing on both 2019 and 2022. Therefore, we are
         # just running this job on windows-latest.
         os: [windows-latest]
-        python-version: ["3.9"]      # , "3.10", "3.11", "3.12"]
+        python-version: ["3.9", "3.10", "3.11", "3.12"]
 
     steps:
       - name: Set up Python ${{ matrix.python-version }}
