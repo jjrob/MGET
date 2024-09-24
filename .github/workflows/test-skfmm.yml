@@ -20,4 +20,5 @@ jobs:
           python -m pip install scikit-fmm
 
       - name: Try to import skfmm
+        run: |
           python -c "import skfmm"
