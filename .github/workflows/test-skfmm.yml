@@ -26,6 +26,7 @@ jobs:
           python -m pip install scikit-fmm
 
       - name: Dump some information
+        shell: cmd
         run: |
           echo "Dumping site-packages directories"
           python -c "import sys; print(sys.path)"
