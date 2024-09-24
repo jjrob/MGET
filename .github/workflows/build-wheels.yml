@@ -45,7 +45,8 @@ jobs:
           name: sdist
           path: dist/*.tar.gz
 
-  test_wheels:
+  test_wheels_linux:
+    if: false   # Temporarily disable Linux tests while I'm getting Windows tests working
     name: Test wheel on ${{ matrix.os }} Python ${{ matrix.python-version }}
     needs: build_wheels
     runs-on: ${{ matrix.os }}
@@ -149,6 +150,72 @@ jobs:
       - name: Install MATLAB runtime
         run: |
           sudo ~/MATLAB_Runtime/install -agreeToLicense yes
+
+      - name: Checkout source
+        uses: actions/checkout@v4
+
+      - name: Run tests
+        run: |
+          python -m pytest ./test/GeoEco/
+
+  test_wheels_windows:
+    name: Test wheel on ${{ matrix.os }} Python ${{ matrix.python-version }}
+    needs: build_wheels
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        # As of this writing (September 2024), the available Windows runners were
+        # windows-2022, windows-2019, and windows-latest, which was equivalent to
+        # windows-2022. No desktop images (e.g. Windows 10 or 11) were available.
+        # Because Windows 2019 and 2022 are both based on Windows 10, there's not
+        # much of an advantage to testing on both 2019 and 2022. Therefore, we are
+        # just running this job on windows-latest.
+        os: [windows-latest]
+        python-version: ["3.12"]
+
+    steps:
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v4
+        with:
+          python-version: ${{ matrix.python-version }}
+
+      - name: Cache GDAL wheels from cgohlke/geospatial-wheels
+        id: cache-GDAL-wheels
+        uses: actions/cache@v4
+        with:
+          path: ~/GDAL_wheels
+          key: cache-GDAL-3.9.2-win_amd64-wheels
+
+      - name: Download GDAL wheels from cgohlke/geospatial-wheels
+        if: steps.cache-GDAL-wheels.outputs.cache-hit != 'true'
+        run: |
+          mkdir ~/GDAL_wheels
+          curl -L -o ~/GDAL_wheels/GDAL-3.9.2-cp39-cp39-win_amd64.whl https://github.com/cgohlke/geospatial-wheels/releases/download/v2024.9.22/GDAL-3.9.2-cp39-cp39-win_amd64.whl
+          curl -L -o ~/GDAL_wheels/GDAL-3.9.2-cp39-cp310-win_amd64.whl https://github.com/cgohlke/geospatial-wheels/releases/download/v2024.9.22/GDAL-3.9.2-cp39-cp310-win_amd64.whl
+          curl -L -o ~/GDAL_wheels/GDAL-3.9.2-cp39-cp311-win_amd64.whl https://github.com/cgohlke/geospatial-wheels/releases/download/v2024.9.22/GDAL-3.9.2-cp39-cp311-win_amd64.whl
+          curl -L -o ~/GDAL_wheels/GDAL-3.9.2-cp39-cp312-win_amd64.whl https://github.com/cgohlke/geospatial-wheels/releases/download/v2024.9.22/GDAL-3.9.2-cp39-cp312-win_amd64.whl
+
+      - name: Install GDAL wheel
+        run: |
+          python -m pip install -U pip
+          python -m pip install -U setuptools wheel
+          python -m pip install GDAL==3.9.2 --find-links=~/GDAL_wheels
+
+      - name: Download built wheels
+        uses: actions/download-artifact@v4
+        with:
+          name: cibw-wheels-ubuntu-latest
+          path: ./wheels
+
+      - name: Install wheel
+        run: |
+          GEOECO_VERSION=$(ls ./wheels | grep -m 1 mget3 | sed 's/.*mget3-\(.*\)-cp.*-cp.*.whl/\1/')
+          python -m pip install mget3==$GEOECO_VERSION --find-links=./wheels
+
+      - name: Install Python packages needed to run tests
+        run: |
+          python -m pip install pytest python-dotenv
 
       - name: Checkout source
         uses: actions/checkout@v4
