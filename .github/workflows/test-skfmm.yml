@@ -29,6 +29,9 @@ jobs:
         run: |
           echo "Dumping site-packages directories"
           python -c "import sys; print(sys.path)"
+          echo "Finding cfmm*.pyd"
+          python -c "import site, glob, os; p = [glob.glob(os.path.join(s, 'skfmm', 'cfmm*.pyd')) for s in site.getsitepackages()]; print([item for sublist in p for item in sublist])"
+          echo "Running dumpbin.exe /DEPENDENTS on cfmm*.pyd"
 
       - name: Try to import skfmm (this will fail)
         run: |
