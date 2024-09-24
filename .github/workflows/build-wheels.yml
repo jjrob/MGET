@@ -205,7 +205,7 @@ jobs:
       - name: Download built wheels
         uses: actions/download-artifact@v4
         with:
-          name: cibw-wheels-ubuntu-latest
+          name: cibw-wheels-windows-latest
           path: wheels
 
       - name: Install wheel
