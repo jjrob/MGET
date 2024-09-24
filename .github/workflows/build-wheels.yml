@@ -207,3 +207,20 @@ jobs:
         with:
           name: cibw-wheels-ubuntu-latest
           path: wheels
+
+      - name: Install wheel
+        shell: pwsh
+        run: |
+          $env:MGET_VERSION = python -c "import glob; import os; files = glob.glob(os.path.join('wheels', 'mget3-*.whl')); print(os.path.basename(files[0]).split('-')[1])"
+          python -m pip install mget3==$env:MGET_VERSION --find-links=wheels
+
+      - name: Install Python packages needed to run tests
+        run: |
+          python -m pip install pytest python-dotenv
+
+      - name: Checkout source
+        uses: actions/checkout@v4
+
+      - name: Run tests
+        run: |
+          python -m pytest test\\GeoEco
