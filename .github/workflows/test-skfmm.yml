@@ -32,7 +32,7 @@ jobs:
           echo "Finding cfmm*.pyd"
           python -c "import site, glob, os; p = [glob.glob(os.path.join(s, 'skfmm', 'cfmm*.pyd')) for s in site.getsitepackages()]; print([item for sublist in p for item in sublist])"
           echo "Finding dumpbin.exe"
-          dir "C:\\Program Files (x86)\\Microsoft Visual Studio\\Installer\\vswhere.exe"
+          "C:\\Program Files (x86)\\Microsoft Visual Studio\\Installer\\vswhere.exe" -latest -find "**/dumpbin.exe"
 
       - name: Try to import skfmm (this will fail)
         run: |
