@@ -134,14 +134,14 @@ jobs:
           python -m pip install pytest python-dotenv
 
       - name: Cache MATLAB Runtime
-        id: cache-matlab-runtime
+        id: cache-matlab-runtime-linux
         uses: actions/cache@v4
         with:
           path: ~/MATLAB_Runtime
-          key: cache-matlab-runtime-r2024b
+          key: cache-matlab-runtime-r2024b-linux
 
       - name: Download MATLAB Runtime
-        if: steps.cache-matlab-runtime.outputs.cache-hit != 'true'
+        if: steps.cache-matlab-runtime-linux.outputs.cache-hit != 'true'
         run: |
           curl -L -o MATLAB_Runtime.zip https://ssd.mathworks.com/supportfiles/downloads/R2024b/Release/0/deployment_files/installer/complete/glnxa64/MATLAB_Runtime_R2024b_glnxa64.zip
           mkdir ~/MATLAB_Runtime
@@ -172,7 +172,7 @@ jobs:
         # much of an advantage to testing on both 2019 and 2022. Therefore, we are
         # just running this job on windows-latest.
         os: [windows-latest]
-        python-version: ["3.12"]
+        python-version: ["3.11"]
 
     steps:
       - name: Set up Python ${{ matrix.python-version }}
@@ -217,6 +217,20 @@ jobs:
       - name: Install Python packages needed to run tests
         run: |
           python -m pip install pytest python-dotenv
+
+      - name: Cache MATLAB Runtime
+        id: cache-matlab-runtime-windows
+        uses: actions/cache@v4
+        with:
+          path: MATLAB_Runtime
+          key: cache-matlab-runtime-r2024b-windows
+
+      - name: Download MATLAB Runtime
+        if: steps.cache-matlab-runtime-windows.outputs.cache-hit != 'true'
+        shell: pwsh
+        run: |
+          curl -L -o MATLAB_Runtime.zip https://ssd.mathworks.com/supportfiles/downloads/R2024b/Release/0/deployment_files/installer/complete/win64/MATLAB_Runtime_R2024b_win64.zip
+          Expand-Archive -Path "MATLAB_Runtime.zip" -DestinationPath "MATLAB_Runtime"
 
       - name: Checkout source
         uses: actions/checkout@v4
