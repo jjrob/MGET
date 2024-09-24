@@ -1,0 +1,23 @@
+name: Test skfmm
+
+on:
+  workflow_dispatch:
+
+jobs:
+  test_skfmm_on_windows:
+    name: Test skfmm on ${{ matrix.os }} Python ${{ matrix.python-version }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [windows-latest]                # [windows-latest, windows-2022, windows-2019]
+        python-version: ["3.11"]
+
+    steps:
+      - name: Install scikit-fmm from PyPI
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install scikit-fmm
+
+      - name: Try to import skfmm
+          python -c "import skfmm"
