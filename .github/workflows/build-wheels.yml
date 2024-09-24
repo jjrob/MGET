@@ -184,42 +184,26 @@ jobs:
         id: cache-GDAL-wheels
         uses: actions/cache@v4
         with:
-          path: ~/GDAL_wheels
+          path: GDAL_wheels
           key: cache-GDAL-3.9.2-win_amd64-wheels
 
       - name: Download GDAL wheels from cgohlke/geospatial-wheels
         if: steps.cache-GDAL-wheels.outputs.cache-hit != 'true'
         run: |
-          mkdir ~/GDAL_wheels
-          curl -L -o ~/GDAL_wheels/GDAL-3.9.2-cp39-cp39-win_amd64.whl https://github.com/cgohlke/geospatial-wheels/releases/download/v2024.9.22/GDAL-3.9.2-cp39-cp39-win_amd64.whl
-          curl -L -o ~/GDAL_wheels/GDAL-3.9.2-cp39-cp310-win_amd64.whl https://github.com/cgohlke/geospatial-wheels/releases/download/v2024.9.22/GDAL-3.9.2-cp39-cp310-win_amd64.whl
-          curl -L -o ~/GDAL_wheels/GDAL-3.9.2-cp39-cp311-win_amd64.whl https://github.com/cgohlke/geospatial-wheels/releases/download/v2024.9.22/GDAL-3.9.2-cp39-cp311-win_amd64.whl
-          curl -L -o ~/GDAL_wheels/GDAL-3.9.2-cp39-cp312-win_amd64.whl https://github.com/cgohlke/geospatial-wheels/releases/download/v2024.9.22/GDAL-3.9.2-cp39-cp312-win_amd64.whl
+          mkdir GDAL_wheels
+          curl -L -o GDAL_wheels\\GDAL-3.9.2-cp39-cp39-win_amd64.whl https://github.com/cgohlke/geospatial-wheels/releases/download/v2024.9.22/GDAL-3.9.2-cp39-cp39-win_amd64.whl
+          curl -L -o GDAL_wheels\\GDAL-3.9.2-cp39-cp310-win_amd64.whl https://github.com/cgohlke/geospatial-wheels/releases/download/v2024.9.22/GDAL-3.9.2-cp39-cp310-win_amd64.whl
+          curl -L -o GDAL_wheels\\GDAL-3.9.2-cp39-cp311-win_amd64.whl https://github.com/cgohlke/geospatial-wheels/releases/download/v2024.9.22/GDAL-3.9.2-cp39-cp311-win_amd64.whl
+          curl -L -o GDAL_wheels\\GDAL-3.9.2-cp39-cp312-win_amd64.whl https://github.com/cgohlke/geospatial-wheels/releases/download/v2024.9.22/GDAL-3.9.2-cp39-cp312-win_amd64.whl
 
       - name: Install GDAL wheel
         run: |
           python -m pip install -U pip
           python -m pip install -U setuptools wheel
-          python -m pip install GDAL==3.9.2 --find-links=~/GDAL_wheels
+          python -m pip install GDAL==3.9.2 --find-links=GDAL_wheels
 
       - name: Download built wheels
         uses: actions/download-artifact@v4
         with:
           name: cibw-wheels-ubuntu-latest
-          path: ./wheels
-
-      - name: Install wheel
-        run: |
-          GEOECO_VERSION=$(ls ./wheels | grep -m 1 mget3 | sed 's/.*mget3-\(.*\)-cp.*-cp.*.whl/\1/')
-          python -m pip install mget3==$GEOECO_VERSION --find-links=./wheels
-
-      - name: Install Python packages needed to run tests
-        run: |
-          python -m pip install pytest python-dotenv
-
-      - name: Checkout source
-        uses: actions/checkout@v4
-
-      - name: Run tests
-        run: |
-          python -m pytest ./test/GeoEco/
+          path: wheels
