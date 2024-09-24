@@ -246,7 +246,7 @@ jobs:
       - name: Install MATLAB runtime
         shell: cmd
         run: |
-          MATLAB_Runtime/setup -agreeToLicense yes
+          MATLAB_Runtime\setup -agreeToLicense yes
 
       - name: Run tests
         run: |
