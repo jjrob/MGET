@@ -31,7 +31,8 @@ jobs:
           python -c "import sys; print(sys.path)"
           echo "Finding cfmm*.pyd"
           python -c "import site, glob, os; p = [glob.glob(os.path.join(s, 'skfmm', 'cfmm*.pyd')) for s in site.getsitepackages()]; print([item for sublist in p for item in sublist])"
-          echo "Running dumpbin.exe /DEPENDENTS on cfmm*.pyd"
+          echo "Running dumpbin.exe /DEPENDENTS on .pyd path I read from above"
+          dumpbin /DEPENDENTS C:\hostedtoolcache\windows\Python\3.11.9\x64\Lib\site-packages\skfmm\cfmm.cp311-win_amd64.pyd
 
       - name: Try to import skfmm (this will fail)
         run: |
