@@ -119,8 +119,6 @@ class WindFetchGrid(Grid):
         # Iterate through each requested 2D slice and compute distances. Cache
         # the last slice. If we catch an exception, call _Close().
 
-        import skfmm
-
         try:
             if len(self.Dimensions) == 2:
                 slices = [(sliceList[0], sliceList[1])]
