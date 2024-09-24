@@ -218,6 +218,14 @@ jobs:
         run: |
           python -m pip install pytest python-dotenv
 
+      # Note: this checkout apparently needs to happen before the
+      # actions/cache below or the actions/cache won't work. so I'm moving it
+      # up, even though it is not actually needed until just before the "Run
+      # tests" step.
+
+      - name: Checkout source
+        uses: actions/checkout@v4
+
       - name: Cache MATLAB Runtime
         id: cache-matlab-runtime-windows
         uses: actions/cache@v4
@@ -234,9 +242,6 @@ jobs:
           Expand-Archive -Path "MATLAB_Runtime.zip" -DestinationPath "MATLAB_Runtime"
           echo "Checking that it exists"
           dir MATLAB_Runtime
-
-      - name: Checkout source
-        uses: actions/checkout@v4
 
       - name: Run tests
         run: |
