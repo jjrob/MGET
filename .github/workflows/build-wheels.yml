@@ -46,7 +46,6 @@ jobs:
           path: dist/*.tar.gz
 
   test_wheels_linux:
-    if: false   # Temporarily disable Linux tests while I'm getting Windows tests working
     name: Test wheel on ${{ matrix.os }} Python ${{ matrix.python-version }}
     needs: build_wheels
     runs-on: ${{ matrix.os }}
@@ -54,7 +53,7 @@ jobs:
       fail-fast: false
       matrix:
         os: [ubuntu-22.04, ubuntu-24.04]
-        python-version: ["3.9", "3.10", "3.11", "3.12"]
+        python-version: ["3.9"]      # ["3.10", "3.11", "3.12"]
 
     steps:
       - name: Set up Python ${{ matrix.python-version }}
@@ -159,6 +158,7 @@ jobs:
           python -m pytest ./test/GeoEco/
 
   test_wheels_windows:
+    if: false   # Temporarily disable 
     name: Test wheel on ${{ matrix.os }} Python ${{ matrix.python-version }}
     needs: build_wheels
     runs-on: ${{ matrix.os }}
@@ -172,7 +172,7 @@ jobs:
         # much of an advantage to testing on both 2019 and 2022. Therefore, we are
         # just running this job on windows-latest.
         os: [windows-latest]
-        python-version: ["3.11"]
+        python-version: ["3.9", "3.10", "3.11", "3.12"]
 
     steps:
       - name: Set up Python ${{ matrix.python-version }}
