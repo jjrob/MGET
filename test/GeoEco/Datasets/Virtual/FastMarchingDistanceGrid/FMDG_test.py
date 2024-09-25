@@ -10,6 +10,7 @@
 import os
 import pathlib
 import pytest
+import sys
 
 from GeoEco.Logging import Logger
 from GeoEco.Datasets import NumpyGrid
