@@ -1,0 +1,7 @@
+# Python packages needed to build the documentation with sphinx.
+#
+# As https://docs.readthedocs.io/en/stable/guides/reproducible-builds.html#use-a-requirements-file-for-python-dependencies recommends,
+# we pin the versions of each package to those we know work.
+docutils=0.21.2
+sphinx==8.0.2
+sphinx_rtd_theme==3.0.0rc2
