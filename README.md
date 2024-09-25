@@ -56,6 +56,7 @@ ArcGIS, Python, R, MATLAB, and C++. Environmental Modelling & Software
 * Public API
 * Internal API
 * For MGET Developers
+* [Release Notes](https://github.com/jjrob/MGET/blob/main/RELEASE_NOTES.md)
 
 ## License
 
