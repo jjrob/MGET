@@ -1,0 +1,74 @@
+name: Publish to PyPI
+
+on:
+  workflow_dispatch:
+    inputs:
+      run_id_to_publish:
+        description: 'run_id of "Build and test wheels" to publish'
+        required: true
+        type: string
+      publish_sdist:
+        description: 'Publish the sdist artifacts?'
+        required: true
+        type: boolean
+        default: true
+      publish_ubuntu:
+        description: 'Publish the cibw-wheels-ubuntu-latest artifacts?'
+        required: true
+        type: boolean
+        default: true
+      publish_windows:
+        description: 'Publish the cibw-wheels-windows-latest artifacts?'
+        required: true
+        type: boolean
+        default: true
+
+jobs:
+  publish_to_pypi:
+    runs-on: ubuntu-latest
+
+    environment:
+      name: pypi
+      url: https://pypi.org/p/mget3
+
+    permissions:
+      id-token: write   # Required for trusted publishing
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Download sdist artifacts
+        if: ${{ inputs.publish_sdist }}
+        uses: actions/download-artifact@v4
+        with:
+          name: sdist
+          path: dist
+          run-id: ${{ inputs.run_id_to_publish }}
+          github-token: ${{ secrets.GITHUB_TOKEN }}    # Needed to download from another workflow run than the current run
+
+      - name: Download cibw-wheels-ubuntu-latest artifacts
+        if: ${{ inputs.publish_ubuntu }}
+        uses: actions/download-artifact@v4
+        with:
+          name: cibw-wheels-ubuntu-latest
+          path: dist
+          run-id: ${{ inputs.run_id_to_publish }}
+          github-token: ${{ secrets.GITHUB_TOKEN }}    # Needed to download from another workflow run than the current run
+
+      - name: Download cibw-wheels-windows-latest artifacts
+        if: ${{ inputs.publish_windows }}
+        uses: actions/download-artifact@v4
+        with:
+          name: cibw-wheels-windows-latest
+          path: dist
+          run-id: ${{ inputs.run_id_to_publish }}
+          github-token: ${{ secrets.GITHUB_TOKEN }}    # Needed to download from another workflow run than the current run
+
+      - name: List artifacts that will be uploaded
+        run: |
+          ls -l dist/*
+
+      - name: Publish to PyPI
+        uses: pypa/gh-action-pypi-publish@release/v1
+        with:
+          repository-url: https://pypi.org/legacy/
