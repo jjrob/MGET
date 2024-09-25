@@ -35,7 +35,7 @@ jobs:
         with:
           name: sdist
           path: dist
-          run-id: ${{ inputs.publish_sdist }}
+          run-id: ${{ inputs.run_id_to_publish }}
 
       - name: List artifacts that will be uploaded
         run: |
