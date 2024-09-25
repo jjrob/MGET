@@ -1,0 +1,42 @@
+name: Publish to TestPyPI
+
+on:
+  workflow_dispatch:
+    inputs:
+      run_id_to_publish:
+        description: 'run_id of "Build and test wheels" to publish'
+        required: true
+        type: string
+      publish_sdist:
+        description: 'Publish the sdist artifacts?'
+        required: true
+        type: boolean
+        default: true
+      publish_linux:
+        description: 'Publish the cibw-wheels-ubuntu-latest artifacts?'
+        required: true
+        type: boolean
+        default: true
+      publish_windows:
+        description: 'Publish the cibw-wheels-windows-latest artifacts?'
+        required: true
+        type: boolean
+        default: true
+
+jobs:
+  publish_to_testpypi:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Download sdist artifacts
+        if: ${{ inputs.run_id_to_publish }}
+        uses: actions/download-artifact@v4
+        with:
+          name: sdist
+          path: dist
+          run-id: ${{ inputs.publish_sdist }}
+
+      - name: List artifacts that will be uploaded
+        run: |
+          ls -l dist/*
