@@ -27,6 +27,8 @@ instructions to ensure all prerequisites are met.
 
 ## Usage Examples
 
+Coming in v3.0.3:
+
 * GeoEco Python Library
 * MGET ArcGIS Geoprocessing Toolbox
 
@@ -52,6 +54,8 @@ ArcGIS, Python, R, MATLAB, and C++. Environmental Modelling & Software
 [10.1016/j.envsoft.2010.03.029](https://doi.org/10.1016/j.envsoft.2010.03.029)
 
 ## Documentation
+
+Coming in v3.0.3:
 
 * Public API
 * Internal API
