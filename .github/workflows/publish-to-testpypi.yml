@@ -26,6 +26,14 @@ on:
 jobs:
   publish_to_testpypi:
     runs-on: ubuntu-latest
+
+    environment:
+      name: testpypi
+      url: https://test.pypi.org/p/<package-name>
+
+    permissions:
+      id-token: write   # Required for trusted publishing
+
     steps:
       - uses: actions/checkout@v4
 
@@ -59,3 +67,8 @@ jobs:
       - name: List artifacts that will be uploaded
         run: |
           ls -l dist/*
+
+      - name: Publish to TestPyPI
+        uses: pypa/gh-action-pypi-publish@release/v1
+        with:
+          repository-url: https://test.pypi.org/legacy/
