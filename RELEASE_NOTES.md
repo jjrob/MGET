@@ -1,6 +1,6 @@
 # MGET Release Notes
 
-## [3.0.2] - 2024-09-25
+## [v3.0.2](https://github.com/jjrob/MGET/releases/tag/v3.0.2) - 2024-09-25
 
 - First public release of MGET for Python 3.x and ArcGIS Pro
   - 64-bit Windows or 64-bit Linux
