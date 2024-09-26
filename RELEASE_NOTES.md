@@ -1,5 +1,11 @@
 # MGET Release Notes
 
+## [v3.0.3](https://github.com/jjrob/MGET/releases/tag/v3.0.3) - 2024-09-25
+
+### Added
+- Released docs to https://mget.readthedocs.io/
+- Updated README.md to link to relevent docs pages
+
 ## [v3.0.2](https://github.com/jjrob/MGET/releases/tag/v3.0.2) - 2024-09-25
 
 - First public release of MGET for Python 3.x and ArcGIS Pro
