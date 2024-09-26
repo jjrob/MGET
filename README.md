@@ -15,10 +15,17 @@ Lab](https://mgel.env.duke.edu/).
 MGET requires 64-bit Python 3.9–3.12 running on Windows or Linux. For full
 functionality, ArcGIS Pro 3.2.2 or later or ArcGIS Server 11.2 or later is
 also required, along with some freely-available software. MGET can be
-installed with `pip install mget3`, but please see these platform-specific
-instructions to ensure all prerequisites are met.
+installed with `pip install mget3`, but please see the platform-specific
+instructions below to ensure all prerequisites are met.
 
-> [!NOTE] 
+* [Windows with ArcGIS Pro or Server](https://mget.readthedocs.io/en/stable/WindowsWithArc.html)
+* [Windows without ArcGIS](https://mget.readthedocs.io/en/stable/WindowsWithoutArc.html)
+* [Linux with ArcGIS Server](https://mget.readthedocs.io/en/stable/LinuxWithArc.html)
+* [Linux without ArcGIS](https://mget.readthedocs.io/en/stable/LinuxWithoutArc.html)
+* [Windows with Python 2.x and ArcGIS Desktop (no longer maintained)](https://mget.readthedocs.io/en/stable/WindowsWithArcDesktop.html)
+
+> **Ⓘ Note**
+>
 > We are still in the process of porting MGET for Python 2.7 and ArcGIS
 > Desktop to work with Python 3.x and ArcGIS Pro and Server. Not everything
 > has been ported yet. If you have questions about something that is missing,
@@ -27,10 +34,8 @@ instructions to ensure all prerequisites are met.
 
 ## Usage Examples
 
-Coming in v3.0.3:
-
-* GeoEco Python Library
-* MGET ArcGIS Geoprocessing Toolbox
+* [GeoEco Python Library](https://mget.readthedocs.io/en/stable/PythonExamples.html)
+* [MGET ArcGIS Geoprocessing Toolbox](https://mget.readthedocs.io/en/stable/ArcGISToolboxExamples.html)
 
 ## Getting Help and Reporting Bugs
 
@@ -55,11 +60,9 @@ ArcGIS, Python, R, MATLAB, and C++. Environmental Modelling & Software
 
 ## Documentation
 
-Coming in v3.0.3:
-
-* Public API
-* Internal API
-* For MGET Developers
+* [Public API](https://mget.readthedocs.io/en/stable/PublicAPI.html)
+* [Internal API](https://mget.readthedocs.io/en/stable/InternalAPI.html)
+* [For MGET Developers](https://mget.readthedocs.io/en/stable/Development.html)
 * [Release Notes](https://github.com/jjrob/MGET/blob/main/RELEASE_NOTES.md)
 
 ## License
