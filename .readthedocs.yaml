@@ -18,7 +18,7 @@ build:
   # post_install job here.
   
   jobs:
-    post_intall:
+    post_install:
     - python -m pip install --no-deps -e .
 
 # Build documentation in the "doc/GeoEco" directory with Sphinx
