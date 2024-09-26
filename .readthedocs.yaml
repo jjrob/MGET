@@ -11,6 +11,16 @@ build:
   tools:
     python: "3.12"
 
+  # To build the documentation, our package (GeoEco) must be installed.
+  # But we don't want to install all of its dependencies, and we want.
+  # to install it as an editable install. Unfortunately we can't do that
+  # with python.install below, e.g. using method: pip. So do it with a
+  # post_install job here.
+  
+  jobs:
+    post_intall:
+    - python -m pip install --no-deps -e .
+
 # Build documentation in the "doc/GeoEco" directory with Sphinx
 sphinx:
   configuration: doc/GeoEco/conf.py
@@ -20,8 +30,3 @@ sphinx:
 python:
   install:
   - requirements: doc/GeoEco/requirements.txt
-
-  # We also need the GeoEco package installed. But we don't want to install all of its dependencies.
-
-  - method: pip
-    path: -e .
