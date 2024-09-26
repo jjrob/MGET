@@ -21,9 +21,6 @@ build:
     post_install:
     - python -m pip install --no-deps -e .
 
-    post_build:
-    - ls -l ../../_readthedocs/html
-
 # Build documentation in the "doc/GeoEco" directory with Sphinx
 sphinx:
   configuration: doc/GeoEco/conf.py
