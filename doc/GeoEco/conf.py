@@ -36,7 +36,7 @@ exclude_patterns = [
     '.DS_Store',
 ]
 
-root_doc = 'Index'
+root_doc = 'index'
 show_warning_types = True
 highlight_language = 'none'
 
