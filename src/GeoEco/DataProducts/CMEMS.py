@@ -755,7 +755,7 @@ class CMEMSARCOArray(Grid):
 
             if not isinstance(data, numpy.ndarray) and data is not None and numpy.isfinite(data) and data != self.UnscaledNoDataValue:
                 if data > 0:
-                    data = numpy.cast[self.UnscaledDataType](numpy.log10(data))
+                    data = numpy.asarray(numpy.log10(data), dtype=self.UnscaledDataType)
                 else:
                     data = self.UnscaledNoDataValue if self.UnscaledNoDataValue is not None else numpy.nan
                     log10NonPositive = True

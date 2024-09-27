@@ -162,7 +162,7 @@ class InpaintedGrid(Grid):
                     # NoData value to NaN.
 
                     data = grid.Data[:]
-                    data[Grid.numpy_equal_nan(data, grid.NoDataValue)] = numpy.NaN
+                    data[Grid.numpy_equal_nan(data, grid.NoDataValue)] = numpy.nan
 
                     # Inpaint the numpy array with the MATLAB function.
 
@@ -170,8 +170,8 @@ class InpaintedGrid(Grid):
                                                                            {'del2a': 1, 'del2b': 0, 'del2c': 2, 'del4': 3, 'spring': 4}[self._Method.lower()],   # method
                                                                            self._MaxHoleSize if self._MaxHoleSize is not None else 0.,      # maxHoleSize
                                                                            float(self._XEdgesWrap),                                         # edgesWrap
-                                                                           self._MinValue if self._MinValue is not None else numpy.NaN,     # minValue
-                                                                           self._MaxValue if self._MaxValue is not None else numpy.NaN)     # maxValue
+                                                                           self._MinValue if self._MinValue is not None else numpy.nan,     # minValue
+                                                                           self._MaxValue if self._MaxValue is not None else numpy.nan)     # maxValue
 
                     # In the returned array, convert NaN to the NoDataValue.
 

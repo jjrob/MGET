@@ -186,7 +186,7 @@ class CannyEdgeGrid(Grid):
                     # value to NaN.
 
                     data = grid.Data[:]
-                    data[Grid.numpy_equal_nan(data, grid.NoDataValue)] = numpy.NaN
+                    data[Grid.numpy_equal_nan(data, grid.NoDataValue)] = numpy.nan
 
                     # Detect edges in the numpy array with the MATLAB function.
 
@@ -209,7 +209,7 @@ class CannyEdgeGrid(Grid):
                     # Then cast it to our preferred data type.
 
                     edges[numpy.isnan(edges)] = self.NoDataValue
-                    edges = numpy.cast[self.DataType](edges) 
+                    edges = numpy.asarray(edges, dtype=self.DataType) 
 
                     # Write the returned array to the temporary directory.
 

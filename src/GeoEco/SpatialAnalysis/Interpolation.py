@@ -568,7 +568,7 @@ class Interpolator(object):
                             else:
                                 if isinstance(value, int):
                                     value = float(value)
-                                if fieldDataTypes[i] == 'float32' and numpy.isinf(numpy.cast['float32'](value)):
+                                if fieldDataTypes[i] == 'float32' and numpy.isinf(numpy.asarray(value, dtype='float32')):
                                     overflow = True
 
                             if overflow:

@@ -81,7 +81,7 @@ class FastMarchingDistanceGrid(Grid):
             return 'float32'
         
         if name == 'UnscaledNoDataValue':
-            return -3.4028234663852886e+38      # This is what ArcGIS uses by default. Note that float(-3.4028234663852886e+38) == numpy.cast['float32'](-3.4028234663852886e+38)
+            return -3.4028234663852886e+38      # This is what ArcGIS uses by default. Note that float(-3.4028234663852886e+38) == numpy.asarray(-3.4028234663852886e+38, dtype='float32')
 
         if name in ['ScaledDataType', 'ScaledNoDataValue', 'ScalingFunction', 'UnscalingFunction']:
             return None
@@ -171,7 +171,7 @@ class FastMarchingDistanceGrid(Grid):
                     else:
                         sliceData = grid.Data[s[0], s[1], :, :]
 
-                    phi = numpy.cast['float64'](sliceData)
+                    phi = numpy.asarray(sliceData, dtype='float64')
 
                     # Classify the cells as either outside (positive) or
                     # inside (zero or negative) the features of interest.

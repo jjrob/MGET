@@ -585,7 +585,7 @@ class NetCDFVariable(Grid):
                 # Set the ScalingFunction, ScaledNoDataValue, and
                 # UnscalingFunction.
 
-                scalingFunction = lambda data: numpy.cast[scaledDataType](scale_factor*data + add_offset)
+                scalingFunction = lambda data: numpy.asarray(scale_factor*data + add_offset, dtype=scaledDataType)
                 self.SetLazyPropertyValue('ScalingFunction', scalingFunction)
                 
                 if unscaledNoDataValue is not None:
@@ -593,7 +593,7 @@ class NetCDFVariable(Grid):
                 else:
                     self.SetLazyPropertyValue('ScaledNoDataValue', None)
 
-                self.SetLazyPropertyValue('UnscalingFunction', lambda data: numpy.cast[v.dtype.name](numpy.round((data - add_offset)/scale_factor)))
+                self.SetLazyPropertyValue('UnscalingFunction', lambda data: numpy.asarray(numpy.round((data - add_offset)/scale_factor), dtype=v.dtype.name)
 
         # Log a debug message with the lazy property values.
 

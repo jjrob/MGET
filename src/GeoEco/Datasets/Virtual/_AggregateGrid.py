@@ -221,7 +221,7 @@ class AggregateGrid(Grid):
                 else:
                     hasData = numpy.ones(data.shape, dtype=bool)
 
-                count += numpy.cast['int32'](hasData)
+                count += numpy.asarray(hasData, dtype='int32')
 
                 if self._Statistic in ['minimum', 'range']:
                     isSmaller = numpy.logical_and(hasData, data < smallest)

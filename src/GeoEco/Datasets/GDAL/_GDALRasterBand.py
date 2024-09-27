@@ -185,7 +185,7 @@ class GDALRasterBand(Grid):
             # numpy float32 and THEN doing the comparison.
 
             elif noDataValue is not None and numpyDataType == 'float32':
-                noDataValue = numpy.cast['float32'](noDataValue)
+                noDataValue = numpy.asarray(noDataValue, dtype='float32')
 
             # Set the lazy property values.
 

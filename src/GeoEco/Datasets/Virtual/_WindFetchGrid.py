@@ -80,7 +80,7 @@ class WindFetchGrid(Grid):
             return 'float32'
         
         if name == 'UnscaledNoDataValue':
-            return -3.4028234663852886e+38      # This is what ArcGIS uses by default. Note that float(-3.4028234663852886e+38) == numpy.cast['float32'](-3.4028234663852886e+38)
+            return -3.4028234663852886e+38      # This is what ArcGIS uses by default. Note that float(-3.4028234663852886e+38) == numpy.asarray(-3.4028234663852886e+38, dtype='float32')
 
         if name in ['ScaledDataType', 'ScaledNoDataValue', 'ScalingFunction', 'UnscalingFunction']:
             return None

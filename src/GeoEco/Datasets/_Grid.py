@@ -686,7 +686,7 @@ class Grid(Dataset):
         import numpy
 
         if data.dtype.name != self.DataType:
-            data = numpy.cast[str(self.DataType)](data)
+            data = numpy.asarray(data, dtype=self.DataType)
             
         if self.UnscaledNoDataValue is not None and self.NoDataValue is not None:
             if data.ndim > 0:
@@ -780,7 +780,7 @@ class Grid(Dataset):
         if data.dtype.name != self.UnscaledDataType:
             self._LogDebug(_('%(class)s 0x%(id)016X: Changing the data type of the returned data from %(t1)s to %(t2)s.') % {'class': self.__class__.__name__, 'id': id(self), 't1': data.dtype.name, 't2': self.UnscaledDataType})
             import numpy
-            data = numpy.cast[str(self.UnscaledDataType)](data)
+            data = numpy.asarray(data, dtype=self.UnscaledDataType)
 
         # Return the data.
 
@@ -1057,7 +1057,7 @@ class Grid(Dataset):
         if value.dtype.name != self.UnscaledDataType:
             if not numpy.can_cast(value.dtype, str(self.UnscaledDataType)):
                 self._LogDebug(_('%(class)s 0x%(id)016X: Warning: casting from %(dt1)s to %(dt2)s. The loss of precision may produce unexpected results.'), {'class': self.__class__.__name__, 'id': id(self), 'dt1': value.dtype.name, 'dt2': self.UnscaledDataType})
-            value = numpy.cast[str(self.UnscaledDataType)](value)
+            value = numpy.asarray(value, dtype=self.UnscaledDataType)
 
         # If the caller's key included slices that have abs(step) > 1,
         # read the hyperslab that encloses the entire range described
@@ -1069,7 +1069,7 @@ class Grid(Dataset):
             
             if existingData.dtype.name != value.dtype.name:
                 self._LogDebug(_('%(class)s 0x%(id)016X: Changing the data type of the returned data from %(t1)s to %(t2)s.') % {'class': self.__class__.__name__, 'id': id(self), 't1': existingData.dtype.name, 't2': value.dtype.name})
-                existingData = numpy.cast[str(value.dtype.name)](existingData)
+                existingData = numpy.asarray(existingData, dtype=value.dtype.name)
 
             existingData.__setitem__(largeStepKey, value)
 
