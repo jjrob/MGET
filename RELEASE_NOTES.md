@@ -1,5 +1,10 @@
 # MGET Release Notes
 
+## v3.1.0 - Under Development
+
+### Added
+- Add support for numpy 2.x (#11)
+
 ## [v3.0.3](https://github.com/jjrob/MGET/releases/tag/v3.0.3) - 2024-09-25
 
 ### Added
