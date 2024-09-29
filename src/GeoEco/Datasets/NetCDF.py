@@ -184,10 +184,10 @@ class NetCDFFile(FileDatasetCollection):
 
             self._LogDebug(_('%(class)s 0x%(id)016X: Opening %(dn)s with the netCDF4 module.'), {'class': self.__class__.__name__, 'id': id(self), 'dn': self._DisplayName})
 
-            import netCDF
+            import netCDF4
 
             try:
-                self._RootDataset = netCDF.Dataset(path)
+                self._RootDataset = netCDF4.Dataset(path)
             except Exception as e:
                 raise RuntimeError(_('Failed to open %(dn)s. The file may not be in netCDF format. Detailed error information: netCDF4.Dataset() reported %(e)s: %(msg)s.') % {'dn': self._DisplayName, 'e': e.__class__.__name__, 'msg': e})
 
@@ -504,9 +504,9 @@ class NetCDFVariable(Grid):
 
                 if d == 't':
                     if hasattr(dimensionVariable, 'units') and ' since ' in dimensionVariable.units:
-                        netCDF = NetCDFDependency.GetNetCDFModule()
+                        import netCDF4
                         try:
-                            cornerCoords[i] = netCDF.num2date(cornerCoords[i], dimensionVariable.units)
+                            cornerCoords[i] = netCDF4.num2date(cornerCoords[i], dimensionVariable.units)
                         except:
                             cornerCoords[i] = None
                     else:

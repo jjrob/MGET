@@ -76,6 +76,7 @@ package. The wrappers' documentation include some examples of this.
     :recursive:
 
     GeoEco.DataProducts.CMEMS
+    GeoEco.DataProducts.NASA.Earthdata
     GeoEco.DataProducts.NOAA.ClimateIndices
 
 Spatial and Temporal Analysis

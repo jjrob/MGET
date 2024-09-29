@@ -1168,7 +1168,7 @@ from ..Dependencies import PythonModuleDependency
 from ..Metadata import *
 
 AddModuleMetadata(
-    shortDescription=_('Classes for accessing oceanographic datasets published by `Copernicus Marine Service <https://data.marine.copernicus.eu/products>`_.'),
+    shortDescription=_('Classes for accessing oceanographic datasets published by `Copernicus Marine Service <https://data.marine.copernicus.eu/products>`__.'),
     longDescription=_('Copernicus Marine Service is also known as Copernicus Marine Environmental Monitoring Service (CMEMS).'))
 
 ###############################################################################
@@ -1176,15 +1176,15 @@ AddModuleMetadata(
 ###############################################################################
 
 AddClassMetadata(CMEMSARCOArray,
-    shortDescription=_('A :class:`~GeoEco.Datasets.Grid` for accessing 2D, 3D, and 4D gridded datasets published by `Copernicus Marine Service <https://data.marine.copernicus.eu/products>`_.'),
+    shortDescription=_('A :class:`~GeoEco.Datasets.Grid` for accessing 2D, 3D, and 4D gridded datasets published by `Copernicus Marine Service <https://data.marine.copernicus.eu/products>`__.'),
     longDescription=_(
 """Copernicus Marine Service is also known as Copernicus Marine Environmental
 Monitoring Service (CMEMS). :ref:`This example
 <python-downloading-cmems-rasters>` shows how to use this class to create time
 series of chlorophyll concentration rasters from `Copernicus GlobColour
-<https://data.marine.copernicus.eu/product/OCEANCOLOUR_GLO_BGC_L4_MY_009_104>`_
+<https://data.marine.copernicus.eu/product/OCEANCOLOUR_GLO_BGC_L4_MY_009_104>`__
 and ocean temperature rasters from the `Global Ocean Physics Reanalysis
-<https://data.marine.copernicus.eu/product/GLOBAL_MULTIYEAR_PHY_001_030>`_.
+<https://data.marine.copernicus.eu/product/GLOBAL_MULTIYEAR_PHY_001_030>`__.
 There is :ref:`another example <arcgis-downloading-cmems-rasters>` showing how
 to do this in ArcGIS with the **Create Rasters for CMEMS Dataset**
 geoprocessing tool."""))
@@ -1203,7 +1203,7 @@ AddPropertyMetadata(CMEMSARCOArray.DatasetID,
     typeMetadata=UnicodeStringTypeMetadata(minLength=1),
     shortDescription=_(
 """Dataset ID to access. You can find the Dataset ID by going to the
-`Copernicus Marine Data Store <https://data.marine.copernicus.eu/products>`_,
+`Copernicus Marine Data Store <https://data.marine.copernicus.eu/products>`__,
 viewing your product of interest, clicking on Data Access, and scrolling to
 the Dataset ID table. The dataset must have 2, 3, or 4 dimensions. Two of the
 dimensions must be longitude and latitude. The third and fourth dimension can
@@ -1214,7 +1214,7 @@ AddPropertyMetadata(CMEMSARCOArray.VariableShortName,
     shortDescription=_(
 """"Short name" of the variable to access. You can find the variable's short
 name by going to to the `Copernicus Marine Data Store
-<https://data.marine.copernicus.eu/products>`_, viewing your product of
+<https://data.marine.copernicus.eu/products>`__, viewing your product of
 interest, clicking on Data Access, scrolling to the Dataset ID table, and
 clicking on Form under the Subset column. When the form appears, look under
 the Variables heading. Each variable has a long description in black font,
@@ -1338,7 +1338,7 @@ AddResultMetadata(CMEMSARCOArray.__init__, 'obj',
 # Public method: CMEMSARCOArray.CreateArcGISRasters
 
 AddMethodMetadata(CMEMSARCOArray.CreateArcGISRasters,
-    shortDescription=_('Creates rasters for a 2D, 3D, or 4D gridded dataset published by `Copernicus Marine Service <https://data.marine.copernicus.eu/products>`_.'),
+    shortDescription=_('Creates rasters for a 2D, 3D, or 4D gridded dataset published by `Copernicus Marine Service <https://data.marine.copernicus.eu/products>`__.'),
     isExposedAsArcGISTool=True,
     arcGISDisplayName=_('Create Rasters for CMEMS Dataset'),
     arcGISToolCategory=_('Data Products\\Copernicus Marine Service (CMEMS)'),
@@ -1546,7 +1546,7 @@ AddResultMetadata(CMEMSARCOArray.CreateArcGISRasters, 'updatedOutputWorkspace',
 # Public method: CMEMSARCOArray.CannyEdgesAsArcGISRasters
 
 AddMethodMetadata(CMEMSARCOArray.CannyEdgesAsArcGISRasters,
-    shortDescription=_('Creates rasters indicating the positions of fronts identified with the Canny edge detection algorithm in a 2D, 3D, or 4D gridded dataset published by `Copernicus Marine Service <https://data.marine.copernicus.eu/products>`_.'),
+    shortDescription=_('Creates rasters indicating the positions of fronts identified with the Canny edge detection algorithm in a 2D, 3D, or 4D gridded dataset published by `Copernicus Marine Service <https://data.marine.copernicus.eu/products>`__.'),
     longDescription=_CannyEdgesOverview,
     isExposedAsArcGISTool=True,
     arcGISDisplayName=_('Find Canny Fronts in CMEMS Dataset'),
@@ -1600,7 +1600,7 @@ CopyResultMetadata(CMEMSARCOArray.CreateArcGISRasters, 'updatedOutputWorkspace',
 # Public method: CMEMSARCOArray.CreateClimatologicalArcGISRasters
 
 AddMethodMetadata(CMEMSARCOArray.CreateClimatologicalArcGISRasters,
-    shortDescription=_('Creates climatological rasters for a 3D, or 4D gridded time series dataset published by `Copernicus Marine Service <https://data.marine.copernicus.eu/products>`_.'),
+    shortDescription=_('Creates climatological rasters for a 3D, or 4D gridded time series dataset published by `Copernicus Marine Service <https://data.marine.copernicus.eu/products>`__.'),
     isExposedAsArcGISTool=True,
     arcGISDisplayName=_('Create Climatological Rasters for CMEMS Dataset'),
     arcGISToolCategory=_('Data Products\\Copernicus Marine Service (CMEMS)'),

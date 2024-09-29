@@ -1,5 +1,5 @@
-# DataProducts/NOAA - Grids and DatasetCollections that wrap some
-# commonly-used data products from NOAA.
+# DataProducts/NASA - Grids and DatasetCollections that wrap some
+# commonly-used data products from NASA.
 #
 # Copyright (C) 2024 Jason J. Roberts
 #
@@ -14,4 +14,4 @@
 from ...Internationalization import _
 from ...Metadata import AddModuleMetadata
 
-AddModuleMetadata(shortDescription=_('Classes for accessing some commonly-used data products from NOAA.'))
+AddModuleMetadata(shortDescription=_('Classes for accessing some commonly-used data products from NASA.'))

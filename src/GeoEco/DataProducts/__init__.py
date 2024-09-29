@@ -14,4 +14,4 @@
 from ..Internationalization import _
 from ..Metadata import AddModuleMetadata
 
-AddModuleMetadata(shortDescription=_(':class:`~GeoEco.Datasets.Grid` and :class:`~GeoEco.Datasets.DatasetCollection` wrappers around some commonly-used marine data products.'))
+AddModuleMetadata(shortDescription=_('Classes for accessing some commonly-used marine data products.'))

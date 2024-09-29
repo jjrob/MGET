@@ -650,7 +650,7 @@ AddModuleMetadata(shortDescription=_('Functions for working with NOAA climate in
 ###############################################################################
 
 AddClassMetadata(PSLClimateIndices,
-    shortDescription=_('Functions for working with climate index time series provided by the NOAA Physical Sciences Laboratory (PSL).'))
+    shortDescription=_('Functions for working with `climate index time series <https://psl.noaa.gov/data/climateindices/>`__ provided by the NOAA Physical Sciences Laboratory (PSL).'))
 
 # Public method: PSLClimateIndices.StringToList
 

@@ -1108,14 +1108,14 @@ from ..Datasets import Database, InsertCursor
 from ..Metadata import *
 from ..Types import *
 
-AddModuleMetadata(shortDescription=_('Functions for common operations with rasters, implemented using ArcGIS\'s `arcpy <https://www.esri.com/en-us/arcgis/products/arcgis-python-libraries/libraries/arcpy>`_ Python package.'))
+AddModuleMetadata(shortDescription=_('Functions for common operations with rasters, implemented using ArcGIS\'s `arcpy <https://www.esri.com/en-us/arcgis/products/arcgis-python-libraries/libraries/arcpy>`__ Python package.'))
 
 ###############################################################################
 # Metadata: ArcGISRaster class
 ###############################################################################
 
 AddClassMetadata(ArcGISRaster,
-    shortDescription=_('Functions for common operations with rasters, implemented using ArcGIS\'s `arcpy <https://www.esri.com/en-us/arcgis/products/arcgis-python-libraries/libraries/arcpy>`_ Python package.'))
+    shortDescription=_('Functions for common operations with rasters, implemented using ArcGIS\'s `arcpy <https://www.esri.com/en-us/arcgis/products/arcgis-python-libraries/libraries/arcpy>`__ Python package.'))
 
 # Public method: ArcGISRaster.Copy
 
@@ -2038,13 +2038,13 @@ coordinate system. The ArcGIS :arcpy_management:`Project-Raster` tool is used
 to perform the projection and accepts the following values:
 
 * ``NEAREST`` - `Nearest neighbor assignment
-  <http://en.wikipedia.org/wiki/Nearest-neighbor_interpolation>`_.
+  <http://en.wikipedia.org/wiki/Nearest-neighbor_interpolation>`__.
 
 * ``BILINEAR`` - `Bilinear interpolation
-  <http://en.wikipedia.org/wiki/Bilinear_interpolation>`_.
+  <http://en.wikipedia.org/wiki/Bilinear_interpolation>`__.
 
 * ``CUBIC`` - Cubic convolution, also known as `bicubic interpolation
-  <http://en.wikipedia.org/wiki/Bicubic_interpolation>`_.
+  <http://en.wikipedia.org/wiki/Bicubic_interpolation>`__.
 
 You must specify one of these algorithms to project to a new coordinate
 system. An error will be raised if you specify a new coordinate system without
@@ -2105,7 +2105,7 @@ AddArgumentMetadata(ArcGISRaster.ProjectClipAndOrExecuteMapAlgebra, 'mapAlgebraE
     typeMetadata=MapAlgebraExpressionTypeMetadata(canBeNone=True),
     description=_(
 """`Map algebra expression
-<https://pro.arcgis.com/en/pro-app/latest/help/analysis/spatial-analyst/mapalgebra/what-is-map-algebra.htm>`_
+<https://pro.arcgis.com/en/pro-app/latest/help/analysis/spatial-analyst/mapalgebra/what-is-map-algebra.htm>`__
 to execute on the raster. The expression is executed after the converted
 raster is projected and clipped (if those options are specified). Use
 ``inputRaster`` to represent the raster that you now want to perform map
@@ -2157,13 +2157,13 @@ AddArgumentMetadata(ArcGISRaster.ProjectToTemplate, 'resamplingTechnique',
 raster's coordinate system. One of:
 
 * ``NEAREST`` - `Nearest neighbor assignment
-  <http://en.wikipedia.org/wiki/Nearest-neighbor_interpolation>`_.
+  <http://en.wikipedia.org/wiki/Nearest-neighbor_interpolation>`__.
 
 * ``BILINEAR`` - `Bilinear interpolation
-  <http://en.wikipedia.org/wiki/Bilinear_interpolation>`_.
+  <http://en.wikipedia.org/wiki/Bilinear_interpolation>`__.
 
 * ``CUBIC`` - Cubic convolution, also known as `bicubic interpolation
-  <http://en.wikipedia.org/wiki/Bicubic_interpolation>`_.
+  <http://en.wikipedia.org/wiki/Bicubic_interpolation>`__.
 
 * ``MAJORITY`` - Majority resampling. This method requires ArcGIS 9.3 or
   later.
@@ -2228,7 +2228,7 @@ guessed values will be, especially for rasters that represent a noisy surface.
 
 Thanks to John D'Errico for providing the code that implements the
 mathematical algorithms described here (click `here
-<http://www.mathworks.com/matlabcentral/fileexchange/4551>`_ for more
+<http://www.mathworks.com/matlabcentral/fileexchange/4551>`__ for more
 information)."""),
     arcGISDisplayName=_('Method for interpolating NoData cells'),
     arcGISCategory=_('Interpolation and masking options'))
@@ -2602,7 +2602,7 @@ stripping the workspace to search from the source path and replacing it with
 the destination workspace.
 
 For more information on Python syntax, please see the `Python documentation
-<http://www.python.org/doc/>`_."""],
+<http://www.python.org/doc/>`__."""],
     outputParamDefaultExpressions=['os.path.join(destinationWorkspace, sourceRaster[len(workspaceToSearch)+1:])'],
     processListMethodName='CopyList',
     processListMethodShortDescription=_('Copies a list of ArcGIS rasters.'),
@@ -2702,7 +2702,7 @@ raster path is calculated by stripping the workspace to search from the input
 raster path and replacing it with the output workspace.
 
 For more information on Python syntax, please see the `Python documentation
-<http://www.python.org/doc/>`_.""")
+<http://www.python.org/doc/>`__.""")
 
 BatchProcessing.GenerateForMethod(ArcGISRaster.ExtractByMask,
     inputParamNames=['inputRaster'],
@@ -2840,7 +2840,7 @@ path is calculated by stripping the workspace to search from the input raster
 path and replacing it with the output workspace.
 
 For more information on Python syntax, please see the `Python documentation
-<http://www.python.org/doc/>`_.""")
+<http://www.python.org/doc/>`__.""")
 
 BatchProcessing.GenerateForMethod(ArcGISRaster.ToPolygons,
     inputParamNames=['inputRaster'],

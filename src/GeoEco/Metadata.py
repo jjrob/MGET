@@ -171,7 +171,7 @@ class ModuleMetadata(Metadata):
             doc = doc + self.LongDescription
         if len(doc) <= 0:
             return 'No description available.'
-        return doc
+        return doc.rstrip()
 
     def AppendXMLNodes(self, node, document):
         super(ModuleMetadata, self).AppendXMLNodes(node, document)
@@ -231,7 +231,7 @@ class ClassMetadata(Metadata):
             doc = doc + self.LongDescription
         if len(doc) <= 0:
             return 'No description available.'
-        return doc
+        return doc.rstrip()
 
     def ValidatePropertyAssignment(self):
 
@@ -507,7 +507,7 @@ class PropertyMetadata(Metadata):
         if self.LongDescription is not None:
             doc += '\n' + self.LongDescription
 
-        return doc
+        return doc.rstrip()
 
     def AppendXMLNodes(self, node, document):
         super(PropertyMetadata, self).AppendXMLNodes(node, document)
@@ -717,7 +717,7 @@ class MethodMetadata(Metadata):
 
         if len(doc) <= 0:
             return 'No description available.'
-        return doc
+        return doc.rstrip()
 
     def AppendXMLNodes(self, node, document, cls):
         super(MethodMetadata, self).AppendXMLNodes(node, document)
@@ -797,12 +797,16 @@ class ArgumentMetadata(object):
 
     def _GetDescription(self):
         doc = self._Description
+        addNewlines = '\n\n' in doc and not doc.endswith('\n\n')
 
         constraints = self.Type.GetConstraintDescriptionStrings()
         if len(constraints) > 0:
             for c in constraints:
                 c = c.replace(':','\uA789')   # Replace ASCII colons with Unicode 0xA789. Unfortunately Sphinx or its extensions interpret colons as markup and it messes up the documentation.
                 if c not in doc:
+                    if addNewlines:
+                        doc += '\n\n'
+                        addNewlines = False
                     if not doc.endswith('\n'):
                         doc += ' '
                     doc += c
@@ -811,9 +815,12 @@ class ArgumentMetadata(object):
 
         deps = [item for d in self.Dependencies for item in d.GetConstraintDescriptionStrings()]
         if len(deps) > 0:
+            if addNewlines:
+                doc += '\n\n'
+                addNewlines = False
             doc += ' Requires: ' + ', '.join([d for d in deps]) + '.'
 
-        return doc
+        return doc.rstrip()
     
     def _SetDescription(self, value):
         assert isinstance(value, (type(None), str)), 'Description must be a string, or None.'
