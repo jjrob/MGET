@@ -1,0 +1,1 @@
+https://img.shields.io/badge/Python-3.9_|_3.10_|_3.11_|_3.12-blue
