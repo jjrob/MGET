@@ -244,3 +244,4 @@ jobs:
           valColorRange: ${{ steps.get_pass_pct.outputs.PASS_PERCENTAGE }}
           maxColorRange: 100
           minColorRange: 0
+          style: plastic
