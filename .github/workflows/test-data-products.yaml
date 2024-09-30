@@ -110,7 +110,7 @@ jobs:
       - name: Run tests
         run: |
           python -m pytest --junitxml=linux_results.xml ./test/GeoEco/DataProducts
-        continue-on-err0r: true
+        continue-on-error: true
 
       - name: Upload test linux_results.xml as artifact
         uses: actions/upload-artifact@v4
