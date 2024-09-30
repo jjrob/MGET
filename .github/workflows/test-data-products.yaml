@@ -1,5 +1,11 @@
 name: Test data products
 
+description: >
+  This action tests that MGET can successfully download data products from the
+  various services and providers using the modules within GeoEco.DataProducts.
+  These tests help us validate that the data products are still available and
+  alert us to breaking changes implemented by the services and providers.
+
 on:
   schedule:
     - cron: "41 16 * * *"  # Runs every day at 4:41 PM UTC
@@ -108,6 +114,9 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Run tests
+        env:
+          NASA_EARTHDATA_USERNAME: ${{ secrets.NASA_EARTHDATA_USERNAME }}
+          NASA_EARTHDATA_PASSWORD: ${{ secrets.NASA_EARTHDATA_PASSWORD }}
         run: |
           python -m pytest --junitxml=linux_results.xml ./test/GeoEco/DataProducts
         continue-on-error: true
@@ -122,6 +131,9 @@ jobs:
   test_data_products_windows:
     name: Test data products on Windows
     runs-on: windows-latest
+
+    environment:
+      name: "Test data products"
 
     steps:
       - name: Set up Python
