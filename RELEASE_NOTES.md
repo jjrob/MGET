@@ -4,7 +4,9 @@
 
 ### Added
 - Add CMRGranuleSearcher class for querying NASA Earthdata for granules
+- Add GitHub action to test downloading of all data products daily
 - Add support for numpy 2.x (#11)
+- Add badges to README.txt giving build, docs, and data products status
 
 ### Fixed
 - On PublicAPI page, the description is not showing up for GeoEco.DataManagement.ArcGISRasters (#3)
