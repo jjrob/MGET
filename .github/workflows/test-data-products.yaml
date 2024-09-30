@@ -108,6 +108,9 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Run tests
+        env:
+          NASA_EARTHDATA_USERNAME: ${{ secrets.NASA_EARTHDATA_USERNAME }}
+          NASA_EARTHDATA_PASSWORD: ${{ secrets.NASA_EARTHDATA_PASSWORD }}
         run: |
           python -m pytest --junitxml=linux_results.xml ./test/GeoEco/DataProducts
 
@@ -184,6 +187,9 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Run tests
+        env:
+          NASA_EARTHDATA_USERNAME: ${{ secrets.NASA_EARTHDATA_USERNAME }}
+          NASA_EARTHDATA_PASSWORD: ${{ secrets.NASA_EARTHDATA_PASSWORD }}
         run: |
           python -m pytest --junitxml=windows_results.xml ./test/GeoEco/DataProducts
 
