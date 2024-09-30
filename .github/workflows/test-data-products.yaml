@@ -1,0 +1,96 @@
+name: Test data products
+
+on:
+  schedule:
+    - cron: "41 16 * * *"  # Runs every day at 4:41 PM UTC
+
+  workflow_run:
+    workflows: ["Build and test wheels"]
+    types:[completed]
+    conclusion: success
+
+jobs:
+  test_data_products_linux:
+    name: Test that all data products are accessible from Linux
+    runs-on: ubuntu-24.04
+
+    environment:
+      name: "Test data products"
+
+    steps:
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: "3.12"
+
+      - name: Display system information
+        run: |
+          echo "uname -a:"
+          uname -a
+          echo ""
+          echo "hostnamectl:"
+          hostnamectl
+          echo ""
+          echo "python3 --version:"
+          python3 --version
+
+      - name: Display GDAL versions available for installation
+        run: |
+          apt-cache policy gdal-bin gdal-data gdal-plugins libgdal-dev 
+
+      # Now we need to install GDAL. Unfortunately, we cannot use
+      # awalsh128/cache-apt-pkgs-action for this, at least on ubuntu-24.04,
+      # because it appears that GDAL has a post-install script that sets
+      # LD_LIBRARY_PATH, and that script does not appear to run even if
+      # execute_install_scripts is true for cache-apt-pkgs-action. At least, I
+      # THINK that is the problem. In any case, if we use
+      # cache-apt-pkgs-action, we get the following error when we try to run
+      # gdalinfo later below:
+      #
+      #     gdalinfo: error while loading shared libraries: libblas.so.3: cannot open shared object file: No such file or directory
+      #
+      # So call apt-get ourselves. The line with curl installs apt-fast.
+
+      - name: Install apt-fast
+        run: |
+          sudo /bin/bash -c "$(curl -sL https://git.io/vokNn)"
+          sudo apt-get update -y
+
+      - name: Install GDAL on ubuntu-24.04
+        run: |
+          sudo apt-fast install -y gdal-bin gdal-data gdal-plugins libgdal-dev libgdal34t64
+
+      - name: Install Python packages needed to install GDAL's Python bindings
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install "numpy<2" setuptools wheel
+
+      - name: Install GDAL's Python package
+        run: |
+          GDAL_VERSION_NEEDED=$(gdalinfo --version | awk '{print $2}' | sed 's/,//')
+          python -m pip install gdal==$GDAL_VERSION_NEEDED
+          echo ""
+          echo "Testing GDAL's python bindings"
+          python -c "from osgeo import _gdal_array"
+
+      - name: Download built wheels
+        uses: actions/download-artifact@v4
+        with:
+          name: cibw-wheels-ubuntu-latest
+          path: ./wheels
+
+      - name: Install wheel
+        run: |
+          GEOECO_VERSION=$(ls ./wheels | grep -m 1 mget3 | sed 's/.*mget3-\(.*\)-cp.*-cp.*.whl/\1/')
+          python -m pip install mget3==$GEOECO_VERSION --find-links=./wheels
+
+      - name: Install Python packages needed to run tests
+        run: |
+          python -m pip install pytest python-dotenv
+
+      - name: Checkout source
+        uses: actions/checkout@v4
+
+      - name: Run tests
+        run: |
+          python -m pytest ./test/GeoEco/DataProducts
