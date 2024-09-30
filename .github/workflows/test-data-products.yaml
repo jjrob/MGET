@@ -110,7 +110,7 @@ jobs:
       - name: Run tests
         run: |
           python -m pytest --junitxml=linux_results.xml ./test/GeoEco/DataProducts
-        continue-on-failure: true
+        continue-on-err0r: true
 
       - name: Upload test linux_results.xml as artifact
         uses: actions/upload-artifact@v4
@@ -190,7 +190,7 @@ jobs:
           NASA_EARTHDATA_PASSWORD: ${{ secrets.NASA_EARTHDATA_PASSWORD }}
         run: |
           python -m pytest --junitxml=windows_results.xml ./test/GeoEco/DataProducts
-        continue-on-failure: true
+        continue-on-error: true
 
       - name: Upload test windows_results.xml as artifact
         uses: actions/upload-artifact@v4
