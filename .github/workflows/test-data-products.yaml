@@ -160,7 +160,7 @@ jobs:
           # Get the latest workflow run ID from the main branch; supposedly these are returned in reverse chronological order 
           $workflow_runs = gh api repos/${{ github.repository }}/actions/workflows/$workflow_file_name/runs --paginate --jq '.workflow_runs[] | select(.head_branch == "main") | .id' | Select-Object -First 1
           echo "RUN_ID: $workflow_runs"
-          echo "RUN_ID=$workflow_runs" >> $GITHUB_OUTPUT
+          echo "RUN_ID=$workflow_runs" >> $env:GITHUB_OUTPUT     # Important: use $env:GITHUB_OUTPUT rather than $GITHUB_OUTPUT so variable is exported
 
       - name: Download built wheels
         uses: actions/download-artifact@v4
