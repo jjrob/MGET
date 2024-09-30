@@ -9,6 +9,8 @@ on:
     types: [completed]
     conclusion: success
 
+  workflow_dispatch:  # Allows manual trigger
+
 jobs:
   test_data_products_linux:
     name: Test that all data products are accessible from Linux
@@ -18,7 +20,7 @@ jobs:
       name: "Test data products"
 
     steps:
-      - name: Set up Python 3.12
+      - name: Set up Python
         uses: actions/setup-python@v4
         with:
           python-version: "3.12"
