@@ -10,6 +10,7 @@ toolbox.
 MGET was developed by the Duke University [Marine Geospatial Ecology
 Lab](https://mgel.env.duke.edu/).
 
+[![Python](https://github.com/jjrob/MGET/blob/main/badges/Python.svg)](https://python.org/) ![Platforms](https://github.com/jjrob/MGET/blob/main/badges/Platforms.svg) ![PyPI](https://github.com/jjrob/MGET/blob/main/badges/PyPI.svg)  
 [![Build and test wheels](https://github.com/jjrob/MGET/actions/workflows/build-wheels.yml/badge.svg)](https://github.com/jjrob/MGET/actions/workflows/build-wheels.yml) [![Documentation Status](https://readthedocs.org/projects/mget/badge/?version=stable)](https://mget.readthedocs.io/en/stable/?badge=stable)
 
 ## Installation
