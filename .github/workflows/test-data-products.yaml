@@ -11,6 +11,7 @@ on:
 
   workflow_dispatch:  # Allows manual trigger
 
+
 jobs:
   test_data_products_linux:
     name: Test data products on Linux
@@ -116,18 +117,64 @@ jobs:
           name: linux_results.xml
           path: linux_results.xml
 
-      - name: Compute pass percentage
-        run: |
-          total_tests=$(grep -o 'tests="[0-9]*"' linux_results.xml | grep -o "[0-9]*")
-          skipped_tests=$(grep -o 'skipped="[0-9]*"' linux_results.xml | grep -o "[0-9]*")
-          failed_tests=$(grep -o 'failures="[0-9]*"' linux_results.xml | grep -o "[0-9]*")
-          error_tests=$(grep -o 'errors="[0-9]*"' linux_results.xml | grep -o "[0-9]*")
-          pass_percentage=$(awk "BEGIN {printf \"%.f\", (($total_tests-$skipped_tests-$failed_tests-$error_tests)/($total_tests-$skipped_tests))*100}")
-          echo "PASS_PERCENTAGE: $pass_percentage%"
-          echo "$pass_percentage" > linux_pass_percentage.txt
 
-      - name: Upload test pass percentage as artifact
+  test_data_products_windows:
+    name: Test data products on Windows
+    runs-on: windows-latest
+
+    steps:
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Cache GDAL wheels from cgohlke/geospatial-wheels
+        id: cache-GDAL-wheels
+        uses: actions/cache@v4
+        with:
+          path: GDAL_wheels
+          key: cache-GDAL-3.9.2-win_amd64-wheels
+
+      - name: Download GDAL wheels from cgohlke/geospatial-wheels
+        if: steps.cache-GDAL-wheels.outputs.cache-hit != 'true'
+        run: |
+          mkdir GDAL_wheels
+          curl -L -o GDAL_wheels\\GDAL-3.9.2-cp39-cp39-win_amd64.whl https://github.com/cgohlke/geospatial-wheels/releases/download/v2024.9.22/GDAL-3.9.2-cp39-cp39-win_amd64.whl
+          curl -L -o GDAL_wheels\\GDAL-3.9.2-cp310-cp310-win_amd64.whl https://github.com/cgohlke/geospatial-wheels/releases/download/v2024.9.22/GDAL-3.9.2-cp310-cp310-win_amd64.whl
+          curl -L -o GDAL_wheels\\GDAL-3.9.2-cp311-cp311-win_amd64.whl https://github.com/cgohlke/geospatial-wheels/releases/download/v2024.9.22/GDAL-3.9.2-cp311-cp311-win_amd64.whl
+          curl -L -o GDAL_wheels\\GDAL-3.9.2-cp312-cp312-win_amd64.whl https://github.com/cgohlke/geospatial-wheels/releases/download/v2024.9.22/GDAL-3.9.2-cp312-cp312-win_amd64.whl
+
+      - name: Install GDAL wheel
+        run: |
+          python -m pip install -U pip
+          python -m pip install -U setuptools wheel
+          python -m pip install GDAL==3.9.2 --find-links=GDAL_wheels
+
+      - name: Download built wheels
+        uses: actions/download-artifact@v4
+        with:
+          name: cibw-wheels-windows-latest
+          path: wheels
+
+      - name: Install wheel
+        shell: pwsh
+        run: |
+          $env:MGET_VERSION = python -c "import glob; import os; files = glob.glob(os.path.join('wheels', 'mget3-*.whl')); print(os.path.basename(files[0]).split('-')[1])"
+          python -m pip install mget3==$env:MGET_VERSION --find-links=wheels
+
+      - name: Install Python packages needed to run tests
+        run: |
+          python -m pip install pytest python-dotenv
+
+      - name: Checkout source
+        uses: actions/checkout@v4
+
+      - name: Run tests
+        run: |
+          python -m pytest --junitxml=windows_results.xml ./test/GeoEco/DataProducts
+
+      - name: Upload test windows_results.xml as artifact
         uses: actions/upload-artifact@v4
         with:
-          name: linux_pass_percentage.txt
-          path: linux_pass_percentage.txt
+          name: windows_results.xml
+          path: windows_results.xml
