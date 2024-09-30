@@ -21,7 +21,7 @@ jobs:
 
     steps:
       - name: Set up Python
-        uses: actions/setup-python@v4
+        uses: actions/setup-python@v5
         with:
           python-version: "3.12"
 
@@ -108,4 +108,24 @@ jobs:
 
       - name: Run tests
         run: |
-          python -m pytest ./test/GeoEco/DataProducts
+          python -m pytest --junitxml=results.xml ./test/GeoEco/DataProducts
+
+      - name: Upload test results.xml as artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: linux_results.xml
+          path: linux_results.xml
+
+      - name: Compute pass percentage
+        run: |
+          total_tests=$(grep -o 'tests="[0-9]*"' results.xml | grep -o '[0-9]*')
+          passed_tests=$(grep -o 'tests="[0-9]*" failures="0"' results.xml | grep -o '[0-9]*')
+          pass_percentage=$(awk "BEGIN {printf \"%.f\", ($passed_tests/$total_tests)*100}")
+          echo "PASS_PERCENTAGE: $pass_percentage%"
+          echo "$pass_percentage" > pass_percentage.txt
+
+      - name: Upload test pass percentage as artifact
+        uses: actions/upload-artifact@v3
+        with:
+          name: linux_pass_percentage.txt
+          path: linux_pass_percentage.txt
