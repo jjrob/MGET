@@ -80,7 +80,7 @@ jobs:
         run: |
           workflow_file_name="build-wheels.yml"
           # Get the latest workflow run ID from the main branch; supposedly these are returned in reverse chronological order 
-          workflow_runs=$(gh api repos/${{ github.repository }}/actions/workflows/$workflow_file_name/runs --jq '.workflow_runs[] | select(.head_branch == "main") | .id' --limit 1)
+          workflow_runs=$(gh api repos/${{ github.repository }}/actions/workflows/$workflow_file_name/runs --paginate --jq '.workflow_runs[] | select(.head_branch == "main") | .id' | head -n 1)
           echo "Run ID: $workflow_runs"
           echo "::set-output name=run_id::$workflow_runs"
 
