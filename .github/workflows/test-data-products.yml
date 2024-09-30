@@ -1,10 +1,11 @@
-name: Test data products
+# test-data-products.yaml
+#
+# This action tests that MGET can successfully download data products from the
+# various services and providers using the modules within GeoEco.DataProducts.
+# These tests help us validate that the data products are still available and
+# alert us to breaking changes implemented by the services and providers.
 
-description: >
-  This action tests that MGET can successfully download data products from the
-  various services and providers using the modules within GeoEco.DataProducts.
-  These tests help us validate that the data products are still available and
-  alert us to breaking changes implemented by the services and providers.
+name: Test data products
 
 on:
   schedule:
