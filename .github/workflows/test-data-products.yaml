@@ -108,9 +108,6 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Run tests
-        env:
-          NASA_EARTHDATA_USERNAME: ${{ secrets.NASA_EARTHDATA_USERNAME }}
-          NASA_EARTHDATA_PASSWORD: ${{ secrets.NASA_EARTHDATA_PASSWORD }}
         run: |
           python -m pytest --junitxml=linux_results.xml ./test/GeoEco/DataProducts
         continue-on-error: true
@@ -125,9 +122,6 @@ jobs:
   test_data_products_windows:
     name: Test data products on Windows
     runs-on: windows-latest
-
-    environment:
-      name: "Test data products"
 
     steps:
       - name: Set up Python
@@ -215,6 +209,7 @@ jobs:
         uses: actions/download-artifact@v4
 
       - name: Compute pass percentage
+        id: get_pass_pct
         run: |
           LIN_TOTAL=$(grep -o 'tests="[0-9]*"' linux_results/linux_results.xml | grep -o "[0-9]*")
           LIN_SKIP=$(grep -o 'skipped="[0-9]*"' linux_results/linux_results.xml | grep -o "[0-9]*")
@@ -227,9 +222,22 @@ jobs:
           PASS_PERCENTAGE=$(awk "BEGIN {printf \"%.f\", (($LIN_TOTAL-$LIN_SKIP-$LIN_FAIL-$LIN_ERROR+$WIN_TOTAL-$WIN_SKIP-$WIN_FAIL-$WIN_ERROR)/($LIN_TOTAL-$LIN_SKIP+$WIN_TOTAL-$WIN_SKIP))*100}")
           echo "PASS_PERCENTAGE: $PASS_PERCENTAGE%"
           echo "$PASS_PERCENTAGE" > pass_percentage.txt
+          echo "PASS_PERCENTAGE=$PASS_PERCENTAGE" >> "$GITHUB_OUTPUT"
 
       - name: Upload test pass percentage as artifact
         uses: actions/upload-artifact@v4
         with:
           name: pass_percentage.txt
           path: pass_percentage.txt
+
+      - name: Update badge
+        uses: schneegans/dynamic-badges-action@v1.7.0
+        with:
+          auth: ${{ secrets.GISTS_TOKEN }}
+          gistID: c3761a6823cbf5aaded07b64fa4964b8
+          filename: badge.json
+          label: Data Products tests
+          message: "${{ steps.get_pass_pct.outputs.PASS_PERCENTAGE }}% passing"
+          valColorRange: ${{ steps.get_pass_pct.outputs.PASS_PERCENTAGE }}
+          maxColorRange: 100
+          minColorRange: 0
