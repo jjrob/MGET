@@ -114,7 +114,7 @@ jobs:
       - name: Upload test linux_results.xml as artifact
         uses: actions/upload-artifact@v4
         with:
-          name: linux_results.xml
+          name: linux_results
           path: linux_results.xml
 
 
@@ -190,7 +190,7 @@ jobs:
       - name: Upload test windows_results.xml as artifact
         uses: actions/upload-artifact@v4
         with:
-          name: windows_results.xml
+          name: windows_results
           path: windows_results.xml
 
 
@@ -205,14 +205,14 @@ jobs:
 
       - name: Compute pass percentage
         run: |
-          LIN_TOTAL=$(grep -o 'tests="[0-9]*"' linux_results.xml | grep -o "[0-9]*")
-          LIN_SKIP=$(grep -o 'skipped="[0-9]*"' linux_results.xml | grep -o "[0-9]*")
-          LIN_FAIL=$(grep -o 'failures="[0-9]*"' linux_results.xml | grep -o "[0-9]*")
-          LIN_ERROR=$(grep -o 'errors="[0-9]*"' linux_results.xml | grep -o "[0-9]*")
-          WIN_TOTAL=$(grep -o 'tests="[0-9]*"' windows_results.xml | grep -o "[0-9]*")
-          WIN_SKIP=$(grep -o 'skipped="[0-9]*"' windows_results.xml | grep -o "[0-9]*")
-          WIN_FAIL=$(grep -o 'failures="[0-9]*"' windows_results.xml | grep -o "[0-9]*")
-          WIN_ERROR=$(grep -o 'errors="[0-9]*"' windows_results.xml | grep -o "[0-9]*")
+          LIN_TOTAL=$(grep -o 'tests="[0-9]*"' linux_results/linux_results.xml | grep -o "[0-9]*")
+          LIN_SKIP=$(grep -o 'skipped="[0-9]*"' linux_results/linux_results.xml | grep -o "[0-9]*")
+          LIN_FAIL=$(grep -o 'failures="[0-9]*"' linux_results/linux_results.xml | grep -o "[0-9]*")
+          LIN_ERROR=$(grep -o 'errors="[0-9]*"' linux_results/linux_results.xml | grep -o "[0-9]*")
+          WIN_TOTAL=$(grep -o 'tests="[0-9]*"' windows_results/windows_results.xml | grep -o "[0-9]*")
+          WIN_SKIP=$(grep -o 'skipped="[0-9]*"' windows_results/windows_results.xml | grep -o "[0-9]*")
+          WIN_FAIL=$(grep -o 'failures="[0-9]*"' windows_results/windows_results.xml | grep -o "[0-9]*")
+          WIN_ERROR=$(grep -o 'errors="[0-9]*"' windows_results/windows_results.xml | grep -o "[0-9]*")
           PASS_PERCENTAGE=$(awk "BEGIN {printf \"%.f\", (($LIN_TOTAL-$LIN_SKIP-$LIN_FAIL-$LIN_ERROR+$WIN_TOTAL-$WIN_SKIP-$WIN_FAIL-$WIN_ERROR)/($LIN_TOTAL-$LIN_SKIP+$WIN_TOTAL-$WIN_SKIP))*100}")
           echo "PASS_PERCENTAGE: $PASS_PERCENTAGE%"
           echo "$PASS_PERCENTAGE" > pass_percentage.txt
