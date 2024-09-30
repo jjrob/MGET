@@ -1,1 +1,3 @@
-https://img.shields.io/badge/Python-3.9_|_3.10_|_3.11_|_3.12-blue
+https://img.shields.io/badge/Python-3.9_|_3.10_|_3.11_|_3.12-blue?style=plastic&logo=Python&logoColor=whitesmoke
+https://img.shields.io/badge/Platforms-Windows_x86--64_|_Linux_x86--64-blue?style=plastic
+https://img.shields.io/badge/PyPI-v3.0.3-blue?style=plastic&logo=PyPI&logoColor=whitesmoke&link=https://pypi.org/project/mget3/3.0.3/
