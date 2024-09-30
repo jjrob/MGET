@@ -118,9 +118,11 @@ jobs:
 
       - name: Compute pass percentage
         run: |
-          total_tests=$(grep -o 'tests="[0-9]*"' linux_results.xml | grep -o '[0-9]*')
-          passed_tests=$(grep -o 'tests="[0-9]*" failures="0"' linux_results.xml | grep -o '[0-9]*')
-          pass_percentage=$(awk "BEGIN {printf \"%.f\", ($passed_tests/$total_tests)*100}")
+          total_tests=$(grep -o 'tests="[0-9]*"' linux_results.xml | grep -o "[0-9]*")
+          skipped_tests=$(grep -o 'skipped="[0-9]*"' linux_results.xml | grep -o "[0-9]*")
+          failed_tests=$(grep -o 'failures="[0-9]*"' linux_results.xml | grep -o "[0-9]*")
+          error_tests=$(grep -o 'errors="[0-9]*"' linux_results.xml | grep -o "[0-9]*")
+          pass_percentage=$(awk "BEGIN {printf \"%.f\", (($total_tests-$skipped_tests-$failed_tests-$error_tests)/($total_tests-$skipped_tests))*100}")
           echo "PASS_PERCENTAGE: $pass_percentage%"
           echo "$pass_percentage" > pass_percentage.txt
 
