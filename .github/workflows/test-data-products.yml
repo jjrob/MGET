@@ -1,4 +1,4 @@
-# test-data-products.yaml
+# test-data-products.yml
 #
 # This action tests that MGET can successfully download data products from the
 # various services and providers using the modules within GeoEco.DataProducts.
@@ -252,7 +252,7 @@ jobs:
           auth: ${{ secrets.GISTS_TOKEN }}
           gistID: c3761a6823cbf5aaded07b64fa4964b8
           filename: badge.json
-          label: Data Products tests
+          label: Data products tests
           message: "${{ steps.get_pass_pct.outputs.PASS_PERCENTAGE }}% passing"
           valColorRange: ${{ steps.get_pass_pct.outputs.PASS_PERCENTAGE }}
           maxColorRange: 100
