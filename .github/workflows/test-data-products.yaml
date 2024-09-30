@@ -124,10 +124,10 @@ jobs:
           error_tests=$(grep -o 'errors="[0-9]*"' linux_results.xml | grep -o "[0-9]*")
           pass_percentage=$(awk "BEGIN {printf \"%.f\", (($total_tests-$skipped_tests-$failed_tests-$error_tests)/($total_tests-$skipped_tests))*100}")
           echo "PASS_PERCENTAGE: $pass_percentage%"
-          echo "$pass_percentage" > pass_percentage.txt
+          echo "$pass_percentage" > linux_pass_percentage.txt
 
       - name: Upload test pass percentage as artifact
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: linux_pass_percentage.txt
           path: linux_pass_percentage.txt
