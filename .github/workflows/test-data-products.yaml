@@ -204,6 +204,9 @@ jobs:
     runs-on: ubuntu-latest
     needs: [test_data_products_linux, test_data_products_windows]
 
+    environment:
+      name: "Test data products"
+
     steps:
       - name: Download results
         uses: actions/download-artifact@v4
