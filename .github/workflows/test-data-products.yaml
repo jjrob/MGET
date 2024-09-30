@@ -13,7 +13,7 @@ on:
 
 jobs:
   test_data_products_linux:
-    name: Test that all data products are accessible from Linux
+    name: Test data products on Linux
     runs-on: ubuntu-24.04
 
     environment:
@@ -108,9 +108,9 @@ jobs:
 
       - name: Run tests
         run: |
-          python -m pytest --junitxml=results.xml ./test/GeoEco/DataProducts
+          python -m pytest --junitxml=linux_results.xml ./test/GeoEco/DataProducts
 
-      - name: Upload test results.xml as artifact
+      - name: Upload test linux_results.xml as artifact
         uses: actions/upload-artifact@v4
         with:
           name: linux_results.xml
@@ -118,8 +118,8 @@ jobs:
 
       - name: Compute pass percentage
         run: |
-          total_tests=$(grep -o 'tests="[0-9]*"' results.xml | grep -o '[0-9]*')
-          passed_tests=$(grep -o 'tests="[0-9]*" failures="0"' results.xml | grep -o '[0-9]*')
+          total_tests=$(grep -o 'tests="[0-9]*"' linux_results.xml | grep -o '[0-9]*')
+          passed_tests=$(grep -o 'tests="[0-9]*" failures="0"' linux_results.xml | grep -o '[0-9]*')
           pass_percentage=$(awk "BEGIN {printf \"%.f\", ($passed_tests/$total_tests)*100}")
           echo "PASS_PERCENTAGE: $pass_percentage%"
           echo "$pass_percentage" > pass_percentage.txt
