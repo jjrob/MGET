@@ -150,11 +150,25 @@ jobs:
           python -m pip install -U setuptools wheel
           python -m pip install GDAL==3.9.2 --find-links=GDAL_wheels
 
+      - name: Get latest run of build-wheels.yml workflow on main branch
+        id: get_run_id
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: pwsh
+        run: |
+          $workflow_file_name = "build-wheels.yml"
+          # Get the latest workflow run ID from the main branch; supposedly these are returned in reverse chronological order 
+          $workflow_runs = gh api repos/${{ github.repository }}/actions/workflows/$workflow_file_name/runs --paginate --jq '.workflow_runs[] | select(.head_branch == "main") | .id' | Select-Object -First 1
+          echo "RUN_ID: $workflow_runs"
+          echo "RUN_ID=$workflow_runs" >> $GITHUB_OUTPUT
+
       - name: Download built wheels
         uses: actions/download-artifact@v4
         with:
           name: cibw-wheels-windows-latest
           path: wheels
+          run-id: ${{ steps.get_run_id.outputs.RUN_ID }}
+          github-token: ${{ github.token }}    # Needed to download from another workflow run than the current run
 
       - name: Install wheel
         shell: pwsh
