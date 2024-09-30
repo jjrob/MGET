@@ -192,3 +192,33 @@ jobs:
         with:
           name: windows_results.xml
           path: windows_results.xml
+
+
+  summarize_results:
+    name: Summarize results and update badge
+    runs-on: ubuntu-latest
+    needs: [test_data_products_linux, test_data_products_windows]
+
+    steps:
+      - name: Download results
+        uses: actions/download-artifact@v4
+
+      - name: Compute pass percentage
+        run: |
+          LIN_TOTAL=$(grep -o 'tests="[0-9]*"' linux_results.xml | grep -o "[0-9]*")
+          LIN_SKIP=$(grep -o 'skipped="[0-9]*"' linux_results.xml | grep -o "[0-9]*")
+          LIN_FAIL=$(grep -o 'failures="[0-9]*"' linux_results.xml | grep -o "[0-9]*")
+          LIN_ERROR=$(grep -o 'errors="[0-9]*"' linux_results.xml | grep -o "[0-9]*")
+          WIN_TOTAL=$(grep -o 'tests="[0-9]*"' windows_results.xml | grep -o "[0-9]*")
+          WIN_SKIP=$(grep -o 'skipped="[0-9]*"' windows_results.xml | grep -o "[0-9]*")
+          WIN_FAIL=$(grep -o 'failures="[0-9]*"' windows_results.xml | grep -o "[0-9]*")
+          WIN_ERROR=$(grep -o 'errors="[0-9]*"' windows_results.xml | grep -o "[0-9]*")
+          PASS_PERCENTAGE=$(awk "BEGIN {printf \"%.f\", (($LIN_TOTAL-$LIN_SKIP-$LIN_FAIL-$LIN_ERROR+$WIN_TOTAL-$WIN_SKIP-$WIN_FAIL-$WIN_ERROR)/($LIN_TOTAL-$LIN_SKIP+$WIN_TOTAL-$WIN_SKIP))*100}")
+          echo "PASS_PERCENTAGE: $PASS_PERCENTAGE%"
+          echo "$PASS_PERCENTAGE" > pass_percentage.txt
+
+      - name: Upload test pass percentage as artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: pass_percentage.txt
+          path: pass_percentage.txt
