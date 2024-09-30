@@ -89,7 +89,7 @@ jobs:
         with:
           name: cibw-wheels-ubuntu-latest
           path: ./wheels
-          workflow_run_id: ${{ steps.get_run_id.outputs.run_id }}
+          run_id: ${{ steps.get_run_id.outputs.run_id }}
 
       - name: Install wheel
         run: |
