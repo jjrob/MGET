@@ -39,6 +39,108 @@ def isArcPyInstalled():
 
 
 @pytest.mark.skipif(None in getCMEMSCredentials(), reason='CMEMS_USERNAME or CMEMS_PASSWORD environment variables not defined')
+class TestCMEMSARCOArray():
+
+    # Test that we can download arrays of all supported dimensions. Note: I
+    # could not find dataset with zyx dimensions, e.g. a cumulative
+    # climatology of something that has depth layers. So this case is not
+    # tested.
+
+    def test_yx(self, tmp_path):
+        username, password = getCMEMSCredentials()
+        grid = CMEMSARCOArray(username=username,
+                              password=password,
+                              datasetID='cmems_mod_glo_phy_my_0.083deg_static',
+                              variableShortName='mdt')
+        assert grid.Dimensions == 'yx'
+        assert grid.Shape[-2] > 1
+        assert grid.Shape[-1] > 1
+
+        yStart = int(grid.Shape[-2] * 0.25)
+        yStop = yStart + yStart*2
+
+        xStart = int(grid.Shape[-1] * 0.25)
+        xStop = xStart + xStart*2
+
+        slices = (slice(yStart, yStop), slice(xStart, xStop))
+
+        Logger.Info(f'From {grid.DisplayName}, getting slice {slices}')
+
+        data = grid.Data.__getitem__(slices)
+
+        assert len(data.shape) == 2
+        assert data.shape[-2] > 1
+        assert data.shape[-1] > 1
+
+    def test_tyx(self, tmp_path):
+        username, password = getCMEMSCredentials()
+        grid = CMEMSARCOArray(username=username,
+                              password=password,
+                              datasetID='cmems_obs-oc_glo_bgc-plankton_my_l4-multi-4km_P1M',
+                              variableShortName='CHL')
+        assert grid.Dimensions == 'tyx'
+        assert grid.Shape[-3] > 1
+        assert grid.Shape[-2] > 1
+        assert grid.Shape[-1] > 1
+
+        tStart = grid.Shape[-3] - 2
+        tStop = grid.Shape[-3]
+
+        yStart = int(grid.Shape[-2] * 0.25)
+        yStop = yStart + yStart*2
+
+        xStart = int(grid.Shape[-1] * 0.25)
+        xStop = xStart + xStart*2
+
+        slices = (slice(tStart, tStop), slice(yStart, yStop), slice(xStart, xStop))
+
+        Logger.Info(f'From {grid.DisplayName}, getting slice {slices}')
+
+        data = grid.Data.__getitem__(slices)
+
+        assert len(data.shape) == 3
+        assert data.shape[-3] == 2
+        assert data.shape[-2] > 1
+        assert data.shape[-1] > 1
+
+    def test_tzyx(self, tmp_path):
+        username, password = getCMEMSCredentials()
+        grid = CMEMSARCOArray(username=username,
+                              password=password,
+                              datasetID='cmems_mod_glo_phy_my_0.083deg_P1M-m',
+                              variableShortName='thetao')
+        assert grid.Dimensions == 'tzyx'
+        assert grid.Shape[-4] > 1
+        assert grid.Shape[-3] > 1
+        assert grid.Shape[-2] > 1
+        assert grid.Shape[-1] > 1
+
+        tStart = grid.Shape[-4] - 2
+        tStop = grid.Shape[-4]
+
+        zStart = grid.Shape[-3] - 3
+        zStop = grid.Shape[-3]
+
+        yStart = int(grid.Shape[-2] * 0.25)
+        yStop = yStart + yStart*2
+
+        xStart = int(grid.Shape[-1] * 0.25)
+        xStop = xStart + xStart*2
+
+        slices = (slice(tStart, tStop), slice(zStart, zStop), slice(yStart, yStop), slice(xStart, xStop))
+
+        Logger.Info(f'From {grid.DisplayName}, getting slice {slices}')
+
+        data = grid.Data.__getitem__(slices)
+
+        assert len(data.shape) == 4
+        assert data.shape[-4] == 2
+        assert data.shape[-3] == 3
+        assert data.shape[-2] > 1
+        assert data.shape[-1] > 1
+
+
+@pytest.mark.skipif(None in getCMEMSCredentials(), reason='CMEMS_USERNAME or CMEMS_PASSWORD environment variables not defined')
 @pytest.mark.skipif(not isArcPyInstalled(), reason='ArcGIS arcpy module is not installed')
 class TestCMEMSARCOArrayArcGIS():
 
