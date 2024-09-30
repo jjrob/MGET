@@ -3,7 +3,11 @@
 ## v3.1.0 - Under Development
 
 ### Added
+- Add CMRGranuleSearcher class for querying NASA Earthdata for granules
 - Add support for numpy 2.x (#11)
+
+### Fixed
+- On PublicAPI page, the description is not showing up for GeoEco.DataManagement.ArcGISRasters (#3)
 
 ## [v3.0.3](https://github.com/jjrob/MGET/releases/tag/v3.0.3) - 2024-09-25
 
