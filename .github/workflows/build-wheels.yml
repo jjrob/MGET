@@ -6,6 +6,7 @@ on:
       - 'main'
     paths-ignore:
       - '.github/**'
+      - 'badges/**'
       - 'doc/**'
       - 'README.md'
       - 'RELEASE_NOTES.md'
