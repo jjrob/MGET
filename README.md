@@ -10,6 +10,8 @@ toolbox.
 MGET was developed by the Duke University [Marine Geospatial Ecology
 Lab](https://mgel.env.duke.edu/).
 
+[![Build and test wheels](https://github.com/jjrob/MGET/actions/workflows/build-wheels.yml/badge.svg)](https://github.com/jjrob/MGET/actions/workflows/build-wheels.yml) [![Documentation Status](https://readthedocs.org/projects/mget/badge/?version=stable)](https://mget.readthedocs.io/en/stable/?badge=stable)
+
 ## Installation
 
 MGET requires 64-bit Python 3.9–3.12 running on Windows or Linux. For full
