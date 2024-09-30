@@ -91,7 +91,7 @@ jobs:
         with:
           name: cibw-wheels-ubuntu-latest
           path: ./wheels
-          run_id: ${{ steps.get_run_id.outputs.RUN_ID }}
+          run-id: ${{ steps.get_run_id.outputs.RUN_ID }}
 
       - name: Install wheel
         run: |
