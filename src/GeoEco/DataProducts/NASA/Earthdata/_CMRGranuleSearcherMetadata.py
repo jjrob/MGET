@@ -202,7 +202,7 @@ AddResultMetadata(CMRGranuleSearcher.__init__, 'collection',
 
 
 ######################################################################################################
-# This module is not meant to be imported directly. Import GeoEco.DataProducts.NASA.EarthData instead.
+# This module is not meant to be imported directly. Import GeoEco.DataProducts.NASA.Earthdata instead.
 ######################################################################################################
 
 __all__ = []

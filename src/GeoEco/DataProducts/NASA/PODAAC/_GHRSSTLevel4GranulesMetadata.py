@@ -87,8 +87,8 @@ AddResultMetadata(GHRSSTLevel4Granules.__init__, 'collection',
     description=_('GHRSSTLevel4Granules instance.'))
 
 
-######################################################################################################
-# This module is not meant to be imported directly. Import GeoEco.DataProducts.NASA.EarthData instead.
-######################################################################################################
+###################################################################################################
+# This module is not meant to be imported directly. Import GeoEco.DataProducts.NASA.PODAAC instead.
+###################################################################################################
 
 __all__ = []

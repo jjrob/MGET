@@ -176,8 +176,8 @@ class GHRSSTLevel4Granules(CMRGranuleSearcher):
         raise ValueError(_('Programming error in this tool: unknown datasetType %(lt)s. Please contact the MGET development team for assistance.') % {'lt': self._DatasetType})
 
 
-######################################################################################################
-# This module is not meant to be imported directly. Import GeoEco.DataProducts.NASA.EarthData instead.
-######################################################################################################
+###################################################################################################
+# This module is not meant to be imported directly. Import GeoEco.DataProducts.NASA.PODAAC instead.
+###################################################################################################
 
 __all__ = []
