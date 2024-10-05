@@ -48,7 +48,7 @@ corresponding value in `values` using the corresponding operator in
 `operators`."""))
 
 AddArgumentMetadata(MaskedGrid.__init__, 'operators',
-    typeMetadata=ListTypeMetadata(elementType=UnicodeStringTypeMetadata(allowedValues=['=', '==', '!=', '<>', '<', '<=', '>', '>', 'any', 'all']), minLength=1, mustBeSameLengthAsArgument='masks'),
+    typeMetadata=ListTypeMetadata(elementType=UnicodeStringTypeMetadata(allowedValues=['=', '==', '!=', '<>', '<', '<=', '>', '>=', 'any', 'all']), minLength=1, mustBeSameLengthAsArgument='masks'),
     description=_(
 """List of comparison operations that should be performed, one for
 :class:`~GeoEco.Datasets.Grid` in `masks` and value in `values`. The possible
@@ -86,23 +86,23 @@ AddArgumentMetadata(MaskedGrid.__init__, 'values',
 :class:`~GeoEco.Datasets.Grid` in `masks` and operator in `operators`."""))
 
 AddArgumentMetadata(MaskedGrid.__init__, 'unscaledNoDataValue',
-    typeMetadata=AnyObjectTypeMetadata(canBeNone=False),
+    typeMetadata=AnyObjectTypeMetadata(canBeNone=True),
     description=_(
 """:py:class:`int` or :py:class:`float` or single-valued numpy array giving
 the unscaled NoData value to use when a cell of `grid` is considered masked.
 You should provide a value when `grid` does not have an
-:attr:`~GeoEco.Datasets.Grid.UnscaledNoDataValue` but ``grid.DataIsScaled`` is
-True. Ignored if ``grid.DataIsScaled`` is False or
+:attr:`~GeoEco.Datasets.Grid.UnscaledNoDataValue`. Ignored
 ``grid.UnscaledNoDataValue`` does not return :py:data:`None`."""))
 
 AddArgumentMetadata(MaskedGrid.__init__, 'scaledNoDataValue',
-    typeMetadata=AnyObjectTypeMetadata(canBeNone=False),
+    typeMetadata=AnyObjectTypeMetadata(canBeNone=True),
     description=_(
 """:py:class:`int` or :py:class:`float` or single-valued numpy array giving
-the NoData value to use when a cell of `grid` is considered masked. You should
-provide a value when `grid` does not have a
-:attr:`~GeoEco.Datasets.Grid.NoDataValue`. Ignored if ``grid.NoDataValue``
-does not return :py:data:`None`."""))
+the scaled NoData value to use when a cell of `grid` is considered masked. You
+should provide a value when `grid` does not have a
+:attr:`~GeoEco.Datasets.Grid.NoDataValue` and ``grid.DataIsScaled`` is True.
+Ignored if ``grid.DataIsScaled`` is False or ``grid.NoDataValue`` does not
+return :py:data:`None`."""))
 
 AddResultMetadata(MaskedGrid.__init__, 'obj',
     typeMetadata=ClassInstanceTypeMetadata(cls=MaskedGrid),

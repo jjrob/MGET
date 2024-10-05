@@ -812,6 +812,28 @@ class Grid(Dataset):
         if len(key) > len(self.Dimensions):
             raise IndexError(_('Too many indices.'))
 
+        import numpy
+
+        newKey = []      # We replace numpy scalar integers and length-1 integer arrays with Python int
+        for k in key:
+            if numpy.issubdtype(type(k), numpy.integer):
+                newKey.append(int(k))
+            elif isinstance(k, numpy.ndarray) and k.size == 1 and numpy.issubdtype(k.dtype, numpy.integer):
+                newKey.append(int(k[0]))
+            elif isinstance(k, slice):
+                newKey.append(slice(int(k.start) if numpy.issubdtype(type(k.start), numpy.integer) else \
+                                        int(k.start[0]) if isinstance(k.start, numpy.ndarray) and k.start.size == 1 and numpy.issubdtype(k.start.dtype, numpy.integer) else \
+                                        k.start,
+                                    int(k.stop) if numpy.issubdtype(type(k.stop), numpy.integer) else \
+                                        int(k.stop[0]) if isinstance(k.stop, numpy.ndarray) and k.stop.size == 1 and numpy.issubdtype(k.stop.dtype, numpy.integer) else \
+                                        k.stop,
+                                    int(k.step) if numpy.issubdtype(type(k.step), numpy.integer) else \
+                                        int(k.step[0]) if isinstance(k.step, numpy.ndarray) and k.step.size == 1 and numpy.issubdtype(k.step.dtype, numpy.integer) else \
+                                        k.step))
+            else:
+                newKey.append(k)
+        key = tuple(newKey)
+
         for i in range(len(key)):
             if not isinstance(key[i], (int, slice)) or isinstance(key, bool) or isinstance(key[i], slice) and (not isinstance(key[i].start, (int, type(None))) or not isinstance(key[i].stop, (int, type(None))) or not isinstance(key[i].step, (int, type(None)))):
                 raise IndexError(_('%(key)r is an invalid Grid index. Grid indices must be integers or integer slices.') % {'key': key[i]})
@@ -935,7 +957,7 @@ class Grid(Dataset):
             raise TypeError(_('The value must be a numpy array, an int, a float, or a complex.'))
 
         # Validate that the value contains the expected number of
-        # elements.
+        # elements. Turn it into an array if needed.
 
         expectedSize = 1
         expectedShape = []
@@ -954,18 +976,16 @@ class Grid(Dataset):
             if not isinstance(value, numpy.ndarray) or value.size != 0:
                 raise ValueError(_('The key and value do not match: the key describes an array of size %(expected)i, but the value is an array of size %(actual)i.') % {'expected': 0, 'actual': value.size})
         elif expectedSize == 1:
-            if isinstance(value, numpy.ndarray) and value.size != 1:
-                raise ValueError(_('The key and value do not match: the key describes an array of size %(expected)i, but the value is an array of size %(actual)i.') % {'expected': 1, 'actual': value.size})
-        else:
-            if not isinstance(value, numpy.ndarray):
-                raise ValueError(_('The key and value do not match: the key describes an array of size %(expected)i, but the value is not an array.') % {'expected': expectedSize})
+            if isinstance(value, numpy.ndarray):
+                if value.size != 1:
+                    raise ValueError(_('The key and value do not match: the key describes an array of size %(expected)i, but the value is an array of size %(actual)i.') % {'expected': 1, 'actual': value.size})
+            else:
+                value = numpy.array(value)
+        elif isinstance(value, numpy.ndarray):
             if value.size != expectedSize:
                 raise ValueError(_('The key and value do not match: the key describes an array of size %(expected)i, but the value is an array of size %(actual)i.') % {'expected': expectedSize, 'actual': value.size})
-
-        # If the value is not an array, make it one.
-
-        if not isinstance(value, numpy.ndarray):
-            value = numpy.array(value)
+        else:
+            value = numpy.repeat(value, expectedSize)
 
         # Reshape the array to the expected shape. This will expand
         # the dimensions (if needed).

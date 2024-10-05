@@ -196,7 +196,7 @@ class MemoryCachedGrid(Grid):
             if len(dimsWithFullOverlap) == len(self.Dimensions):
                 self._LogDebug(_('MemoryCachedGrid 0x%(id)016X: Reading [%(slice1)s] from cached slice [%(slice2)s].'), {'id': id(self), 'slice1': ','.join([str(s.start) + ':' + str(s.stop) for s in remainingRegion]), 'slice2': ','.join([str(s.start) + ':' + str(s.stop) for s in self._Cache[i][0]])})
 
-                data.__setitem__([slice(s[0].start-s[1].start, s[0].stop-s[1].start) for s in zip(remainingRegion, sliceList)], self._Cache[i][1].__getitem__([slice(s[0].start-s[1].start, s[0].stop-s[1].start) for s in zip(remainingRegion, self._Cache[i][0])]))
+                data.__setitem__(tuple([slice(s[0].start-s[1].start, s[0].stop-s[1].start) for s in zip(remainingRegion, sliceList)]), self._Cache[i][1].__getitem__(tuple([slice(s[0].start-s[1].start, s[0].stop-s[1].start) for s in zip(remainingRegion, self._Cache[i][0])])))
 
                 self._Cache.insert(0, self._Cache.pop(i))
                 remainingRegion = None

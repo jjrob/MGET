@@ -276,7 +276,8 @@ class MaskedGrid(Grid):
             # Validate that the mask uses the same coordinate system as the
             # contained grid.
 
-            if not self.GetSpatialReference('obj').IsSame(mask.GetSpatialReference('obj')):
+            if not (self.GetSpatialReference('obj') is None and mask.GetSpatialReference('obj') is None) and \
+               not (self.GetSpatialReference('obj') is not None and mask.GetSpatialReference('obj') is not None and self.GetSpatialReference('obj').IsSame(mask.GetSpatialReference('obj'))):
                 raise ValueError(_('%(dn1)s has a different coordinate system than %(dn2)s, so it cannot be used as a mask.') % {'dn1': mask.DisplayName, 'dn2': self._Grid.DisplayName})
 
             # If the contained grid has any dimensions for which the

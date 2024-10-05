@@ -156,7 +156,7 @@ class NumpyGrid(Grid):
         self.SetLazyPropertyValue('SpatialReference', sr)
 
     def _ReadNumpyArray(self, sliceList):
-        return self._NumpyArray.__getitem__(tuple(sliceList)), self.GetLazyPropertyValue('UnscaledNoDataValue')
+        return self._NumpyArray.__getitem__(tuple(sliceList)).copy(), self.GetLazyPropertyValue('UnscaledNoDataValue')
 
     def _WriteNumpyArray(self, sliceList, data):
         self._NumpyArray.__setitem__(tuple(sliceList), data)

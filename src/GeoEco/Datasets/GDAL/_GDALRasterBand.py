@@ -222,7 +222,7 @@ class GDALRasterBand(Grid):
             self._LogDebug(_('%(class)s 0x%(id)016X: Band %(Band)i: Reading a block of %(win_xsize)i columns by %(win_ysize)i rows at offsets x=%(xoff)i, y=%(yoff)i.') % {'class': self.__class__.__name__, 'id': id(self), 'Band': self.Band, 'xoff': xoff, 'yoff': yoff, 'win_xsize': win_xsize, 'win_ysize': win_ysize})
 
             try:
-                data = band.ReadAsArray(xoff, yoff, win_xsize, win_ysize)
+                data = band.ReadAsArray(xoff, yoff, win_xsize, win_ysize).copy()
             except Exception as e:
                 self._gdal().ErrorReset()
                 raise RuntimeError(_('Failed to retrieve a block of data of %(win_xsize)i columns by %(win_ysize)i rows at offsets x=%(xoff)i, y=%(yoff)i from band %(band)i of %(dn)s with the Geospatial Data Abstraction Library (GDAL). Verify that the dataset exists, is accessible, and has the expected dimensions. Detailed error information: band.ReadAsArray(%(xoff)i, %(yoff)i, %(win_xsize)i, %(win_ysize)i) reported %(e)s: %(msg)s.') % {'band': self.Band, 'dn': self.DisplayName, 'xoff': xoff, 'yoff': yoff, 'win_xsize': win_xsize, 'win_ysize': win_ysize, 'e': e.__class__.__name__, 'msg': e})

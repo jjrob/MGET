@@ -744,7 +744,7 @@ class CMEMSARCOArray(Grid):
         sliceName = ','.join([str(s.start) + ':' + str(s.stop) for s in sliceList])
         self._LogDebug(_('%(class)s 0x%(id)016X: Reading slice [%(slice)s] of %(dn)s.'), {'class': self.__class__.__name__, 'id': id(self), 'slice': sliceName, 'dn': self.DisplayName})
         try:
-            data = self._Dataset[self._VariableShortName].__getitem__(tuple(sliceList)).data.compute()
+            data = self._Dataset[self._VariableShortName].__getitem__(tuple(sliceList)).data.compute().copy()
         except Exception as e:
             raise RuntimeError(_('Failed to read slice [%(slice)s] of %(dn)s. Detailed error information: %(e)s: %(msg)s.') % {'slice': sliceName, 'dn': self.DisplayName, 'e': e.__class__.__name__, 'msg': e})
 
