@@ -22,6 +22,14 @@ from ..GDAL import GDALDataset, GDALRasterBand
 from ._ArcGISRasterBand import ArcGISRasterBand
 
 
+_UseUnscaledDataDescription = _(
+"""If True and the original data is stored as integers that are processed
+through a "scaling equation" to produce the actual floating point values, the
+output rasters will be created with the integers rather the floating point
+values. If False, or the original data is not processed through a scaling
+equation, the output rasters will be created using the data's original data
+type.""")
+
 _CalculateStatisticsDescription = _(
 """If True, statistics will be calculated for the output rasters. This is
 usually a good idea for most raster formats because ArcGIS will only display

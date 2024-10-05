@@ -16,7 +16,7 @@ from ...Metadata import AddModuleMetadata
 
 AddModuleMetadata(shortDescription=_(':class:`~GeoEco.Datasets.Table` and :class:`~GeoEco.Datasets.Grid` wrappers around tabular, vector, and raster datasets accessible through the ArcGIS `arcpy <https://www.esri.com/en-us/arcgis/products/arcgis-python-libraries/libraries/arcpy>`_ library.'))
 
-from ._ArcGISRaster import ArcGISRaster, _CalculateStatisticsDescription, _BuildRATDescription, _BuildPyramidsDescription
+from ._ArcGISRaster import ArcGISRaster, _UseUnscaledDataDescription, _CalculateStatisticsDescription, _BuildRATDescription, _BuildPyramidsDescription
 from . import _ArcGISRasterMetadata
 
 from ._ArcGISRasterBand import ArcGISRasterBand
@@ -31,6 +31,7 @@ from . import _ArcGISWorkspaceMetadata
 __all__ = ['_BuildPyramidsDescription',
            '_BuildRATDescription',
            '_CalculateStatisticsDescription',
+           '_UseUnscaledDataDescription',
            'ArcGISCopyableTable',
            'ArcGISRaster',
            'ArcGISRasterBand',

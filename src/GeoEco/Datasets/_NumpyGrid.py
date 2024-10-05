@@ -172,10 +172,6 @@ class NumpyGrid(Grid):
             elif grid.GetLazyPropertyValue('TCornerCoordType') == 'max':
                 cornerCoords[0] = grid.MaxCoords['t', 0]
 
-        qav = {}
-        for qa in grid.GetAllQueryableAttributes():
-            qav[qa.Name] = grid.GetQueryableAttributeValue(qa.Name)
-
         return NumpyGrid(grid.Data[:],
                          grid.DisplayName,
                          grid.GetSpatialReference('Obj'),
@@ -190,7 +186,7 @@ class NumpyGrid(Grid):
                          grid.GetLazyPropertyValue('TOffsetFromParsedTime'),
                          grid.CoordDependencies,
                          queryableAttributes=tuple(grid.GetAllQueryableAttributes()),
-                         queryableAttributeValues=qav)
+                         queryableAttributeValues={qa.Name: grid.GetQueryableAttributeValue(qa.Name) for qa in grid.GetAllQueryableAttributes()})
 
 
 ###################################################################################

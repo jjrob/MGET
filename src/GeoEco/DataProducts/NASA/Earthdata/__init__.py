@@ -13,8 +13,7 @@ from ....Metadata import AddModuleMetadata
 
 AddModuleMetadata(shortDescription=_('Classes for accessing data products from `NASA Earthdata <https://www.earthdata.nasa.gov/>`__.'))
 
-from ._GHRSSTLevel4Granules import GHRSSTLevel4Granules
-from . import _GHRSSTLevel4GranulesMetadata
+from ._CMRGranuleSearcher import CMRGranuleSearcher
+from . import _CMRGranuleSearcherMetadata
 
-__all__ = ['CMRGranuleSearcher',
-           'GHRSSTLevel4Granules']
+__all__ = ['CMRGranuleSearcher']

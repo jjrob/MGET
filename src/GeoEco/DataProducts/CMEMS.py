@@ -1368,11 +1368,11 @@ AddArgumentMetadata(CMEMSARCOArray.CreateArcGISRasters, 'mode',
     description=_(
 """Overwrite mode, one of:
 
-* Add - create rasters that do not exist and skip those that already exist.
-  This is the default.
+* ``Add`` - create rasters that do not exist and skip those that already
+  exist. This is the default.
 
-* Replace - create rasters that do not exist and overwrite those that already
-  exist.
+* ``Replace`` - create rasters that do not exist and overwrite those that
+  already exist.
 
 The ArcGIS Overwrite Output environment setting has no effect on this tool. If
 'Replace' is selected the rasters will be overwritten, regardless of the
@@ -1465,8 +1465,8 @@ AddArgumentMetadata(CMEMSARCOArray.CreateArcGISRasters, 'endDate',
 """End date for the outputs to create. This parameter is ignored if the
 dataset does not have a time coordinate. Outputs will be created for images
 that occur on or after the start date and on or before the end date. If you do
-not specify an end date, the date of the most recent time slice will be used.
-The time component of the end date is ignored."""),
+not specify an end date, the date of the most recent time slice will be
+used."""),
     arcGISDisplayName=_('End date'),
     arcGISCategory=_('Spatiotemporal extent'))
 
@@ -1601,6 +1601,13 @@ CopyResultMetadata(CMEMSARCOArray.CreateArcGISRasters, 'updatedOutputWorkspace',
 
 AddMethodMetadata(CMEMSARCOArray.CreateClimatologicalArcGISRasters,
     shortDescription=_('Creates climatological rasters for a 3D, or 4D gridded time series dataset published by `Copernicus Marine Service <https://data.marine.copernicus.eu/products>`__.'),
+    longDescription=_(
+"""This tool produces rasters showing the climatological mean value (or
+other statistic) of a time series of images. Given a desired dataset, a
+statistic, and a climatological bin definition, this tool efficiently
+downloads the images, classifies them into bins, and produces a single raster
+for each bin. Each cell of the raster is produced by calculating the statistic
+on the values of that cell extracted from all of the images in the bin."""),
     isExposedAsArcGISTool=True,
     arcGISDisplayName=_('Create Climatological Rasters for CMEMS Dataset'),
     arcGISToolCategory=_('Data Products\\Copernicus Marine Service (CMEMS)'),

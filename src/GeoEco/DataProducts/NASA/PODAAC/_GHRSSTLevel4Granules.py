@@ -15,7 +15,7 @@ from ....DynamicDocString import DynamicDocString
 from ....Internationalization import _
 from ....Types import *
 
-from ._CMRGranuleSearcher import CMRGranuleSearcher
+from ..Earthdata._CMRGranuleSearcher import CMRGranuleSearcher
 
 
 class GHRSSTLevel4Granules(CMRGranuleSearcher):

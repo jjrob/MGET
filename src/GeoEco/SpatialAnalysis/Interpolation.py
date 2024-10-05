@@ -942,7 +942,7 @@ at the point's horizontal location."""))
 AddArgumentMetadata(Interpolator.InterpolateGridsValuesForTableOfPoints, 'numBlocksToCacheInMemory',
     typeMetadata=IntegerTypeMetadata(minValue=0, canBeNone=True),
     description=_(
-"""Maximum number of blocks of data from each grid to cache in memory.
+"""Maximum number of blocks of data to cache in memory.
 
 To minimize the number of times that the disk or network must be accessed,
 this tool employs a simple caching strategy. When it processes the first
@@ -959,43 +959,47 @@ permitted to grow to the size specified by this parameter. When the cache is
 full but a new block is needed, the oldest block is discarded to make room for
 the newest block.
 
-The maximum size of the cache in bytes may be calculated by multiplying this
-parameter by the block size parameters and the data type of the grids. For
-example, if this parameter is 256 and the blocks are 32 by 32 and the grid
-uses the 32-bit floating point data type (32-bits is 4 bytes), the maximum
-size of the cache is 1048576 bytes (1 MB).
-
-If this parameter is 0, no blocks will be cached in memory."""))
+If this parameter is 0, no blocks will be cached in memory."""),
+    arcGISDisplayName=_('Number of blocks of data to cache in memory'),
+    arcGISCategory=_('Performance tuning options'))
 
 AddArgumentMetadata(Interpolator.InterpolateGridsValuesForTableOfPoints, 'xBlockSize',
     typeMetadata=IntegerTypeMetadata(minValue=0, canBeNone=True),
     description=_(
-"""Size of the blocks of grid data to cache in memory, in the ``x`` direction.
-The size is given as the number of cells. If this parameter is 0, no blocks
-will be cached in memory."""))
+"""Size of the blocks of data to cache in memory in the ``x`` direction. The
+size is given as the number of cells. If this parameter is 0, no blocks will
+be cached in memory."""),
+    arcGISDisplayName=_('In-memory cache block size, in X direction'),
+    arcGISCategory=_('Performance tuning options'))
 
 AddArgumentMetadata(Interpolator.InterpolateGridsValuesForTableOfPoints, 'yBlockSize',
     typeMetadata=IntegerTypeMetadata(minValue=0, canBeNone=True),
     description=_(
-"""Size of the blocks of grid data to cache in memory, in the ``y`` direction.
-The size is given as the number of cells. If this parameter is 0, no blocks
-will be cached in memory."""))
+"""Size of the blocks of data to cache in memory in the ``y`` direction. The
+size is given as the number of cells. If this parameter is 0, no blocks will
+be cached in memory."""),
+    arcGISDisplayName=_('In-memory cache block size, in Y direction'),
+    arcGISCategory=_('Performance tuning options'))
 
 AddArgumentMetadata(Interpolator.InterpolateGridsValuesForTableOfPoints, 'zBlockSize',
     typeMetadata=IntegerTypeMetadata(minValue=0, canBeNone=True),
     description=_(
-"""Size of the blocks of grid data to cache in memory, in the ``z`` (depth)
+"""Size of the blocks of data to cache in memory in the ``z`` (depth)
 direction. The size is given as the number of cells. If this parameter is 0,
 no blocks will be cached in memory. This parameter is ignored if the grids do
-not have a ``z`` dimension."""))
+not have a ``z`` dimension."""),
+    arcGISDisplayName=_('In-memory cache block size, in Z direction'),
+    arcGISCategory=_('Performance tuning options'))
 
 AddArgumentMetadata(Interpolator.InterpolateGridsValuesForTableOfPoints, 'tBlockSize',
     typeMetadata=IntegerTypeMetadata(minValue=0, canBeNone=True),
     description=_(
-"""Size of the blocks of grid data to cache in memory, in the ``t`` (time)
+"""Size of the blocks of data to cache in memory in the ``t`` (time)
 direction. The size is given as the number of cells. If this parameter is 0,
 no blocks will be cached in memory. This parameter is ignored if the grids do
-not have a ``t`` dimension."""))
+not have a ``t`` dimension."""),
+    arcGISDisplayName=_('In-memory cache block size, in T direction'),
+    arcGISCategory=_('Performance tuning options'))
 
 # Public method: Interpolator.InterpolateArcGISRasterValuesAtPoints
 
@@ -1030,7 +1034,7 @@ coordinate system before using this tool."""),
     arcGISDisplayName=_('Point features'))
 
 AddArgumentMetadata(Interpolator.InterpolateArcGISRasterValuesAtPoints, 'fields',
-    typeMetadata=ListTypeMetadata(elementType=ArcGISFieldTypeMetadata(mustExist=True, allowedFieldTypes=['short', 'long', 'float', 'double']), minLength=1, mustBeSameLengthAsArgument='rasters'),
+    typeMetadata=ListTypeMetadata(elementType=ArcGISFieldTypeMetadata(mustExist=True, allowedFieldTypes=['int8', 'uint8', 'int16', 'uint16', 'int32', 'uint32', 'int64', 'uint64', 'float32', 'float64']), minLength=1, mustBeSameLengthAsArgument='rasters'),
     description=_(
 """Fields of the points to receive the interpolated values. You must provide a
 field for each raster. The fields must have floating-point or integer data
@@ -1047,8 +1051,9 @@ AddArgumentMetadata(Interpolator.InterpolateArcGISRasterValuesAtPoints, 'method'
 """Interpolation method to use, one of:
 
 * ``Automatic`` - the tool will automatically select the interpolation method
-  based on the raster's data type: for integer rasters, nearest neighbor
-  interpolation; for floating-point rasters, linear interpolation.
+  based on the data type of the raster: for integer rasters, nearest neighbor
+  interpolation will be used; for floating-point rasters, linear
+  interpolation will be used. This is the default.
 
 * ``Nearest`` - nearest neighbor interpolation. The interpolated value will
   simply be the value of the cell that contains the point.
@@ -1060,10 +1065,11 @@ AddArgumentMetadata(Interpolator.InterpolateArcGISRasterValuesAtPoints, 'method'
   nearest cells, weighting the contribution of each cell by the area of it
   that would be covered by a hypothetical cell centered on the point being
   interpolated. If the cell containing the point contains NoData, the result
-  is NoData. If any of the other three cells contain NoData, they are omitted
-  from the average, and the result is based on the weighted average of the
-  cells that do contain data. This is the same algorithm implemented by the
-  ArcGIS Spatial Analyst's Extract Values to Points tool.
+  is NoData. Otherwise, and the result is based on the weighted average of the
+  four nearest cells that do contain data, including the one that contains the
+  cell. If any of the other three cells contain NoData, they are omitted from
+  the average. This is the same algorithm implemented by the ArcGIS Spatial
+  Analyst's :arcpy_sa:`Extract-Values-to-Points` tool.
 
 """),
     arcGISDisplayName=_('Interpolation method'))
@@ -1118,53 +1124,9 @@ animal ID and then by the transmission date or number."""),
     arcGISCategory=_('Performance tuning options'),
     arcGISParameterDependencies=['points'])
 
-AddArgumentMetadata(Interpolator.InterpolateArcGISRasterValuesAtPoints, 'numBlocksToCacheInMemory',
-    typeMetadata=IntegerTypeMetadata(minValue=0, canBeNone=True),
-    description=_(
-"""Maximum number of blocks of raster data to cache in memory.
-
-To minimize the number of times that the disk or network must be accessed,
-this tool employs a simple caching strategy. When it processes the first
-point, it reads a square block of cells centered on that point and caches it
-in memory. When it processes the second and subsequent points, it first checks
-whether the cells needed for that point are contained by the block cached in
-memory. If so, it processes that point using the in-memory block, rather than
-reading from disk or the network again. If not, it reads another square block
-centered on that point and adds it to the cache.
-
-The tool processes the remaining points, adding additional blocks to the
-cache, as needed. To prevent the cache from exhausting all memory, it is only
-permitted to grow to the size specified by this parameter. When the cache is
-full but a new block is needed, the oldest block is discarded to make room for
-the newest block.
-
-The maximum size of the cache in bytes may be calculated by multiplying this
-parameter by the block size parameters and the data type of the rasters. For
-example, if this parameter is 256 and the blocks are 32 by 32 and the raster
-uses the 32-bit floating point data type (32-bits is 4 bytes), the maximum
-size of the cache is 1048576 bytes (1 MB).
-
-If this parameter is 0, no blocks will be cached in memory."""),
-    arcGISDisplayName=_('Number of blocks of data to cache in memory'),
-    arcGISCategory=_('Performance tuning options'))
-
-AddArgumentMetadata(Interpolator.InterpolateArcGISRasterValuesAtPoints, 'xBlockSize',
-    typeMetadata=IntegerTypeMetadata(minValue=0, canBeNone=True),
-    description=_(
-"""Size of the blocks of raster data to cache in memory, in the x direction.
-The size is given as the number of cells. If this parameter is 0, no blocks
-will be cached in memory."""),
-    arcGISDisplayName=_('In-memory cache block size, in X direction'),
-    arcGISCategory=_('Performance tuning options'))
-
-AddArgumentMetadata(Interpolator.InterpolateArcGISRasterValuesAtPoints, 'yBlockSize',
-    typeMetadata=IntegerTypeMetadata(minValue=0, canBeNone=True),
-    description=_(
-"""Size of the blocks of raster data to cache in memory, in the y direction.
-The size is given as the number of cells. If this parameter is 0, no blocks
-will be cached in memory."""),
-    arcGISDisplayName=_('In-memory cache block size, in Y direction'),
-    arcGISCategory=_('Performance tuning options'))
+CopyArgumentMetadata(Interpolator.InterpolateGridsValuesForTableOfPoints, 'numBlocksToCacheInMemory', Interpolator.InterpolateArcGISRasterValuesAtPoints, 'numBlocksToCacheInMemory')
+CopyArgumentMetadata(Interpolator.InterpolateGridsValuesForTableOfPoints, 'xBlockSize', Interpolator.InterpolateArcGISRasterValuesAtPoints, 'xBlockSize')
+CopyArgumentMetadata(Interpolator.InterpolateGridsValuesForTableOfPoints, 'yBlockSize', Interpolator.InterpolateArcGISRasterValuesAtPoints, 'yBlockSize')
 
 AddResultMetadata(Interpolator.InterpolateArcGISRasterValuesAtPoints, 'updatedPoints',
     typeMetadata=ArcGISFeatureLayerTypeMetadata(),
@@ -1234,7 +1196,7 @@ with no time component, the time will assumed to be 00:00:00."""),
     arcGISParameterDependencies=['points'])
 
 AddArgumentMetadata(Interpolator.InterpolateTimeSeriesOfArcGISRastersValuesAtPoints, 'valueField',
-    typeMetadata=ArcGISFieldTypeMetadata(mustExist=True, allowedFieldTypes=['short', 'long', 'float', 'double']),
+    typeMetadata=ArcGISFieldTypeMetadata(mustExist=True, allowedFieldTypes=['int8', 'uint8', 'int16', 'uint16', 'int32', 'uint32', 'int64', 'uint64', 'float32', 'float64']),
     description=_(
 """Field of the points to receive the interpolated values. The field must have
 a floating-point or integer data type. If the field cannot represent the
@@ -1485,14 +1447,18 @@ AddArgumentMetadata(Interpolator.InterpolateTimeSeriesOfArcGISRastersValuesAtPoi
   simply be the value of the cell that contains the point.
 
 * ``Linear`` - linear interpolation (also known as trilinear interpolation).
-  This method averages the values of the eight nearest cells in the x, y, and
-  time dimensions, weighting the contribution of each cell by the area of it
-  that would be covered by a hypothetical cell centered on the point being
-  interpolated. If the cell containing the point contains NoData, the result
-  is NoData. If any of the other seven cells contain NoData, they are omitted
-  from the average, and the result is based on the weighted average of the
-  cells that do contain data. This is the same algorithm implemented in 2D by
-  the ArcGIS Spatial Analyst's Extract Values to Points tool.
+  This method is suitable for continuous data such as sea surface temperature,
+  but not for categorical data such as sediment type classifications (use
+  nearest neighbor instead). This method averages the values of the eight
+  nearest cells in the x, y, and time dimensions, weighting the contribution
+  of each cell by the area of it that would be covered by a hypothetical cell
+  centered on the point being interpolated. If the cell containing the point
+  contains NoData, the result is NoData. Otherwise, and the result is based on
+  the weighted average of the eight nearest cells that do contain data,
+  including the one that contains the cell. If any of the other seven cells
+  contain NoData, they are omitted from the average. This is a 3D version of
+  the bilinear interpolation implemented by the ArcGIS Spatial Analyst's
+  :arcpy_sa:`Extract-Values-to-Points` tool.
 
 """),
     arcGISDisplayName=_('Interpolation method'))
@@ -1520,18 +1486,10 @@ points will be ordered by the points' Date Field."""),
     arcGISCategory=_('Performance tuning options'),
     arcGISParameterDependencies=['points'])
 
-CopyArgumentMetadata(Interpolator.InterpolateArcGISRasterValuesAtPoints, 'numBlocksToCacheInMemory', Interpolator.InterpolateTimeSeriesOfArcGISRastersValuesAtPoints, 'numBlocksToCacheInMemory')
-CopyArgumentMetadata(Interpolator.InterpolateArcGISRasterValuesAtPoints, 'xBlockSize', Interpolator.InterpolateTimeSeriesOfArcGISRastersValuesAtPoints, 'xBlockSize')
-CopyArgumentMetadata(Interpolator.InterpolateArcGISRasterValuesAtPoints, 'yBlockSize', Interpolator.InterpolateTimeSeriesOfArcGISRastersValuesAtPoints, 'yBlockSize')
-
-AddArgumentMetadata(Interpolator.InterpolateTimeSeriesOfArcGISRastersValuesAtPoints, 'tBlockSize',
-    typeMetadata=IntegerTypeMetadata(minValue=0, canBeNone=True),
-    description=_(
-"""Size of the blocks of data to cache in memory, in the t direction (time).
-The size is given as the number of cells. If this parameter is 0, no blocks
-will be cached in memory."""),
-    arcGISDisplayName=_('In-memory cache block size, in T direction'),
-    arcGISCategory=_('Performance tuning options'))
+CopyArgumentMetadata(Interpolator.InterpolateGridsValuesForTableOfPoints, 'numBlocksToCacheInMemory', Interpolator.InterpolateTimeSeriesOfArcGISRastersValuesAtPoints, 'numBlocksToCacheInMemory')
+CopyArgumentMetadata(Interpolator.InterpolateGridsValuesForTableOfPoints, 'xBlockSize', Interpolator.InterpolateTimeSeriesOfArcGISRastersValuesAtPoints, 'xBlockSize')
+CopyArgumentMetadata(Interpolator.InterpolateGridsValuesForTableOfPoints, 'yBlockSize', Interpolator.InterpolateTimeSeriesOfArcGISRastersValuesAtPoints, 'yBlockSize')
+CopyArgumentMetadata(Interpolator.InterpolateGridsValuesForTableOfPoints, 'tBlockSize', Interpolator.InterpolateTimeSeriesOfArcGISRastersValuesAtPoints, 'tBlockSize')
 
 CopyResultMetadata(Interpolator.InterpolateArcGISRasterValuesAtPoints, 'updatedPoints', Interpolator.InterpolateTimeSeriesOfArcGISRastersValuesAtPoints, 'updatedPoints')
 

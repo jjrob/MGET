@@ -1,5 +1,5 @@
-# GHRSSTL4_test.py - pytest tests for
-# GeoEco.DataProducts.NASA.Earthdata.GHRSSTLevel4Granules.
+# GHRSSTL4_test.py - pytest tests for GHRSSTLevel4 classes in
+# GeoEco.DataProducts.NASA.PODAAC.
 #
 # Copyright (C) 2024 Jason J. Roberts
 #
@@ -16,7 +16,7 @@ import numpy
 import pytest
 
 from GeoEco.Logging import Logger
-from GeoEco.DataProducts.NASA.Earthdata import GHRSSTLevel4Granules
+from GeoEco.DataProducts.NASA.PODAAC import GHRSSTLevel4Granules
 
 Logger.Initialize()
 

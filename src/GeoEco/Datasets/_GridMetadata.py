@@ -282,7 +282,7 @@ AddPropertyMetadata(Grid.DataType,
 
 AddPropertyMetadata(Grid.NoDataValue,
     typeMetadata=AnyObjectTypeMetadata(canBeNone=True),
-    shortDescription=_(':py:class:`int` or :py:class:`float` value that indicates that cells of :attr:`Data` should be interpreted as having no data (these are also known as missing, NA, or NULL cells), or :py:data:`None` if all cells must have data.'))
+    shortDescription=_(':py:class:`int`, :py:class:`float`, or single-element numpy array giving the value that indicates that cells of :attr:`Data` should be interpreted as having no data (these are also known as missing, NA, or NULL cells), or :py:data:`None` if all cells must have data.'))
 
 AddPropertyMetadata(Grid.Data,
     typeMetadata=AnyObjectTypeMetadata(),

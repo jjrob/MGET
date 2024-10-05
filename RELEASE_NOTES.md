@@ -3,10 +3,14 @@
 ## v3.1.0 - Under Development
 
 ### Added
-- Add CMRGranuleSearcher class for querying NASA Earthdata for granules
-- Add GitHub action to test downloading of all data products daily
-- Add support for numpy 2.x (#11)
-- Add badges to README.txt giving build, docs, and data products status
+- CMRGranuleSearcher class for querying NASA Earthdata for granules
+- GHRSSTLevel4Granules class for querying NASA Earthdata for GHRSST Level 4 granules
+- GHRSSTLevel4 class for representing GHRSST Level 4 product as a 3D Grid
+- Geoprocessing tools for GHRSST Level 4 products
+- More classes to GeoEco.Datasets.Virtual: DerivedGrid, MaskedGrid, MemoryCachedGrid
+- GitHub action to test downloading of all data products daily
+- Support for numpy 2.x (#11)
+- Badges to README.txt giving build, docs, and data products status
 
 ### Fixed
 - On PublicAPI page, the description is not showing up for GeoEco.DataManagement.ArcGISRasters (#3)

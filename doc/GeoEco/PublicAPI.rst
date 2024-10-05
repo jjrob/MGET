@@ -77,6 +77,7 @@ package. The wrappers' documentation include some examples of this.
 
     GeoEco.DataProducts.CMEMS
     GeoEco.DataProducts.NASA.Earthdata
+    GeoEco.DataProducts.NASA.PODAAC
     GeoEco.DataProducts.NOAA.ClimateIndices
 
 Spatial and Temporal Analysis

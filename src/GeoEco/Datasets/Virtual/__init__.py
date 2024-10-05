@@ -37,11 +37,20 @@ from . import _ClimatologicalGridCollectionMetadata
 from ._ClippedGrid import ClippedGrid
 from . import _ClippedGridMetadata
 
+from ._DerivedGrid import DerivedGrid
+from . import _DerivedGridMetadata
+
 from ._FastMarchingDistanceGrid import FastMarchingDistanceGrid
 from . import _FastMarchingDistanceGridMetadata
 
 from ._InpaintedGrid import InpaintedGrid
 from . import _InpaintedGridMetadata
+
+from ._MaskedGrid import MaskedGrid
+from . import _MaskedGridMetadata
+
+from ._MemoryCachedGrid import MemoryCachedGrid
+from . import _MemoryCachedGridMetadata
 
 from ._RotatedGlobalGrid import RotatedGlobalGrid
 from . import _RotatedGlobalGridMetadata
@@ -62,9 +71,12 @@ __all__ = ['_CannyEdgesOverview',
            'ClimatologicalGridCollection',
            'ClippedGrid',
            'FastMarchingDistanceGrid',
+           'DerivedGrid',
            'GridSlice',
            'GridSliceCollection',
            'InpaintedGrid',
+           'MaskedGrid',
+           'MemoryCachedGrid',
            'RotatedGlobalGrid',
            'SeafloorGrid',
            'TimeSeriesGridStack',

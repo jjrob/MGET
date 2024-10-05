@@ -14,6 +14,11 @@ from ....Metadata import AddModuleMetadata
 AddModuleMetadata(shortDescription=_('Classes for accessing data products from `NASA JPL PO.DAAC <https://podaac.jpl.nasa.gov/>`__.'))
 
 from ._GHRSSTLevel4Granules import GHRSSTLevel4Granules
-from . import _GHRSSTLevel4GranulesMetadata
+from ._GHRSSTLevel4GranulesMetadata import _GHRSSTLevel4_LongDescription
 
-__all__ = ['GHRSSTLevel4Granules']
+from ._GHRSSTLevel4 import GHRSSTLevel4
+from . import _GHRSSTLevel4Metadata
+
+__all__ = ['_GHRSSTLevel4_LongDescription',
+           'GHRSSTLevel4',
+           'GHRSSTLevel4Granules']
