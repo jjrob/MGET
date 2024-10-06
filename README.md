@@ -10,7 +10,7 @@ toolbox.
 MGET was developed by the Duke University [Marine Geospatial Ecology
 Lab](https://mgel.env.duke.edu/).
 
-[![Python](https://github.com/jjrob/MGET/blob/main/badges/Python.svg)](https://python.org/) ![Platforms](https://github.com/jjrob/MGET/blob/main/badges/Platforms.svg) [![PyPI](https://github.com/jjrob/MGET/blob/main/badges/PyPI.svg)](https://pypi.org/project/mget3/)  
+[![Python](https://github.com/jjrob/MGET/blob/main/badges/Python.svg)](https://python.org/) ![Platforms](https://github.com/jjrob/MGET/blob/main/badges/Platforms.svg) [![PyPI package](https://github.com/jjrob/MGET/blob/main/badges/PyPI.svg)](https://pypi.org/project/mget3/) [![conda-forge package](https://img.shields.io/conda/vn/conda-forge/mget3.svg)](https://anaconda.org/conda-forge/mget3)  
 [![Build and test wheels status](https://github.com/jjrob/MGET/actions/workflows/build-wheels.yml/badge.svg)](https://github.com/jjrob/MGET/actions/workflows/build-wheels.yml) [![Data Products tests status](https://img.shields.io/endpoint?url=https://gist.githubusercontent.com/jjrob/c3761a6823cbf5aaded07b64fa4964b8/raw/badge.json)](https://github.com/jjrob/MGET/actions/workflows/test-data-products.yml) [![Documentation status](https://readthedocs.org/projects/mget/badge/?version=stable)](https://mget.readthedocs.io/en/stable/?badge=stable)
 
 ## Installation
