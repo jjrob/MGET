@@ -17,8 +17,18 @@ import pytest
 from GeoEco.Logging import Logger
 from GeoEco.DataManagement.ArcGISRasters import ArcGISRaster
 from GeoEco.Datasets.ArcGIS import ArcGISRaster as ArcGISRaster2
+from GeoEco.Matlab import MatlabDependency
 
 Logger.Initialize()
+
+
+def isMatlabInstalled():
+    d = MatlabDependency()
+    try:
+        d.Initialize()
+    except:
+        return False
+    return True
 
 
 def isArcPyInstalled():
@@ -48,6 +58,7 @@ class TestProjectToTemplate():
         ArcGISRaster.ProjectToTemplate(inputRaster, templateRaster, outputRaster, resamplingTechnique='bilinear', mask=True)
         assert outputRaster.is_file()
 
+    @pytest.mark.skipif(not isMatlabInstalled(), reason='MATLAB or MATLAB Runtime is not installed, or initialization of interoperability with it failed')
     def test_ProjectAndInterpAndMask(self, tmp_path):
         inputRaster = pathlib.Path(__file__).parent / '20100101_sst.img'
         templateRaster = pathlib.Path(__file__).parent / 'EC22_Study_Area_5km.img'

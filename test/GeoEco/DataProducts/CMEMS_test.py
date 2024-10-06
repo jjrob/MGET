@@ -17,6 +17,7 @@ import pytest
 from GeoEco.Logging import Logger
 from GeoEco.DataProducts.CMEMS import CMEMSARCOArray
 from GeoEco.Datasets.GDAL import GDALDataset
+from GeoEco.Matlab import MatlabDependency
 
 Logger.Initialize()
 
@@ -28,6 +29,15 @@ def getCMEMSCredentials():
         return (os.getenv('CMEMS_USERNAME'), os.getenv('CMEMS_PASSWORD'))
     except:
         return None, None
+
+
+def isMatlabInstalled():
+    d = MatlabDependency()
+    try:
+        d.Initialize()
+    except:
+        return False
+    return True
 
 
 def isArcPyInstalled():
@@ -417,6 +427,7 @@ class TestCMEMSARCOArrayArcGIS():
 
     # Test Canny fronts.
 
+    @pytest.mark.skipif(not isMatlabInstalled(), reason='MATLAB or MATLAB Runtime is not installed, or initialization of interoperability with it failed')
     def test_CannyEdgesAsArcGISRasters_tyx_monthly(self, tmp_path):
         username, password = getCMEMSCredentials()
         datasetID = 'cmems_obs-oc_glo_bgc-plankton_my_l4-gapfree-multi-4km_P1D'
@@ -434,6 +445,7 @@ class TestCMEMSARCOArrayArcGIS():
         for day in range(1, 10):
             assert (outputDir / datasetID / (vsn + '_fronts') / '2020' / ('%s_fronts_202001%02i.img' % (vsn, day))).is_file()
 
+    @pytest.mark.skipif(not isMatlabInstalled(), reason='MATLAB or MATLAB Runtime is not installed, or initialization of interoperability with it failed')
     def test_log10_CannyEdgesAsArcGISRasters_tyx_monthly(self, tmp_path):
         username, password = getCMEMSCredentials()
         datasetID = 'cmems_obs-oc_glo_bgc-plankton_my_l4-gapfree-multi-4km_P1D'
