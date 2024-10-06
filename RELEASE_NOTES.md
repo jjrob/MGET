@@ -9,17 +9,18 @@
 - Geoprocessing tools for GHRSST Level 4 products
 - More classes to GeoEco.Datasets.Virtual: DerivedGrid, MaskedGrid, MemoryCachedGrid
 - GitHub action to test downloading of all data products daily
-- Support for numpy 2.x (#11)
+- Support for numpy 2.x ([#11](https://github.com/jjrob/MGET/issues/11))
 - Badges to README.txt giving build, docs, and data products status
 
 ### Fixed
-- On PublicAPI page, the description is not showing up for GeoEco.DataManagement.ArcGISRasters (#3)
+- On PublicAPI page, the description is not showing up for GeoEco.DataManagement.ArcGISRasters ([#3](https://github.com/jjrob/MGET/issues/3))
 
 ## [v3.0.3](https://github.com/jjrob/MGET/releases/tag/v3.0.3) - 2024-09-25
 
 ### Added
 - Released docs to https://mget.readthedocs.io/
 - Updated README.md to link to relevent docs pages
+- Release MGET as a conda package on conda-forge ([#8](https://github.com/jjrob/MGET/issues/8))
 
 ## [v3.0.2](https://github.com/jjrob/MGET/releases/tag/v3.0.2) - 2024-09-25
 
