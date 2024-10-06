@@ -10,6 +10,7 @@
 - More classes to GeoEco.Datasets.Virtual: DerivedGrid, MaskedGrid, MemoryCachedGrid
 - GitHub action to test downloading of all data products daily
 - Support for numpy 2.x ([#11](https://github.com/jjrob/MGET/issues/11))
+- Update ArcGIS Pro installation instructions to use conda-forge package ([#14](https://github.com/jjrob/MGET/issues/11))
 - Badges to README.txt giving build, docs, and data products status
 
 ### Fixed
