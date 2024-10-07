@@ -14,7 +14,7 @@ import os
 from ....ArcGIS import GeoprocessorManager
 from ....Datasets import QueryableAttribute, Grid
 from ....Datasets.ArcGIS import ArcGISWorkspace, ArcGISRaster, ArcGISTable
-from ....Datasets.Virtual import MaskedGrid, DerivedGrid, RotatedGlobalGrid, ClippedGrid, CannyEdgeGrid, GridSliceCollection, ClimatologicalGridCollection
+from ....Datasets.Virtual import TimeSeriesGridStack, MaskedGrid, DerivedGrid, RotatedGlobalGrid, ClippedGrid, CannyEdgeGrid, GridSliceCollection, ClimatologicalGridCollection
 from ....DynamicDocString import DynamicDocString
 from ....Internationalization import _
 from ....SpatialAnalysis.Interpolation import Interpolator
@@ -77,7 +77,7 @@ class GHRSSTLevel4(Grid):
             setattr(object.__getattribute__(self, '_WrappedGrid'), name, value)
 
     @classmethod
-    def _GetRasterNameExpressions(outputWorkspace, rasterExtension, defaultExprForDir, defaultExprForGDB):
+    def _GetRasterNameExpressions(cls, outputWorkspace, rasterExtension, defaultExprForDir, defaultExprForGDB):
         GeoprocessorManager.InitializeGeoprocessor()
         gp = GeoprocessorManager.GetWrappedGeoprocessor()
         d = gp.Describe(outputWorkspace)
@@ -129,7 +129,7 @@ class GHRSSTLevel4(Grid):
         try:
             grid = cls._RotateAndClip(grid, rotationOffset, spatialExtent, startDate, endDate)
             workspace = ArcGISWorkspace(outputWorkspace, ArcGISRaster, pathCreationExpressions=rasterNameExpressions, cacheTree=True, queryableAttributes=tuple(grid.GetAllQueryableAttributes() + [QueryableAttribute('DateTime', _('Date'), DateTimeTypeMetadata())]))
-            workspace.ImportDatasets(GridSliceCollection(grid, tQACoordType=grid.GetLazyPropertyValue('TCornerCoordType')).QueryDatasets(), mode, useUnscaledData=useUnscaledData, calculateStatistics=calculateStatistics, buildRAT=buildRAT, buildPyramids=buildPyramids)
+            workspace.ImportDatasets(GridSliceCollection(grid, tQACoordType=grid.GetLazyPropertyValue('TCornerCoordType')).QueryDatasets(), mode, useUnscaledData=useUnscaledData, calculateStatistics=calculateStatistics, buildRAT=buildRAT, buildPyramids=buildPyramids, suppressRenameWarning=True)
         finally:
             grid.Close()
         return outputWorkspace

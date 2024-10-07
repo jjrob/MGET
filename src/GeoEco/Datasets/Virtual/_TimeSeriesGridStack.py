@@ -12,7 +12,7 @@ from ...DynamicDocString import DynamicDocString
 from ...Internationalization import _
 from ...Types import DateTimeTypeMetadata
 
-from .. import Grid
+from .. import Grid, QueryableAttribute
 
 
 class TimeSeriesGridStack(Grid):
@@ -85,6 +85,9 @@ class TimeSeriesGridStack(Grid):
         super(TimeSeriesGridStack, self).__init__(queryableAttributes=tuple(queryableAttributes), queryableAttributeValues=queryableAttributeValues)
 
     def _Close(self):
+        if hasattr(self, '_CachedOldestGrid') and self._CachedOldestGrid is not None:
+            self._CachedOldestGrid.Close()
+
         if hasattr(self, '_CachedDatasets') and self._CachedDatasets is not None:
             while len(self._CachedDatasets) > 0:
                 self._CachedDatasets[0].Close()

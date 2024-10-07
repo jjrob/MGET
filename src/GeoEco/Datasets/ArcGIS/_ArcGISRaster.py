@@ -9,8 +9,9 @@
 # full license text.
 
 import os
-import tempfile
+import re
 import shutil
+import tempfile
 
 from ...ArcGIS import GeoprocessorManager
 from ...DynamicDocString import DynamicDocString
@@ -464,6 +465,24 @@ class ArcGISRaster(DatasetCollection):
         # with GDAL, and copy the IMG file to the destination path.
 
         else:
+            # If the raster is being stored in a geodatabase, replace
+            # characters other than letters, numbers, and underscores with an
+            # underscore and log a warning.
+
+            outputWorkspace, oldName = os.path.split(path)
+            if len(outputWorkspace) > 0 and len(oldName) > 0:
+                d = gp.Describe(outputWorkspace)
+                if str(d.DataType).lower() == 'workspace' and str(d.DataType).lower() != 'filesystem':
+                    newName = re.sub('[^A-Za-z0-9_]', '_', oldName)
+                    if newName != oldName:
+                        nameWarning = _('The raster name "%(oldName)s" contains characters that are not allowed in the destination workspace "%(outputWorkspace)s". The raster will be given the name "%(newName)s" instead.') % {'oldName': oldName, 'newName': newName, 'outputWorkspace': outputWorkspace}
+                        if options is not None and 'suppressRenameWarning' in options and options['suppressRenameWarning']:
+                            cls._LogDebug(nameWarning)
+                        else:
+                            cls._LogWarning(nameWarning)
+
+                        path = os.path.join(outputWorkspace, newName)
+
             cls._LogDebug(_('%(class)s: Creating ArcGIS raster "%(path)s" by creating a temporary IMG file and then copying it with the geoprocessor.'), {'class': cls.__name__, 'path': path})
 
             # Create a temporary directory.

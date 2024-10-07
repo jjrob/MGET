@@ -23,7 +23,7 @@ class DerivedGrid(Grid):
         # Initialize our properties.
 
         self._Grids = grids
-        self._Expression = func
+        self._Func = func
         self._DisplayName = displayName
         self._AllowUnmasking = allowUnmasking
         self._ValidatedGrids = False
@@ -89,11 +89,11 @@ class DerivedGrid(Grid):
 
             self._ValidatedGrids = True
 
-        # Evaluate the expression.
+        # Evaluate the function.
 
         import numpy
 
-        data = numpy.asarray(eval(self._Expression), dtype=self.DataType)
+        data = numpy.asarray(self._Func(self._Grids, tuple(sliceList)), dtype=self.DataType)
 
         # If a no data value was provided, mask any cells that have no data in
         # any of the grids. If the grid had fewer dimensions, automatically

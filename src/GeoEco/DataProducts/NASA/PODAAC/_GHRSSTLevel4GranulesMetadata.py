@@ -82,7 +82,7 @@ AddArgumentMetadata(GHRSSTLevel4Granules.__init__, 'shortName',
 """PO.DAAC Short Name of the GHRSST L4 product to access. Currently, the
 following products are supported:
 
-""" + '\n'.join(['* `%s <https://podaac.jpl.nasa.gov/dataset/%s>`__.' % (product, product) for product in sorted(GHRSSTLevel4Granules._Metadata)]) + """
+""" + '\n'.join(['* `%s <https://podaac.jpl.nasa.gov/dataset/%s>`__' % (product, product) for product in sorted(GHRSSTLevel4Granules._Metadata)]) + """
 
 All products use the WGS 1984 geographic coordinate system and are published
 at a daily time-step. Some products are updated on a continual basis and

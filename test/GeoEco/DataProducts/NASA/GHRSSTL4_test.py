@@ -11,12 +11,14 @@
 import datetime
 import os
 from pathlib import Path
+import re
 
 import numpy
 import pytest
 
+from GeoEco.ArcGIS import GeoprocessorManager
 from GeoEco.Logging import Logger
-from GeoEco.DataProducts.NASA.PODAAC import GHRSSTLevel4Granules
+from GeoEco.DataProducts.NASA.PODAAC import GHRSSTLevel4Granules, GHRSSTLevel4
 
 Logger.Initialize()
 
@@ -82,3 +84,57 @@ class TestGHRSSTLevel4Granules():
         assert len(data.shape) == 2   # the t dimension automatically gets droppped because it has length 1
         assert data.shape[0] > 1
         assert data.shape[1] > 1
+
+
+@pytest.mark.skipif(None in getEarthdataCredentials(), reason='NASA_EARTHDATA_USERNAME or NASA_EARTHDATA_PASSWORD environment variables not defined')
+@pytest.mark.skipif(not isArcPyInstalled(), reason='ArcGIS arcpy module is not installed')
+class TestGHRSSTLevel4ArcGIS():
+
+    def test_CreateArcGISRasters(self, tmp_path):
+        username, password = getEarthdataCredentials()
+        shortName = 'MUR25-JPL-L4-GLOB-v04.2'
+        for variableName in ['analysed_sst', 'analysis_error']:
+            GHRSSTLevel4.CreateArcGISRasters(username=username, 
+                                             password=password, 
+                                             shortName=shortName, 
+                                             variableName=variableName, 
+                                             outputWorkspace=tmp_path,
+                                             startDate=datetime.datetime(2020,1,1),
+                                             endDate=datetime.datetime(2020,1,3,23,59,59))
+            for day in [1,2,3]:
+                assert (tmp_path / shortName / variableName / '2020' / ('%s_202001%02i090000.img' % (variableName, day))).is_file()
+
+    def test_CreateArcGISRastersInGDB(self, tmp_path):
+        GeoprocessorManager.InitializeGeoprocessor()
+        gp = GeoprocessorManager.GetWrappedGeoprocessor()
+        outputGDB = tmp_path / 'test.gdb'
+        gp.CreateFileGDB_management(str(tmp_path), 'test.gdb')
+        username, password = getEarthdataCredentials()
+        shortName = 'MUR25-JPL-L4-GLOB-v04.2'
+        for variableName in ['analysed_sst', 'analysis_error']:
+            GHRSSTLevel4.CreateArcGISRasters(username=username, 
+                                             password=password, 
+                                             shortName=shortName, 
+                                             variableName=variableName, 
+                                             outputWorkspace=outputGDB,
+                                             startDate=datetime.datetime(2020,1,1),
+                                             endDate=datetime.datetime(2020,1,3,23,59,59))
+            for day in [1,2,3]:
+                assert gp.Exists(str(outputGDB / ('%s_%s_202001%02i090000' % (re.sub('[^A-Za-z0-9_]', '_', shortName), variableName, day))))
+
+    # def test_CreateClimatologicalArcGISRasters(self, tmp_path):
+    #     username, password = getEarthdataCredentials()
+    #     shortName = 'MUR25-JPL-L4-GLOB-v04.2'
+    #     variableName = 'analysed_sst'
+    #     cacheDir = tmp_path + 'Cache'
+    #     os.makedirs(cacheDir)
+    #     for statistic in ['Count', 'Maximum', 'Mean', 'Minimum', 'Range', 'Standard Deviation', 'Sum']:
+    #         GHRSSTLevel4.CreateClimatologicalArcGISRasters(username=username, 
+    #                                                        password=password, 
+    #                                                        shortName=shortName, 
+    #                                                        variableName=variableName,
+    #                                                        statistic=statistic, 
+    #                                                        binType='month',
+    #                                                        outputWorkspace=tmp_path)
+    #         for month in range(1, 13):
+    #             assert (tmp_path / shortName / variableName / '2020' / ('%s_202001%02i090000.img' % (variableName, day))).is_file()

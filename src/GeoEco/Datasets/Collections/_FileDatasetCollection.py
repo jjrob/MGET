@@ -107,8 +107,7 @@ class FileDatasetCollection(DatasetCollection):
             # directory, create one.
 
             if cacheDirectory is None:
-                self.CacheDirectory = self._CreateTempDirectory()
-                cacheDirectory = self.CacheDirectory
+                cacheDirectory = self._CreateTempDirectory()
 
             # Decompress the file.
 

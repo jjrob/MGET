@@ -438,8 +438,7 @@ class CMRGranuleSearcher(DatasetCollection):
             obj = obj.ParentCollection
         
         if cacheDirectory is None:
-            self.CacheDirectory = self._CreateTempDirectory()
-            cacheDirectory = self.CacheDirectory
+            cacheDirectory = self._CreateTempDirectory()
 
         # If the file does not already exist, download it.
 
