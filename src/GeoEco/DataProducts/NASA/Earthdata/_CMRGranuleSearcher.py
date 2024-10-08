@@ -133,11 +133,8 @@ class CMRGranuleSearcher(DatasetCollection):
             cachePath = os.path.join(self.CacheDirectory, 'Metadata_CCID_' + self._QueryParams['collection_concept_id'] + '.pickle')
             if os.path.isfile(cachePath):
                 try:
-                    f = open(cachePath, 'r')
-                    try:
+                    with open(cachePath, 'rb') as f:
                         [cachedResults, cacheTime] = pickle.load(f)
-                    finally:
-                        f.close()
                 except:
                     self._LogWarning(_('Failed to read metadata from cache file %(file)s. We will delete the file and query the server instead.') % {'file': cachePath})
                     try:
@@ -409,11 +406,8 @@ class CMRGranuleSearcher(DatasetCollection):
                         os.makedirs(os.path.dirname(cachePath))
 
                     self._LogDebug(_('%(class)s 0x%(id)016X: Writing granule cache file "%(path)s".'), {'class': self.__class__.__name__, 'id': id(self), 'path': cachePath})
-                    f = open(cachePath, 'w')
-                    try:
+                    with open(cachePath, 'wb') as f:
                         pickle.dump([results, datetime.datetime.now()], f)
-                    finally:
-                        f.close()
                 except Exception as e:
                     self._LogWarning(_('Failed to write granule metadata to cache directory "%(dir)s". Subsequent requests for this metadata will be downloaded from the server, rather than being served from the cache. The error was %(e)s: %(msg)s.'), {'dir': os.path.dirname(cachePath), 'e': e.__class__.__name__, 'msg': e})
 
@@ -434,6 +428,9 @@ class CMRGranuleSearcher(DatasetCollection):
         while obj is not None:
             if obj.CacheDirectory is not None:
                 cacheDirectory = obj.CacheDirectory
+                if not os.path.isdir(cacheDirectory):
+                    self._LogDebug(_('Creating cache directory %(dir)s.') % {'dir': cacheDirectory})
+                    os.makedirs(cacheDirectory)
                 break
             obj = obj.ParentCollection
         

@@ -67,6 +67,9 @@ class FileDatasetCollection(DatasetCollection):
         while obj is not None:
             if obj.CacheDirectory is not None:
                 cacheDirectory = obj.CacheDirectory
+                if not os.path.isdir(cacheDirectory):
+                    self._LogDebug(_('Creating cache directory %(dir)s.') % {'dir': cacheDirectory})
+                    os.makedirs(cacheDirectory)
                 break
             obj = obj.ParentCollection
 

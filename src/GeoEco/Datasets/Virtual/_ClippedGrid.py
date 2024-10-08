@@ -44,13 +44,27 @@ class ClippedGrid(Grid):
 
         sliceListForDisplayName = []
         for i in range(len(grid.Dimensions)):
+            dim = grid.Dimensions[i]
+            coords = []
+            indices = []
+
             if sliceList[i].start > 0:
-                sliceListForDisplayName.append(_('%(dim)sMin = %(index)i') % {'dim': grid.Dimensions[i], 'index': sliceList[i].start})
+                coord = grid.CenterCoords[dim, sliceList[i].start] if clipBy == 'cell indices' else \
+                        xMin if dim == 'x' else yMin if dim == 'y' else zMin if dim == 'z' else tMin
+                coords.append('%(dim)s >= %(coord)s' % {'dim': dim, 'coord': coord})
+                indices.append(str(sliceList[i].start) + ':')
+            
             if sliceList[i].stop < grid.Shape[i]:
-                sliceListForDisplayName.append(_('%(dim)sMax = %(index)i') % {'dim': grid.Dimensions[i], 'index': sliceList[i].stop - 1})
+                coord = grid.CenterCoords[dim, sliceList[i].stop - 1] if clipBy == 'cell indices' else \
+                        xMax if dim == 'x' else yMax if dim == 'y' else zMax if dim == 'z' else tMax
+                coords.append('%(dim)s <= %(coord)s' % {'dim': dim, 'coord': coord})
+                indices.append(':' + str(sliceList[i].stop - 1))
+            
+            if len(coords) > 0:
+                sliceListForDisplayName.append(' and '.join(coords) + ' (indices [' + ''.join(indices).replace('::',':') + '])')
 
         if len(sliceListForDisplayName) > 0:
-            self._DisplayName = _('%(dn)s, clipped to indices %(indices)s') % {'dn': self._Grid.DisplayName, 'indices': ', '.join(sliceListForDisplayName)}
+            self._DisplayName = _('%(dn)s, clipped to cells with center coordinates of %(indices)s') % {'dn': self._Grid.DisplayName, 'indices': ', '.join(sliceListForDisplayName)}
         else:
             self._DisplayName = self._Grid.DisplayName
 

@@ -122,19 +122,22 @@ class TestGHRSSTLevel4ArcGIS():
             for day in [1,2,3]:
                 assert gp.Exists(str(outputGDB / ('%s_%s_202001%02i090000' % (re.sub('[^A-Za-z0-9_]', '_', shortName), variableName, day))))
 
-    # def test_CreateClimatologicalArcGISRasters(self, tmp_path):
-    #     username, password = getEarthdataCredentials()
-    #     shortName = 'MUR25-JPL-L4-GLOB-v04.2'
-    #     variableName = 'analysed_sst'
-    #     cacheDir = tmp_path + 'Cache'
-    #     os.makedirs(cacheDir)
-    #     for statistic in ['Count', 'Maximum', 'Mean', 'Minimum', 'Range', 'Standard Deviation', 'Sum']:
-    #         GHRSSTLevel4.CreateClimatologicalArcGISRasters(username=username, 
-    #                                                        password=password, 
-    #                                                        shortName=shortName, 
-    #                                                        variableName=variableName,
-    #                                                        statistic=statistic, 
-    #                                                        binType='month',
-    #                                                        outputWorkspace=tmp_path)
-    #         for month in range(1, 13):
-    #             assert (tmp_path / shortName / variableName / '2020' / ('%s_202001%02i090000.img' % (variableName, day))).is_file()
+    def test_CreateClimatologicalArcGISRasters(self, tmp_path):
+        username, password = getEarthdataCredentials()
+        shortName = 'MUR25-JPL-L4-GLOB-v04.2'
+        variableName = 'analysed_sst'
+        cacheDir = tmp_path / 'Cache'
+        os.makedirs(cacheDir)
+        for statistic in ['Count', 'Maximum', 'Mean', 'Minimum', 'Range', 'Standard Deviation', 'Sum']:
+            GHRSSTLevel4.CreateClimatologicalArcGISRasters(username=username, 
+                                                           password=password, 
+                                                           shortName=shortName, 
+                                                           variableName=variableName,
+                                                           statistic=statistic, 
+                                                           binType='monthly',
+                                                           outputWorkspace=tmp_path,
+                                                           cacheDirectory=cacheDir,
+                                                           startDate=datetime.datetime(2020,1,1),
+                                                           endDate=datetime.datetime(2020,12,31,23,59,59))
+            # for month in range(1, 13):
+            #     assert (tmp_path / shortName / variableName / '2020' / ('%s_202001%02i090000.img' % (variableName, day))).is_file()
