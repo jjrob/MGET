@@ -1013,7 +1013,7 @@ class CMEMSARCOArray(Grid):
                                 rasterExtension, rasterNameExpressions,
                                 wrapperGridClass=CannyEdgeGrid,
                                 wrapperGridParams={'highThreshold': highThreshold, 'lowThreshold': lowThreshold, 'sigma': sigma, 'minSize': minSize},
-                                vsnPostfix='_fronts')
+                                vsnPostfix='_canny_fronts')
 
         workspace = ArcGISWorkspace(outputWorkspace, ArcGISRaster, pathCreationExpressions=rasterNameExpressions, cacheTree=True, queryableAttributes=queryableAttributes)
         workspace.ImportDatasets(grids, mode, calculateStatistics=calculateStatistics, buildPyramids=buildPyramids, buildRAT=buildRAT)

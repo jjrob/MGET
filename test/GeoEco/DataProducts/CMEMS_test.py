@@ -443,7 +443,7 @@ class TestCMEMSARCOArrayArcGIS():
                                                  startDate=datetime.datetime(2020,1,1),
                                                  endDate=datetime.datetime(2020,1,10))
         for day in range(1, 10):
-            assert (outputDir / datasetID / (vsn + '_fronts') / '2020' / ('%s_fronts_202001%02i.img' % (vsn, day))).is_file()
+            assert (outputDir / datasetID / (vsn + '_canny_fronts') / '2020' / ('%s_canny_fronts_202001%02i.img' % (vsn, day))).is_file()
 
     @pytest.mark.skipif(not isMatlabInstalled(), reason='MATLAB or MATLAB Runtime is not installed, or initialization of interoperability with it failed')
     def test_log10_CannyEdgesAsArcGISRasters_tyx_monthly(self, tmp_path):
@@ -462,4 +462,4 @@ class TestCMEMSARCOArrayArcGIS():
                                                  startDate=datetime.datetime(2020,1,1),
                                                  endDate=datetime.datetime(2020,1,10))
         for day in range(1, 10):
-            assert (outputDir / datasetID / (vsn + '_fronts') / '2020' / ('%s_fronts_202001%02i.img' % (vsn, day))).is_file()
+            assert (outputDir / datasetID / (vsn + '_canny_fronts') / '2020' / ('%s_canny_fronts_202001%02i.img' % (vsn, day))).is_file()

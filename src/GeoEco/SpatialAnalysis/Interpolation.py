@@ -405,11 +405,11 @@ class Interpolator(object):
 
             if where is None:
                 rowCount = table.GetRowCount()
-                cursor = table.OpenUpdateCursor(where=where, orderBy=orderBy, rowCount=rowCount)
+                cursor = table.OpenUpdateCursor(orderBy=orderBy, rowCount=rowCount)
                 Logger.Info(_('Interpolating values for %(rowCount)i %(obj)s of %(table)s.') % {'rowCount': rowCount, 'obj': cursor.RowDescriptionPlural, 'table': table.DisplayName})
             else:
                 cursor = table.OpenUpdateCursor(where=where, orderBy=orderBy)
-                Logger.Info(_('Interpolating values for %(obj)s of %(table)s.') % {'obj': cursor.RowDescriptionPlural, 'table': table.DisplayName})
+                Logger.Info(_('Interpolating values for %(obj)s of %(table)s where %(where)s.') % {'obj': cursor.RowDescriptionPlural, 'table': table.DisplayName, 'where': where})
 
             try:
                 while cursor.NextRow():
@@ -1187,7 +1187,7 @@ coordinate system before using this tool."""),
     arcGISDisplayName=_('Point features'))
 
 AddArgumentMetadata(Interpolator.InterpolateTimeSeriesOfArcGISRastersValuesAtPoints, 'tField',
-    typeMetadata=ArcGISFieldTypeMetadata(mustExist=True, allowedFieldTypes=['date']),
+    typeMetadata=ArcGISFieldTypeMetadata(mustExist=True, allowedFieldTypes=['date', 'datetime']),
     description=_(
 """Field of the points that specifies the date and time of the point. The
 field must have a datetime data type. If the field can only represent dates

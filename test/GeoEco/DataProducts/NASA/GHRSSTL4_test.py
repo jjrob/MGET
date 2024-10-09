@@ -17,8 +17,13 @@ import numpy
 import pytest
 
 from GeoEco.ArcGIS import GeoprocessorManager
+from GeoEco.Datasets import Dataset, QueryableAttribute
+from GeoEco.Datasets.ArcGIS import ArcGISWorkspace, ArcGISTable
 from GeoEco.Logging import Logger
 from GeoEco.DataProducts.NASA.PODAAC import GHRSSTLevel4Granules, GHRSSTLevel4
+from GeoEco.Matlab import MatlabDependency
+from GeoEco.Types import UnicodeStringTypeMetadata
+
 
 Logger.Initialize()
 
@@ -30,6 +35,15 @@ def getEarthdataCredentials():
         return (os.getenv('NASA_EARTHDATA_USERNAME'), os.getenv('NASA_EARTHDATA_PASSWORD'))
     except:
         return None, None
+
+
+def isMatlabInstalled():
+    d = MatlabDependency()
+    try:
+        d.Initialize()
+    except:
+        return False
+    return True
 
 
 def isArcPyInstalled():
@@ -141,3 +155,114 @@ class TestGHRSSTLevel4ArcGIS():
                                                            endDate=datetime.datetime(2020,12,31,23,59,59))
             for month in range(1, 13):
                 assert (tmp_path / shortName / variableName / 'Monthly_Climatology' / ('%s_month%02i_%s.img' % (variableName, month, statistic.lower()))).is_file()
+
+    @pytest.mark.skipif(not isMatlabInstalled(), reason='MATLAB or MATLAB Runtime is not installed, or initialization of interoperability with it failed')
+    def test_InterpolateAtArcGISPoints(self, tmp_path):
+
+        # Create a geodatabase of test data.
+
+        GeoprocessorManager.InitializeGeoprocessor()
+        gp = GeoprocessorManager.GetWrappedGeoprocessor()
+        gp.CreateFileGDB_management(str(tmp_path), 'Test.gdb')
+
+        ws = ArcGISWorkspace(path=tmp_path / 'Test.gdb',
+                             datasetType=ArcGISTable,
+                             pathParsingExpressions=[r'(?P<TableName>.+)'], 
+                             queryableAttributes=(QueryableAttribute('TableName', 'Table name', UnicodeStringTypeMetadata()),))
+
+        table = ws.CreateTable(tableName='TestPoints',
+                               geometryType='point',
+                               spatialReference=Dataset.ConvertSpatialReference('proj4', '+proj=latlong +ellps=WGS84 +datum=WGS84 +no_defs', 'obj'))
+
+        table.AddField('t', 'datetime')
+        table.AddField('ExpectedSST', 'string', isNullable=True)
+        table.AddField('SST', 'float64', isNullable=True)
+
+        points = [[-100, 40, datetime.datetime(2020,1,1), None],      # USA (land)
+                  [3, 25, datetime.datetime(2020,1,1), None],         # Algeria (land)
+                  [-65, -35, datetime.datetime(2020,1,1), None],      # Argentina (land)
+                  [135, -25, datetime.datetime(2020,1,1), None],      # Australia (land)
+                  [0, 0, datetime.datetime(2020,6,30), 'hot'],        # Null Island
+                  [-70, 30, datetime.datetime(2020,6,30), 'hot'],     # Sargasso Sea
+                  [155, -15, datetime.datetime(2020,10,31), 'hot'],   # Coral Sea
+                  [155, 20, datetime.datetime(2020,9,1), 'hot'],      # east North Pacific
+                  [-175, -5, datetime.datetime(2020,9,1), 'hot'],     # south Central Pacific
+                  [-55, 60, datetime.datetime(2020,6,30), 'cold'],    # Labrador Sea
+                  [40, 75, datetime.datetime(2020,6,30), 'cold'],     # Berants Sea
+                  [-65, -60, datetime.datetime(2020,6,30), 'cold'],   # Drake Passage
+                  [145, -50, datetime.datetime(2020,6,30), 'cold'],   # Tasmania
+                 ]
+
+        with table.OpenInsertCursor() as cursor:
+            for x, y, t, expectedSST in points:
+                cursor.SetGeometry(table._ogr().CreateGeometryFromWkt(f'POINT({x} {y})'))
+                cursor.SetValue('t', t)
+                cursor.SetValue('ExpectedSST', expectedSST)
+                cursor.InsertRow()
+
+        # Test iterpolation.
+
+        username, password = getEarthdataCredentials()
+        shortName = 'MUR25-JPL-L4-GLOB-v04.2'
+        GHRSSTLevel4.InterpolateAtArcGISPoints(username=username, 
+                                               password=password, 
+                                               shortName=shortName, 
+                                               variableName='analysed_sst',
+                                               points=os.path.join(table.Path), 
+                                               tField='t', 
+                                               valueField='SST')
+
+        with table.OpenSelectCursor(reportProgress=False) as cursor:
+            while cursor.NextRow():
+                expectedSST = cursor.GetValue('ExpectedSST')
+                sst = cursor.GetValue('SST')
+                if expectedSST is None:
+                    assert sst is None
+                elif expectedSST == 'hot':
+                    assert sst > 20
+                elif expectedSST == 'cold':
+                    assert sst < 10
+                else:
+                    raise ValueError('Unknown ExpectedSST value %r' % expectedSST)
+
+        # Test the where clause.
+
+        with table.OpenUpdateCursor(reportProgress=False) as cursor:
+            while cursor.NextRow():
+                cursor.SetValue('SST', None)
+                cursor.UpdateRow()
+
+        GHRSSTLevel4.InterpolateAtArcGISPoints(username=username, 
+                                               password=password, 
+                                               shortName=shortName, 
+                                               variableName='analysed_sst',
+                                               points=os.path.join(table.Path), 
+                                               tField='t', 
+                                               valueField='SST',
+                                               where="ExpectedSST <> 'cold'")
+
+        with table.OpenSelectCursor(reportProgress=False) as cursor:
+            while cursor.NextRow():
+                expectedSST = cursor.GetValue('ExpectedSST')
+                sst = cursor.GetValue('SST')
+                if expectedSST is None or expectedSST == 'cold':
+                    assert sst is None
+                elif expectedSST == 'hot':
+                    assert sst > 20
+                else:
+                    raise ValueError('Unknown ExpectedSST value %r' % expectedSST)
+
+
+    @pytest.mark.skipif(not isMatlabInstalled(), reason='MATLAB or MATLAB Runtime is not installed, or initialization of interoperability with it failed')
+    def test_CannyEdgesAsArcGISRasters(self, tmp_path):
+        username, password = getEarthdataCredentials()
+        shortName = 'MUR25-JPL-L4-GLOB-v04.2'
+        GHRSSTLevel4.CannyEdgesAsArcGISRasters(username=username, 
+                                               password=password, 
+                                               shortName=shortName, 
+                                               outputWorkspace=tmp_path,
+                                               spatialExtent='-82 25 -52 50',
+                                               startDate=datetime.datetime(2020,1,1),
+                                               endDate=datetime.datetime(2020,1,3,23,59,59))
+        for day in [1,2,3]:
+            assert (tmp_path / shortName / 'canny_fronts' / '2020' / ('canny_fronts_202001%02i090000.img' % day)).is_file()
