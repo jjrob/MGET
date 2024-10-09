@@ -27,7 +27,7 @@ AddClassMetadata(ClimatologicalGridCollection,
 # Public properties
 
 AddPropertyMetadata(ClimatologicalGridCollection.Statistic,
-    typeMetadata=UnicodeStringTypeMetadata(allowedValues=['Count', 'Maximum', 'Mean', 'Minimum', 'Range', 'Standard Deviation', 'Sum'], makeLowercase=True),
+    typeMetadata=UnicodeStringTypeMetadata(allowedValues=['Count', 'Maximum', 'Mean', 'Minimum', 'Range', 'Standard_Deviation', 'Sum'], makeLowercase=True),
     shortDescription=_(
 """Statistic to calculate for each cell, one of:
 
@@ -43,7 +43,7 @@ AddPropertyMetadata(ClimatologicalGridCollection.Statistic,
 * ``Range`` - range for the cell, calculated as the maximum minus the
   minimum.
 
-* ``Standard Deviation`` - sample standard deviation for the cell (i.e. the
+* ``Standard_Deviation`` - sample standard deviation for the cell (i.e. the
   standard deviation estimated using Bessel's correction). In order to
   calculate this, there must be at least two grids with data for the cell.
 

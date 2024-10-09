@@ -47,7 +47,7 @@ AddArgumentMetadata(AggregateGrid.__init__, 'grids',
     description=_('A :py:class:`list` of :class:`~GeoEco.Datasets.Grid`\\ s to summarize. They must all have the same dimensions and shape.'))
 
 AddArgumentMetadata(AggregateGrid.__init__, 'statistic',
-    typeMetadata=UnicodeStringTypeMetadata(allowedValues=['Count', 'Maximum', 'Mean', 'Minimum', 'Range', 'Standard Deviation', 'Sum'], makeLowercase=True),
+    typeMetadata=UnicodeStringTypeMetadata(allowedValues=['Count', 'Maximum', 'Mean', 'Minimum', 'Range', 'Standard_Deviation', 'Sum'], makeLowercase=True),
     description=_(
 """Statistic to calculate for each cell, one of:
 
@@ -62,7 +62,7 @@ AddArgumentMetadata(AggregateGrid.__init__, 'statistic',
 
 * ``Range`` - range for the cell, calculated as the maximum minus the minimum.
 
-* ``Standard Deviation`` - sample standard deviation for the cell (i.e. the
+* ``Standard_Deviation`` - sample standard deviation for the cell (i.e. the
   standard deviation estimated using Bessel's correction). In order to
   calculate this, there must be at least two images with data for the cell.
 

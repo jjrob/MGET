@@ -353,7 +353,7 @@ class TestCMEMSARCOArrayArcGIS():
         vsn = 'CHL'
         outputDir = tmp_path / (vsn + '1' )
         os.makedirs(outputDir)
-        for statistic in ['Count', 'Maximum', 'Mean', 'Minimum', 'Range', 'Standard Deviation', 'Sum']:
+        for statistic in ['Count', 'Maximum', 'Mean', 'Minimum', 'Range', 'Standard_Deviation', 'Sum']:
             CMEMSARCOArray.CreateClimatologicalArcGISRasters(username=username,
                                                              password=password,
                                                              datasetID=datasetID,

@@ -165,7 +165,7 @@ class AggregateGrid(Grid):
         if self._Statistic in ['sum', 'mean']:
             sum_ = numpy.zeros(shape, dtype=str(self.DataType))
 
-        if self._Statistic == 'standard deviation':
+        if self._Statistic == 'standard_deviation':
             mean = numpy.zeros(shape, dtype=str(self.DataType))
             M2 = numpy.zeros(shape, dtype=str(self.DataType))
 
@@ -239,7 +239,7 @@ class AggregateGrid(Grid):
                 # algorithm. See "On-line algorithm" in
                 # http://en.wikipedia.org/wiki/Algorithms_for_calculating_variance.
 
-                if self._Statistic == 'standard deviation':
+                if self._Statistic == 'standard_deviation':
                     delta = data[hasData] - mean[hasData]
                     mean[hasData] += delta/count[hasData]
                     M2[hasData] += delta*(data[hasData] - mean[hasData])

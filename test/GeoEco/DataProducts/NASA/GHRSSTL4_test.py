@@ -128,7 +128,7 @@ class TestGHRSSTLevel4ArcGIS():
         variableName = 'analysed_sst'
         cacheDir = tmp_path / 'Cache'
         os.makedirs(cacheDir)
-        for statistic in ['Count', 'Maximum', 'Mean', 'Minimum', 'Range', 'Standard Deviation', 'Sum']:
+        for statistic in ['Count', 'Maximum', 'Mean', 'Minimum', 'Range', 'Standard_Deviation', 'Sum']:
             GHRSSTLevel4.CreateClimatologicalArcGISRasters(username=username, 
                                                            password=password, 
                                                            shortName=shortName, 
@@ -139,5 +139,5 @@ class TestGHRSSTLevel4ArcGIS():
                                                            cacheDirectory=cacheDir,
                                                            startDate=datetime.datetime(2020,1,1),
                                                            endDate=datetime.datetime(2020,12,31,23,59,59))
-            # for month in range(1, 13):
-            #     assert (tmp_path / shortName / variableName / '2020' / ('%s_202001%02i090000.img' % (variableName, day))).is_file()
+            for month in range(1, 13):
+                assert (tmp_path / shortName / variableName / 'Monthly_Climatology' / ('%s_month%02i_%s.img' % (variableName, month, statistic.lower()))).is_file()
