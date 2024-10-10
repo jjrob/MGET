@@ -1160,8 +1160,8 @@ class CMEMSARCOArray(Grid):
 
     @classmethod
     def InterpolateAtArcGISPoints(cls, username, password, datasetID, variableShortName,
-                                  points, valueField, zField=None, tField=None, method='Nearest', 
-                                  where=None, noDataValue=None, log10Transform=False,
+                                  points, valueField, zField=None, tField=None, method='Nearest', log10Transform=False, 
+                                  where=None, noDataValue=None,
                                   xCoordType='center', yCoordType='center', zCoordType='center', tCoordType='min',
                                   orderByFields=None, numBlocksToCacheInMemory=256, xBlockSize=64, yBlockSize=64, zBlockSize=1, tBlockSize=1):
         cls.__doc__.Obj.ValidateMethodInvocation()
@@ -1855,14 +1855,13 @@ AddArgumentMetadata(CMEMSARCOArray.InterpolateAtArcGISPoints, 'method',
 """),
     arcGISDisplayName=_('Interpolation method'))
 
-CopyArgumentMetadata(Interpolator.InterpolateArcGISRasterValuesAtPoints, 'where', CMEMSARCOArray.InterpolateAtArcGISPoints, 'where')
-CopyArgumentMetadata(Interpolator.InterpolateArcGISRasterValuesAtPoints, 'noDataValue', CMEMSARCOArray.InterpolateAtArcGISPoints, 'noDataValue')
-
 AddArgumentMetadata(CMEMSARCOArray.InterpolateAtArcGISPoints, 'log10Transform',
     typeMetadata=CMEMSARCOArray.Log10Transform.__doc__.Obj.Type,
     description=CMEMSARCOArray.Log10Transform.__doc__.Obj.ShortDescription,
-    arcGISDisplayName=_('Apply log10 transform'),
-    arcGISCategory=_('Interpolation options'))
+    arcGISDisplayName=_('Apply log10 transform'))
+
+CopyArgumentMetadata(Interpolator.InterpolateArcGISRasterValuesAtPoints, 'where', CMEMSARCOArray.InterpolateAtArcGISPoints, 'where')
+CopyArgumentMetadata(Interpolator.InterpolateArcGISRasterValuesAtPoints, 'noDataValue', CMEMSARCOArray.InterpolateAtArcGISPoints, 'noDataValue')
 
 CopyArgumentMetadata(CMEMSARCOArray.CreateArcGISRasters, 'xCoordType', CMEMSARCOArray.InterpolateAtArcGISPoints, 'xCoordType')
 CopyArgumentMetadata(CMEMSARCOArray.CreateArcGISRasters, 'yCoordType', CMEMSARCOArray.InterpolateAtArcGISPoints, 'yCoordType')
