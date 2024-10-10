@@ -12,6 +12,9 @@ on:
       - 'RELEASE_NOTES.md'
       - '.readthedocs.yaml'
 
+  workflow_dispatch:  # Allows manual trigger
+
+
 jobs:
   build_wheels:
     name: Build wheels on ${{ matrix.os }}
