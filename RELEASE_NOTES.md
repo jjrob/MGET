@@ -1,6 +1,6 @@
 # MGET Release Notes
 
-## v3.1.0 - Under Development
+## [v3.1.0](https://github.com/jjrob/MGET/releases/tag/v3.1.0) - 2024-10-10
 
 ### Added
 - CMRGranuleSearcher class for querying NASA Earthdata for granules
