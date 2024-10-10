@@ -1,7 +1,7 @@
 Testing MGET
 ============
 
-MGET relies on the `pytest <https://pytest.org>`_ testing framework to
+MGET relies on the `pytest <https://pytest.org>`__ testing framework to
 implement tests that verify that MGET is working as designed. Ultimately, we
 aim to use GitHub's automation features to run the tests automatically as part
 of a continuous integration process. This is nontrivial, though, because a
@@ -33,9 +33,15 @@ the file with your text editor and paste in the following text and replace
 
     CMEMS_USERNAME=********
     CMEMS_PASSWORD=********
+    NASA_EARTHDATA_USERNAME=********
+    NASA_EARTHDATA_PASSWORD=********
 
 * ``CMEMS_USERNAME`` and ``CMEMS_PASSWORD`` - your username and password for
-  `Copernicus Marine Service <https://marine.copernicus.eu/>`_, a.k.a. CMEMS.
+  `Copernicus Marine Service <https://marine.copernicus.eu/>`__, a.k.a. CMEMS.
+
+* ``NASA_EARTHDATA_USERNAME`` and ``NASA_EARTHDATA_PASSWORD`` - your username
+  and password for `NASA Earthdata
+  <https://www.earthdata.nasa.gov/>`__.
 
 .. Warning::
     Your credentials must be entered in plaintext. To keep them secret, be
@@ -64,7 +70,7 @@ supplied in the ``.env`` file or certain software is not installed, including:
 * MATLAB Runtime R2024b or the full version of MATLAB R2024b
 
 Please see the `pytest documentation
-<https://docs.pytest.org/en/stable/how-to/usage.html>`_ for instructions on
+<https://docs.pytest.org/en/stable/how-to/usage.html>`__ for instructions on
 how to run specific tests and for other information about using pytest.
 
 
