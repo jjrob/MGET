@@ -7,10 +7,11 @@
 - GHRSSTLevel4Granules class for querying NASA Earthdata for GHRSST Level 4 granules
 - GHRSSTLevel4 class for representing GHRSST Level 4 product as a 3D Grid
 - Geoprocessing tools for GHRSST Level 4 products
+- InterpolateAtArcGISPoints() function to CMEMSARCOArray ([#13](https://github.com/jjrob/MGET/issues/13))
 - More classes to GeoEco.Datasets.Virtual: DerivedGrid, MaskedGrid, MemoryCachedGrid
 - GitHub action to test downloading of all data products daily
 - Support for numpy 2.x ([#11](https://github.com/jjrob/MGET/issues/11))
-- Update ArcGIS Pro installation instructions to use conda-forge package ([#14](https://github.com/jjrob/MGET/issues/11))
+- Update ArcGIS Pro installation instructions to use conda-forge package ([#14](https://github.com/jjrob/MGET/issues/14))
 - Badges to README.txt giving build, docs, and data products status
 
 ### Fixed
