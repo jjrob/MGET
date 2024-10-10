@@ -26,7 +26,9 @@ jobs:
 
     steps:
       - uses: actions/checkout@v4
-
+        with:
+          fetch-depth: 0
+    
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
@@ -49,6 +51,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       - name: Build sdist
         run: pipx run build --sdist
@@ -165,6 +169,8 @@ jobs:
 
       - name: Checkout source
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       - name: Run tests
         run: |
@@ -237,6 +243,8 @@ jobs:
 
       - name: Checkout source
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       - name: Cache MATLAB Runtime
         id: cache-matlab-runtime-windows
