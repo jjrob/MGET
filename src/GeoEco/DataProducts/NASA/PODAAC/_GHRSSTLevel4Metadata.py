@@ -483,7 +483,7 @@ CopyArgumentMetadata(Interpolator.InterpolateGridsValuesForTableOfPoints, 'xBloc
 CopyArgumentMetadata(Interpolator.InterpolateGridsValuesForTableOfPoints, 'yBlockSize', GHRSSTLevel4.InterpolateAtArcGISPoints, 'yBlockSize')
 CopyArgumentMetadata(Interpolator.InterpolateGridsValuesForTableOfPoints, 'tBlockSize', GHRSSTLevel4.InterpolateAtArcGISPoints, 'tBlockSize')
 
-AddResultMetadata(GHRSSTLevel4.InterpolateAtArcGISPoints, u'updatedPoints',
+AddResultMetadata(GHRSSTLevel4.InterpolateAtArcGISPoints, 'updatedPoints',
     typeMetadata=ArcGISFeatureLayerTypeMetadata(),
     description=_('Updated points.'),
     arcGISDisplayName=_('Updated points'),

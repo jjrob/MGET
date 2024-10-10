@@ -14,10 +14,14 @@ from pathlib import Path
 import numpy
 import pytest
 
+from GeoEco.ArcGIS import GeoprocessorManager
+from GeoEco.Datasets import Dataset, QueryableAttribute
+from GeoEco.Datasets.ArcGIS import ArcGISWorkspace, ArcGISTable
 from GeoEco.Logging import Logger
 from GeoEco.DataProducts.CMEMS import CMEMSARCOArray
 from GeoEco.Datasets.GDAL import GDALDataset
 from GeoEco.Matlab import MatlabDependency
+from GeoEco.Types import UnicodeStringTypeMetadata
 
 Logger.Initialize()
 
@@ -463,3 +467,104 @@ class TestCMEMSARCOArrayArcGIS():
                                                  endDate=datetime.datetime(2020,1,10))
         for day in range(1, 10):
             assert (outputDir / datasetID / (vsn + '_canny_fronts') / '2020' / ('%s_canny_fronts_202001%02i.img' % (vsn, day))).is_file()
+
+    @pytest.mark.skipif(not isMatlabInstalled(), reason='MATLAB or MATLAB Runtime is not installed, or initialization of interoperability with it failed')
+    def test_InterpolateAtArcGISPoints(self, tmp_path):
+
+        # Create a geodatabase of test data.
+
+        GeoprocessorManager.InitializeGeoprocessor()
+        gp = GeoprocessorManager.GetWrappedGeoprocessor()
+        gp.CreateFileGDB_management(str(tmp_path), 'Test.gdb')
+
+        ws = ArcGISWorkspace(path=tmp_path / 'Test.gdb',
+                             datasetType=ArcGISTable,
+                             pathParsingExpressions=[r'(?P<TableName>.+)'], 
+                             queryableAttributes=(QueryableAttribute('TableName', 'Table name', UnicodeStringTypeMetadata()),))
+
+        table = ws.CreateTable(tableName='TestPoints',
+                               geometryType='point',
+                               spatialReference=Dataset.ConvertSpatialReference('proj4', '+proj=latlong +ellps=WGS84 +datum=WGS84 +no_defs', 'obj'))
+
+        table.AddField('z', 'float64')
+        table.AddField('t', 'datetime')
+        table.AddField('ExpectedSST', 'string', isNullable=True)
+        table.AddField('SST', 'float64', isNullable=True)
+
+        points = [[-100, 40, 0, datetime.datetime(2020,1,1), None],      # USA (land)
+                  [3, 25, 0, datetime.datetime(2020,1,1), None],         # Algeria (land)
+                  [-65, -35, 0, datetime.datetime(2020,1,1), None],      # Argentina (land)
+                  [135, -25, 0, datetime.datetime(2020,1,1), None],      # Australia (land)
+                  [0, 0, 0, datetime.datetime(2020,6,30), 'hot'],        # Null Island
+                  [-70, 30, 0, datetime.datetime(2020,6,30), 'hot'],     # Sargasso Sea
+                  [155, -15, 0, datetime.datetime(2020,10,31), 'hot'],   # Coral Sea
+                  [155, 20, 0, datetime.datetime(2020,9,1), 'hot'],      # east North Pacific
+                  [-175, -5, 0, datetime.datetime(2020,9,1), 'hot'],     # south Central Pacific
+                  [-55, 60, 0, datetime.datetime(2020,6,30), 'cold'],    # Labrador Sea
+                  [40, 75, 0, datetime.datetime(2020,6,30), 'cold'],     # Berants Sea
+                  [-65, -60, 0, datetime.datetime(2020,6,30), 'cold'],   # Drake Passage
+                  [145, -50, 0, datetime.datetime(2020,6,30), 'cold'],   # Tasmania
+                 ]
+
+        with table.OpenInsertCursor() as cursor:
+            for x, y, z, t, expectedSST in points:
+                cursor.SetGeometry(table._ogr().CreateGeometryFromWkt(f'POINT({x} {y})'))
+                cursor.SetValue('z', z)
+                cursor.SetValue('t', t)
+                cursor.SetValue('ExpectedSST', expectedSST)
+                cursor.InsertRow()
+
+        # Test iterpolation.
+
+        username, password = getCMEMSCredentials()
+        datasetID = 'cmems_mod_glo_phy_my_0.083deg_P1D-m'
+        vsn = 'thetao'
+        CMEMSARCOArray.InterpolateAtArcGISPoints(username=username,
+                                                 password=password,
+                                                 datasetID=datasetID,
+                                                 variableShortName=vsn,
+                                                 points=os.path.join(table.Path), 
+                                                 zField='z',
+                                                 tField='t', 
+                                                 valueField='SST')
+
+        with table.OpenSelectCursor(reportProgress=False) as cursor:
+            while cursor.NextRow():
+                expectedSST = cursor.GetValue('ExpectedSST')
+                sst = cursor.GetValue('SST')
+                if expectedSST is None:
+                    assert sst is None
+                elif expectedSST == 'hot':
+                    assert sst > 20
+                elif expectedSST == 'cold':
+                    assert sst < 10
+                else:
+                    raise ValueError('Unknown ExpectedSST value %r' % expectedSST)
+
+        # Test the where clause.
+
+        with table.OpenUpdateCursor(reportProgress=False) as cursor:
+            while cursor.NextRow():
+                cursor.SetValue('SST', None)
+                cursor.UpdateRow()
+
+        CMEMSARCOArray.InterpolateAtArcGISPoints(username=username,
+                                                 password=password,
+                                                 datasetID=datasetID,
+                                                 variableShortName=vsn,
+                                                 points=os.path.join(table.Path), 
+                                                 zField='z',
+                                                 tField='t', 
+                                                 valueField='SST',
+                                                 where="ExpectedSST <> 'cold'")
+
+        with table.OpenSelectCursor(reportProgress=False) as cursor:
+            while cursor.NextRow():
+                expectedSST = cursor.GetValue('ExpectedSST')
+                sst = cursor.GetValue('SST')
+                if expectedSST is None or expectedSST == 'cold':
+                    assert sst is None
+                elif expectedSST == 'hot':
+                    assert sst > 20
+                else:
+                    raise ValueError('Unknown ExpectedSST value %r' % expectedSST)

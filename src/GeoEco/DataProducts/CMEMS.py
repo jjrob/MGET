@@ -17,11 +17,12 @@ import types
 
 from ..ArcGIS import GeoprocessorManager
 from ..Datasets import QueryableAttribute, Grid
-from ..Datasets.ArcGIS import ArcGISRaster, ArcGISWorkspace
+from ..Datasets.ArcGIS import ArcGISRaster, ArcGISTable, ArcGISWorkspace
 from ..Datasets.Virtual import GridSliceCollection, ClippedGrid, RotatedGlobalGrid, SeafloorGrid, CannyEdgeGrid, _CannyEdgesOverview, ClimatologicalGridCollection
 from ..DynamicDocString import DynamicDocString
 from ..Internationalization import _
 from ..Matlab import MatlabDependency
+from ..SpatialAnalysis.Interpolation import Interpolator
 from ..Types import *
 
 
@@ -1157,6 +1158,38 @@ class CMEMSARCOArray(Grid):
 
         return outputWorkspace
 
+    @classmethod
+    def InterpolateAtArcGISPoints(cls, username, password, datasetID, variableShortName,
+                                  points, valueField, zField=None, tField=None, method='Nearest', 
+                                  where=None, noDataValue=None, log10Transform=False,
+                                  xCoordType='center', yCoordType='center', zCoordType='center', tCoordType='min',
+                                  orderByFields=None, numBlocksToCacheInMemory=256, xBlockSize=64, yBlockSize=64, zBlockSize=1, tBlockSize=1):
+        cls.__doc__.Obj.ValidateMethodInvocation()
+        grid = cls(username, password, datasetID, variableShortName, log10Transform=log10Transform, 
+                   xCoordType=xCoordType, yCoordType=yCoordType, zCoordType=zCoordType, tCoordType=tCoordType)
+        try:
+            if 't' in grid.Dimensions and tField is None:
+                raise ValueError('A value for the Date Field (tField) parameter must be given when the CMEMS dataset is a time series.')
+
+            Interpolator.InterpolateGridsValuesForTableOfPoints(grids=[grid], 
+                                                                table=ArcGISTable(points), 
+                                                                fields=[valueField], 
+                                                                zField=zField,
+                                                                tField=tField, 
+                                                                where=where, 
+                                                                orderBy=', '.join([f + ' ASC' for f in orderByFields]) if orderByFields is not None else tField + ' ASC', 
+                                                                method=method, 
+                                                                noDataValue=noDataValue, 
+                                                                gridsWrap=bool(grid.MaxCoords['x',-1] - grid.MinCoords['x',0] == 360), 
+                                                                numBlocksToCacheInMemory=numBlocksToCacheInMemory, 
+                                                                xBlockSize=xBlockSize, 
+                                                                yBlockSize=yBlockSize, 
+                                                                zBlockSize=zBlockSize, 
+                                                                tBlockSize=tBlockSize)
+        finally:
+            grid.Close()
+        return points
+
 
 ###############################################################################
 # Metadata: module
@@ -1737,6 +1770,116 @@ CopyArgumentMetadata(CMEMSARCOArray.CreateArcGISRasters, 'calculateStatistics', 
 CopyArgumentMetadata(CMEMSARCOArray.CreateArcGISRasters, 'buildPyramids', CMEMSARCOArray.CreateClimatologicalArcGISRasters, 'buildPyramids')
 
 CopyResultMetadata(CMEMSARCOArray.CreateArcGISRasters, 'updatedOutputWorkspace', CMEMSARCOArray.CreateClimatologicalArcGISRasters, 'updatedOutputWorkspace')
+
+# Public method: CMEMSARCOArray.InterpolateAtArcGISPoints
+
+AddMethodMetadata(CMEMSARCOArray.InterpolateAtArcGISPoints,
+    shortDescription=_('Interpolates values of a 2D, 3D, or 4D gridded dataset published by `Copernicus Marine Service <https://data.marine.copernicus.eu/products>`__ at points.'),
+    longDescription=_(
+"""Given a desired CMEMS dataset, this tool interpolates the value of that
+dataset at the given points. This tool performs the same basic operation as
+the ArcGIS Spatial Analyst's :arcpy_sa:`Extract-Values-to-Points` tool, but it
+reads the data from the CMEMS servers rather than reading rasters stored on your
+machine."""),
+    isExposedAsArcGISTool=True,
+    arcGISDisplayName=_('Interpolate CMEMS Dataset at Points'),
+    arcGISToolCategory=_('Data Products\\Copernicus Marine Service (CMEMS)'),
+    dependencies=[ArcGISDependency()] + CMEMSARCOArray.__init__.__doc__.Obj.Dependencies)
+
+CopyArgumentMetadata(CMEMSARCOArray.CreateArcGISRasters, 'cls', CMEMSARCOArray.InterpolateAtArcGISPoints, 'cls')
+CopyArgumentMetadata(CMEMSARCOArray.CreateArcGISRasters, 'username', CMEMSARCOArray.InterpolateAtArcGISPoints, 'username')
+CopyArgumentMetadata(CMEMSARCOArray.CreateArcGISRasters, 'password', CMEMSARCOArray.InterpolateAtArcGISPoints, 'password')
+CopyArgumentMetadata(CMEMSARCOArray.CreateArcGISRasters, 'datasetID', CMEMSARCOArray.InterpolateAtArcGISPoints, 'datasetID')
+CopyArgumentMetadata(CMEMSARCOArray.CreateArcGISRasters, 'variableShortName', CMEMSARCOArray.InterpolateAtArcGISPoints, 'variableShortName')
+
+AddArgumentMetadata(CMEMSARCOArray.InterpolateAtArcGISPoints, 'points',
+    typeMetadata=ArcGISFeatureLayerTypeMetadata(mustExist=True, allowedShapeTypes=['Point']),
+    description=_(
+"""Feature class or layer containing the points at which values should be
+interpolated. The points must have a field that contains the date of each
+point and a field to receive the value interpolated from the raster.
+
+CMEMS datasets use the WGS 1984 geographic coordinate system. It is
+recommended but not required that the points use the same coordinate system.
+If they do not, this tool will attempt to project the points to the WGS 1984
+coordinate system prior to doing the interpolation. This may fail if a datum
+transformation is required, in which case you will have to manually project
+the points to the WGS 1984 coordinate system before using this tool."""),
+    arcGISDisplayName=_('Point features'))
+
+CopyArgumentMetadata(Interpolator.InterpolateTimeSeriesOfArcGISRastersValuesAtPoints, 'valueField', CMEMSARCOArray.InterpolateAtArcGISPoints, 'valueField')
+
+AddArgumentMetadata(CMEMSARCOArray.InterpolateAtArcGISPoints, 'zField',
+    typeMetadata=ArcGISFieldTypeMetadata(mustExist=True, allowedFieldTypes=['int8', 'uint8', 'int16', 'uint16', 'int32', 'uint32', 'int64', 'uint64', 'float32', 'float64'], canBeNone=True),
+    description=_(
+"""Field of the points that specifies the depth of the point. The field is
+required if the CMEMS dataset includes depth layers; it should be omitted
+otherwise."""),
+    arcGISDisplayName=_('Depth field'),
+    arcGISParameterDependencies=['points'])
+
+AddArgumentMetadata(CMEMSARCOArray.InterpolateAtArcGISPoints, 'tField',
+    typeMetadata=ArcGISFieldTypeMetadata(mustExist=True, allowedFieldTypes=['date', 'datetime'], canBeNone=True),
+    description=_(
+"""Field of the points that specifies the date and time of the point. The
+field is required if the CMEMS dataset is a time series; it should be omitted
+otherwise. The field must have a datetime data type. If the field can only
+represent dates with no time component, the time will assumed to be 00:00:00."""),
+    arcGISDisplayName=_('Date field'),
+    arcGISParameterDependencies=['points'])
+
+AddArgumentMetadata(CMEMSARCOArray.InterpolateAtArcGISPoints, 'method',
+    typeMetadata=UnicodeStringTypeMetadata(allowedValues=['Nearest', 'Linear'], makeLowercase=True),
+    description=_(
+"""Interpolation method to use, one of:
+
+* ``Nearest`` - nearest neighbor interpolation. The interpolated value
+  will simply be the value of the cell that contains the point. This
+  is the default.
+
+* ``Linear`` - linear interpolation. This method is suitable for continuous
+  data such as sea surface temperature, but not for categorical data such as
+  pixel quality flags (use nearest neighbor instead). This method averages
+  the values of the eight nearest cells in the x, y, depth, and time
+  dimensions (if applicable), weighting the contribution of each cell by the
+  area of it that would be covered by a hypothetical cell centered on the
+  point being interpolated. If the cell containing the point contains NoData,
+  the result is NoData. Otherwise, and the result is based on the weighted
+  average of the four (if the dataset is 2D), eight (if 3D), or 16 (if 4D)
+  nearest cells that do contain data, including the one that contains the
+  cell. If any of the other cells contain NoData, they are omitted from the
+  average. This a multi-dimensional version of the bilinear interpolation
+  implemented by the ArcGIS Spatial Analyst's
+  :arcpy_sa:`Extract-Values-to-Points` tool.
+
+"""),
+    arcGISDisplayName=_('Interpolation method'))
+
+CopyArgumentMetadata(Interpolator.InterpolateArcGISRasterValuesAtPoints, 'where', CMEMSARCOArray.InterpolateAtArcGISPoints, 'where')
+CopyArgumentMetadata(Interpolator.InterpolateArcGISRasterValuesAtPoints, 'noDataValue', CMEMSARCOArray.InterpolateAtArcGISPoints, 'noDataValue')
+
+AddArgumentMetadata(CMEMSARCOArray.InterpolateAtArcGISPoints, 'log10Transform',
+    typeMetadata=CMEMSARCOArray.Log10Transform.__doc__.Obj.Type,
+    description=CMEMSARCOArray.Log10Transform.__doc__.Obj.ShortDescription,
+    arcGISDisplayName=_('Apply log10 transform'),
+    arcGISCategory=_('Interpolation options'))
+
+CopyArgumentMetadata(CMEMSARCOArray.CreateArcGISRasters, 'xCoordType', CMEMSARCOArray.InterpolateAtArcGISPoints, 'xCoordType')
+CopyArgumentMetadata(CMEMSARCOArray.CreateArcGISRasters, 'yCoordType', CMEMSARCOArray.InterpolateAtArcGISPoints, 'yCoordType')
+CopyArgumentMetadata(CMEMSARCOArray.CreateArcGISRasters, 'zCoordType', CMEMSARCOArray.InterpolateAtArcGISPoints, 'zCoordType')
+CopyArgumentMetadata(CMEMSARCOArray.CreateArcGISRasters, 'tCoordType', CMEMSARCOArray.InterpolateAtArcGISPoints, 'tCoordType')
+CopyArgumentMetadata(Interpolator.InterpolateArcGISRasterValuesAtPoints, 'orderByFields', CMEMSARCOArray.InterpolateAtArcGISPoints, 'orderByFields')
+CopyArgumentMetadata(Interpolator.InterpolateGridsValuesForTableOfPoints, 'numBlocksToCacheInMemory', CMEMSARCOArray.InterpolateAtArcGISPoints, 'numBlocksToCacheInMemory')
+CopyArgumentMetadata(Interpolator.InterpolateGridsValuesForTableOfPoints, 'xBlockSize', CMEMSARCOArray.InterpolateAtArcGISPoints, 'xBlockSize')
+CopyArgumentMetadata(Interpolator.InterpolateGridsValuesForTableOfPoints, 'yBlockSize', CMEMSARCOArray.InterpolateAtArcGISPoints, 'yBlockSize')
+CopyArgumentMetadata(Interpolator.InterpolateGridsValuesForTableOfPoints, 'zBlockSize', CMEMSARCOArray.InterpolateAtArcGISPoints, 'zBlockSize')
+CopyArgumentMetadata(Interpolator.InterpolateGridsValuesForTableOfPoints, 'tBlockSize', CMEMSARCOArray.InterpolateAtArcGISPoints, 'tBlockSize')
+
+AddResultMetadata(CMEMSARCOArray.InterpolateAtArcGISPoints, 'updatedPoints',
+    typeMetadata=ArcGISFeatureLayerTypeMetadata(),
+    description=_('Updated points.'),
+    arcGISDisplayName=_('Updated points'),
+    arcGISParameterDependencies=['points'])
 
 
 ###############################################################################

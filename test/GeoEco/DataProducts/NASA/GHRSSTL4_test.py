@@ -252,7 +252,6 @@ class TestGHRSSTLevel4ArcGIS():
                 else:
                     raise ValueError('Unknown ExpectedSST value %r' % expectedSST)
 
-
     @pytest.mark.skipif(not isMatlabInstalled(), reason='MATLAB or MATLAB Runtime is not installed, or initialization of interoperability with it failed')
     def test_CannyEdgesAsArcGISRasters(self, tmp_path):
         username, password = getEarthdataCredentials()
