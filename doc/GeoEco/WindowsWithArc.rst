@@ -45,30 +45,27 @@ MGET is a Python package. ArcGIS Pro utilizes `conda
 projects that have been specifically packaged for deployment with conda. We
 have packaged MGET as the `mget3 package on conda-forge
 <https://anaconda.org/conda-forge/mget3>`__. We recommend that ArcGIS Pro
-users install the conda-forge package with conda or `mamba
-<https://github.com/mamba-org/mamba>`__, rather than installing the
+users install the conda-forge package rather than installing the
 corresponding `mget3 package on the Python Package Index
 <https://pypi.org/project/mget3/>`__ with `pip
 <https://pypi.org/project/pip/>`__.
 
-Step 1. Install micromamba (optional but highly recommended)
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+Step 1. Install micromamba
+~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-You can skip this step if you have ArcGIS Pro 3.4 or later. If you have ArcGIS
-Pro 3.2 or 3.3, installing MGET using conda can be very slow. These versions
-of Pro shipped with version 4.14.0 of conda, which predates the `introduction
-of the libmamba solver
-<https://conda.org/blog/2023-07-05-conda-libmamba-solver-rollout/>`__ into
-conda. The pre-libmamba solver is notoriously slow and may spend 30 minutes or
-more stuck at the message "Solving environment" during MGET's installation. It
-may also want to upgrade dozens of packages to the latest versions, which may
-be unnecessarily risky. You can work around this by first installing
-`micromamba
-<https://mamba.readthedocs.io/en/latest/user_guide/micromamba.html>`__ and
-using it to install MGET instead of conda. Micromamba is a stand-alone,
-drop-in replacement for conda. Installing it does not make any changes to your
-conda installation. But if you prefer to use the conda that comes with ArcGIS you
-can skip this step.
+At least up through ArcGIS Pro 3.4, trying to use the conda that comes with
+ArcGIS Pro to install MGET is problematic. Pro 3.2 and 3.3 shipped with conda
+4.14.0, which gets stuck forever at the message "Solving environment" (for
+more, see the article `introduction of the libmamba solver
+<https://conda.org/blog/2023-07-05-conda-libmamba-solver-rollout/>`__). Pro
+3.4 shipped with an updated version of conda, but it contains a buggy
+dependency checker that cannot install MGET (see `issue #18
+<https://github.com/jjrob/MGET/issues/18>`__.)
+
+You can work around these problems by using `micromamba
+<https://mamba.readthedocs.io/en/latest/user_guide/micromamba.html>`__
+instead. Micromamba is a stand-alone, drop-in replacement for conda.
+Installing it does not make any changes to your conda installation.
 
 To install micromamba:
 
@@ -84,6 +81,9 @@ To install micromamba:
    you know what it means and want to do it.
 
 4. Close PowerShell.
+
+It is possible that an improved version of conda will be introduced into
+ArcGIS Pro after 3.4, but until that happens, you should use micromamba.
 
 
 Step 2. Clone the ``arcgispro-py3`` environment
@@ -114,10 +114,11 @@ Step 3. Install MGET
 
     (arcgispro-py3-mget) C:\Users\Jason\AppData\Local\ESRI\conda\envs\arcgispro-py3-mget>
 
-2. Run the following command to install the packages. Replace ``conda``
-   with ``micromamba`` if you installed it in Step 1::
+2. Run the following command to install the packages. Replace ``micromamba``
+   with ``conda`` if you did not install micromamba in step 1 and want to try
+   the conda that comes with ArcGIS Pro (we don't recommend this)::
 
-      conda install --channel conda-forge --yes mget3 copernicusmarine==1.3.0 aiohttp==3.9.5
+      micromamba install --channel conda-forge --yes mget3 copernicusmarine==1.3.0 aiohttp==3.9.5
 
 MGET uses ``copernicusmarine`` to access `Copernicus Marine Service
 <https://marine.copernicus.eu/>`__, and it depends on ``aiohttp``. The reason
