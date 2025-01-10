@@ -90,7 +90,7 @@ class CMEMSARCOArray(Grid):
 
         # Initialize the base class.
 
-        super(CMEMSARCOArray, self).__init__(queryableAttributes=queryableAttributes, queryableAttributeValues=queryableAttributeValues)
+        super(CMEMSARCOArray, self).__init__(queryableAttributes=queryableAttributes, queryableAttributeValues=queryableAttributeValues, lazyPropertyValues=lazyPropertyValues)
 
     def _GetDisplayName(self):
         return self._DisplayName
