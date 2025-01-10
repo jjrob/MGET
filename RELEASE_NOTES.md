@@ -3,6 +3,7 @@
 ## [v3.1.1](https://github.com/jjrob/MGET/releases/tag/v3.1.1) - In progress
 
 ### Fixed
+- Update MGET to be compatible with Copernicus Marine Toolbox 2.0.0 ([#17](https://github.com/jjrob/MGET/issues/17))
 - CMEMSARCOArray constructor accepts a lazyPropertyValues parameter but does not use it ([#19](https://github.com/jjrob/MGET/issues/19))
 - MaskedGrid fails with AttributeError: np.cast was removed in the NumPy 2.0 release. Use np.asarray(arr, dtype=dtype) instead. ([#20](https://github.com/jjrob/MGET/issues/20))
 
