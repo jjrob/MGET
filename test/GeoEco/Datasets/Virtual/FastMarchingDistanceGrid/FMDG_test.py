@@ -17,7 +17,16 @@ from GeoEco.Datasets import NumpyGrid
 from GeoEco.Datasets.Collections import DirectoryTree
 from GeoEco.Datasets.GDAL import GDALDataset
 from GeoEco.Datasets.Virtual import FastMarchingDistanceGrid
+from GeoEco.Dependencies import PythonModuleDependency
 
+
+def isSkfmmInstalled():
+    d = PythonModuleDependency('skfmm')
+    try:
+        d.Initialize()
+    except:
+        return False
+    return True
 
 @pytest.fixture
 def medSeaStudyAreaRasterPath():
@@ -28,7 +37,7 @@ def expectedOuptutRasterPath():
     return pathlib.Path(__file__).parent / 'DistToAtl.img'
 
 
-@pytest.mark.skipif(sys.platform == 'win32' and sys.version_info.major == 3 and sys.version_info.minor >= 12, reason='skfmm is not available for Python 3.12 on Windows')
+@pytest.mark.skipif(not isSkfmmInstalled(), reason='The skfmm package is required by FastMarchingDistanceGrid but it is not installed')
 class TestFMDG():
 
     def test_FMDG(self, medSeaStudyAreaRasterPath, expectedOuptutRasterPath, tmp_path):
