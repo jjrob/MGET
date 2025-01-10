@@ -10,6 +10,7 @@
 # full license text.
 
 import datetime
+import json
 import math
 import os
 import pprint
@@ -115,9 +116,33 @@ class CMEMSARCOArray(Grid):
 
             import copernicusmarine
 
-            self._LogDebug('%(class)s 0x%(id)016X: Calling copernicusmarine.describe(contains=["%(datasetID)s"], include_datasets=True, disable_progress_bar=True)' % {'class': self.__class__.__name__, 'id': id(self), 'datasetID': self._DatasetID})
             try:
-                cat = copernicusmarine.describe(contains=[self._DatasetID], include_datasets=True, disable_progress_bar=True)
+                # In copernicusmarine 2.0.0 and later, the describe function
+                # accepts a dataset_id and will retrieve just that dataset
+                # rather than the whole catalog.
+
+                if int(copernicusmarine.__version__.split('.')[0]) >= 2:
+                    self._LogDebug('%(class)s 0x%(id)016X: Calling copernicusmarine.describe(dataset_id="%(datasetID)s", disable_progress_bar=True)' % {'class': self.__class__.__name__, 'id': id(self), 'datasetID': self._DatasetID})
+                    cat = copernicusmarine.describe(dataset_id=self._DatasetID, disable_progress_bar=True)
+
+                    # cat is now a copernicusmarine.CopernicusMarineCatalogue.
+                    # In copernicusmarine 1.x, this object was serialized a
+                    # large dictionary using Pydantic's model_dump() method.
+                    # We wrote all our subsequent code to walk that
+                    # dictionary. To avoid having to rewrite that code against
+                    # the new copernicusmarine object model, just dump cat
+                    # back to a dictionary.
+
+                    cat = cat.model_dump()
+
+                # In copernicusmarine 1.x, the describe function retrieves the
+                # entire catalog and we have to search through it for the
+                # dataset we want.
+
+                else:
+                    self._LogDebug('%(class)s 0x%(id)016X: Calling copernicusmarine.describe(contains=["%(datasetID)s"], include_datasets=True, disable_progress_bar=True)' % {'class': self.__class__.__name__, 'id': id(self), 'datasetID': self._DatasetID})
+                    cat = copernicusmarine.describe(contains=[self._DatasetID], include_datasets=True, disable_progress_bar=True)
+
             except Exception as e:
                 raise RuntimeError(_('Failed to query the Copernicus Marine Service catalogue for dataset ID "%(datasetID)s". The copernicusmarine.describe() function failed with %(e)s: %(msg)s.') % {'datasetID': self._DatasetID, 'e': e.__class__.__name__, 'msg': e})
 
@@ -210,27 +235,55 @@ class CMEMSARCOArray(Grid):
                                 self._LogWarning(_('In the Copernicus Marine Service catalogue, the dataset dictionary for the "%(datasetID)s" contains a services list that contains something other than a dictionary. This is unexpected and may indicate a problem with Copernicus Marine Service, the copernicusmarine Python package, or MGET. If your attempt to access this dataset is unsuccessful, contact the MGET development team for assistance.') % {'datasetID': self._DatasetID})
                                 continue
 
-                            if any([key not in s for key in ['service_format', 'service_type', 'uri', 'variables']]) or \
-                               not isinstance(s['service_format'], (str, type(None))) or \
-                               not isinstance(s['service_type'], dict) or 'service_name' not in s['service_type'] or \
-                               not isinstance(s['uri'], str) or len(s['uri']) <= 0 or \
-                               not isinstance(s['variables'], list) or len(s['variables']) <= 0 or \
-                               any([not isinstance(v, dict) or \
-                                    not 'short_name' in v or not isinstance(v['short_name'], str) or len(v['short_name']) <= 0 or \
-                                    not 'standard_name' in v or not isinstance(v['standard_name'], (str, type(None))) or \
-                                    not 'coordinates' in v or not isinstance(v['coordinates'], list) \
-                                    for v in s['variables']]):
-                                self._LogWarning(_('In the Copernicus Marine Service catalogue, the dataset dictionary for the "%(datasetID)s" contains a services list that contains a dictionary that does not contain all the required keys or has some unexpected values. This is unexpected and may indicate a problem with Copernicus Marine Service, the copernicusmarine Python package, or MGET. If your attempt to access this dataset is unsuccessful, contact the MGET development team for assistance.') % {'datasetID': self._DatasetID})
-                                continue
+                            # In copernicusmarine 2.0.0, they moved the
+                            # members of the service_type dict up and deleted
+                            # the service_type dict.
 
-                            for v in s['variables']:
-                                if v['short_name'] == self._VariableShortName and s['service_format'] == 'zarr' and s['service_type']['service_name'] in ['static-arco', 'arco-geo-series']:
-                                    if service is not None:
-                                        self._LogWarning(_('The Copernicus Marine Service catalogue contains multiple datasets with the ID "%(datasetID)s", or the the metadata for that dataset contains multiple "static-arco" or "arco-geo-series" services, or the service contains multiple variables named "%(var)s". This is unexpected and may indicate a problem with Copernicus Marine Service, the copernicusmarine Python package, or MGET. The first variable of the first service for the first dataset will be used. Check your results carefully. If you suspect a problem, contact the MGET development team for assistance.') % {'datasetID': self._DatasetID, 'var': self._VariableShortName})
-                                        continue
-                                    else:
-                                        service = s
-                                        variable = v
+                            if int(copernicusmarine.__version__.split('.')[0]) >= 2:
+                                if any([key not in s for key in ['service_format', 'service_name', 'uri', 'variables']]) or \
+                                   not isinstance(s['service_format'], (str, type(None))) or \
+                                   not isinstance(s['uri'], str) or len(s['uri']) <= 0 or \
+                                   not isinstance(s['variables'], list) or len(s['variables']) <= 0 or \
+                                   any([not isinstance(v, dict) or \
+                                        not 'short_name' in v or not isinstance(v['short_name'], str) or len(v['short_name']) <= 0 or \
+                                        not 'standard_name' in v or not isinstance(v['standard_name'], (str, type(None))) or \
+                                        not 'coordinates' in v or not isinstance(v['coordinates'], list) \
+                                        for v in s['variables']]):
+                                    self._LogWarning(_('In the Copernicus Marine Service catalogue, the dataset dictionary for the "%(datasetID)s" contains a services list that contains a dictionary that does not contain all the required keys or has some unexpected values. This is unexpected and may indicate a problem with Copernicus Marine Service, the copernicusmarine Python package, or MGET. If your attempt to access this dataset is unsuccessful, contact the MGET development team for assistance.') % {'datasetID': self._DatasetID})
+                                    continue
+
+                                for v in s['variables']:
+                                    if v['short_name'] == self._VariableShortName and s['service_format'] == 'zarr' and s['service_name'] in ['static-arco', 'arco-geo-series']:
+                                        if service is not None:
+                                            self._LogWarning(_('The Copernicus Marine Service catalogue contains multiple datasets with the ID "%(datasetID)s", or the the metadata for that dataset contains multiple "static-arco" or "arco-geo-series" services, or the service contains multiple variables named "%(var)s". This is unexpected and may indicate a problem with Copernicus Marine Service, the copernicusmarine Python package, or MGET. The first variable of the first service for the first dataset will be used. Check your results carefully. If you suspect a problem, contact the MGET development team for assistance.') % {'datasetID': self._DatasetID, 'var': self._VariableShortName})
+                                            continue
+                                        else:
+                                            service = s
+                                            variable = v
+
+                            else:   # copernicusmarine 1.x
+
+                                if any([key not in s for key in ['service_format', 'service_type', 'uri', 'variables']]) or \
+                                   not isinstance(s['service_format'], (str, type(None))) or \
+                                   not isinstance(s['service_type'], dict) or 'service_name' not in s['service_type'] or \
+                                   not isinstance(s['uri'], str) or len(s['uri']) <= 0 or \
+                                   not isinstance(s['variables'], list) or len(s['variables']) <= 0 or \
+                                   any([not isinstance(v, dict) or \
+                                        not 'short_name' in v or not isinstance(v['short_name'], str) or len(v['short_name']) <= 0 or \
+                                        not 'standard_name' in v or not isinstance(v['standard_name'], (str, type(None))) or \
+                                        not 'coordinates' in v or not isinstance(v['coordinates'], list) \
+                                        for v in s['variables']]):
+                                    self._LogWarning(_('In the Copernicus Marine Service catalogue, the dataset dictionary for the "%(datasetID)s" contains a services list that contains a dictionary that does not contain all the required keys or has some unexpected values. This is unexpected and may indicate a problem with Copernicus Marine Service, the copernicusmarine Python package, or MGET. If your attempt to access this dataset is unsuccessful, contact the MGET development team for assistance.') % {'datasetID': self._DatasetID})
+                                    continue
+
+                                for v in s['variables']:
+                                    if v['short_name'] == self._VariableShortName and s['service_format'] == 'zarr' and s['service_type']['service_name'] in ['static-arco', 'arco-geo-series']:
+                                        if service is not None:
+                                            self._LogWarning(_('The Copernicus Marine Service catalogue contains multiple datasets with the ID "%(datasetID)s", or the the metadata for that dataset contains multiple "static-arco" or "arco-geo-series" services, or the service contains multiple variables named "%(var)s". This is unexpected and may indicate a problem with Copernicus Marine Service, the copernicusmarine Python package, or MGET. The first variable of the first service for the first dataset will be used. Check your results carefully. If you suspect a problem, contact the MGET development team for assistance.') % {'datasetID': self._DatasetID, 'var': self._VariableShortName})
+                                            continue
+                                        else:
+                                            service = s
+                                            variable = v
 
                 # Fail if we didn't find anything.
 
@@ -250,13 +303,14 @@ class CMEMSARCOArray(Grid):
                 coordinates = {}
 
                 for coord in variable['coordinates']:
-                    if not isinstance(coord, dict) or not 'coordinates_id' in coord:
-                        raise RuntimeError(_('In the Copernicus Marine Service catalogue, the coordinates dictionary for the "%(var)s" variable of the "%(datasetID)s" contains an item that is not a dictionary, or that dictionary does not contain a "coordinates_id" key. This is unexpected and may indicate a problem with Copernicus Marine Service, the copernicusmarine Python package, or MGET. Please contact the MGET development team for assistance.') % {'datasetID': self._DatasetID, 'var': self._VariableShortName})
-                    if coord['coordinates_id'] not in ('time', 'depth', 'latitude', 'longitude'):
-                        raise RuntimeError(_('In the Copernicus Marine Service catalogue, the coordinates dictionary for the "%(var)s" variable of the "%(datasetID)s" contains a coordinate named "%(coord)s". MGET does not recognize this coordinate and therefore cannot process this dataset. MGET can only recognize coordinates named "time", "depth", "latitude", and "longitude". Please check your dataset ID and variable name to ensure they are correct. If they are and you believe MGET should be able to handle this unrecognized coordinate, please contact the MGET development team for assistance.') % {'datasetID': self._DatasetID, 'var': self._VariableShortName, 'coord': coord['coordinates_id']})
-                    if coord['coordinates_id'] in coordinates:
-                        raise RuntimeError(_('In the Copernicus Marine Service catalogue, the coordinates dictionary for the "%(var)s" variable of the "%(datasetID)s" contains more than one coordinate named "%(coord)s". This is unexpected and may indicate a problem with Copernicus Marine Service, the copernicusmarine Python package, or MGET. Please contact the MGET development team for assistance.') % {'datasetID': self._DatasetID, 'var': self._VariableShortName, 'coord': coord['coordinates_id']})
-                    coordinates[coord['coordinates_id']] = coord
+                    if not isinstance(coord, dict) or ('coordinates_id' not in coord and 'coordinate_id' not in coord):
+                        raise RuntimeError(_('In the Copernicus Marine Service catalogue, the coordinates dictionary for the "%(var)s" variable of the "%(datasetID)s" contains an item that is not a dictionary, or that dictionary does not contain a "coordinates_id" or "coordinate_id" key. This is unexpected and may indicate a problem with Copernicus Marine Service, the copernicusmarine Python package, or MGET. Please contact the MGET development team for assistance.') % {'datasetID': self._DatasetID, 'var': self._VariableShortName})
+                    key = 'coordinates_id' if 'coordinates_id' in coord else 'coordinate_id'   # copernicusmarine 1.x uses 'coordinates_id', 2.0.0 uses 'coordinate_id'
+                    if coord[key] not in ('time', 'depth', 'latitude', 'longitude'):
+                        raise RuntimeError(_('In the Copernicus Marine Service catalogue, the coordinates dictionary for the "%(var)s" variable of the "%(datasetID)s" contains a coordinate named "%(coord)s". MGET does not recognize this coordinate and therefore cannot process this dataset. MGET can only recognize coordinates named "time", "depth", "latitude", and "longitude". Please check your dataset ID and variable name to ensure they are correct. If they are and you believe MGET should be able to handle this unrecognized coordinate, please contact the MGET development team for assistance.') % {'datasetID': self._DatasetID, 'var': self._VariableShortName, 'coord': coord[key]})
+                    if coord[key] in coordinates:
+                        raise RuntimeError(_('In the Copernicus Marine Service catalogue, the coordinates dictionary for the "%(var)s" variable of the "%(datasetID)s" contains more than one coordinate named "%(coord)s". This is unexpected and may indicate a problem with Copernicus Marine Service, the copernicusmarine Python package, or MGET. Please contact the MGET development team for assistance.') % {'datasetID': self._DatasetID, 'var': self._VariableShortName, 'coord': coord[key]})
+                    coordinates[coord[key]] = coord
 
                 dimensions = ''
                 if 'time' in coordinates:
@@ -410,17 +464,19 @@ class CMEMSARCOArray(Grid):
 
                     # Parse the units attribute.
 
-                    if 'units' not in coordinates['time'] or not isinstance(coordinates['time']['units'], str):
-                        raise RuntimeError(_('In the Copernicus Marine Service catalogue, the "time" coordinate of the %(var)s" variable of the "%(datasetID)s" does not have a "units" attribute, or that attribute is not a numeric value. MGET may not be compatible with this dataset, or there may be problem with Copernicus Marine Service or the copernicusmarine Python package. Please contact the MGET development team for assistance.') % {'datasetID': self._DatasetID, 'var': self._VariableShortName})
+                    key = 'units' if 'units' in coordinates['time'] else 'coordinate_unit'   # copernicusmarine 1.x used 'units', 2.0.0 used 'coordinate_unit'
 
-                    units = coordinates['time']['units'].lower().split()
+                    if key not in coordinates['time'] or not isinstance(coordinates['time'][key], str):
+                        raise RuntimeError(_('In the Copernicus Marine Service catalogue, the "time" coordinate of the %(var)s" variable of the "%(datasetID)s" does not have a "units" or "coordinate_unit" attribute, or that attribute is not a string value. MGET may not be compatible with this dataset, or there may be problem with Copernicus Marine Service or the copernicusmarine Python package. Please contact the MGET development team for assistance.') % {'datasetID': self._DatasetID, 'var': self._VariableShortName})
+
+                    units = coordinates['time'][key].lower().split()
                     if len(units) < 4 or units[0] not in ['milliseconds', 'seconds', 'minutes', 'hours', 'days'] or units[1] != 'since':
-                        raise RuntimeError(_('In the Copernicus Marine Service catalogue, for the "time" coordinate of the %(var)s" variable of the "%(datasetID)s", the value of the "units" attribute, "%(units)s", could not be parsed. MGET may not be compatible with this dataset, or there may be problem with Copernicus Marine Service or the copernicusmarine Python package. Please contact the MGET development team for assistance.') % {'datasetID': self._DatasetID, 'var': self._VariableShortName, 'units': coordinates['time']['units']})
+                        raise RuntimeError(_('In the Copernicus Marine Service catalogue, for the "time" coordinate of the %(var)s" variable of the "%(datasetID)s", the value of the "units" attribute, "%(units)s", could not be parsed. MGET may not be compatible with this dataset, or there may be problem with Copernicus Marine Service or the copernicusmarine Python package. Please contact the MGET development team for assistance.') % {'datasetID': self._DatasetID, 'var': self._VariableShortName, 'units': coordinates['time'][key]})
 
                     try:
                         since = datetime.datetime.strptime((units[2] + ' ' + units[3])[:19], '%Y-%m-%d %H:%M:%S')
                     except:
-                        raise RuntimeError(_('In the Copernicus Marine Service catalogue, for the "time" coordinate of the %(var)s" variable of the "%(datasetID)s", the value of the "units" attribute, "%(units)s", could not be parsed. MGET may not be compatible with this dataset, or there may be problem with Copernicus Marine Service or the copernicusmarine Python package. Please contact the MGET development team for assistance.') % {'datasetID': self._DatasetID, 'var': self._VariableShortName, 'units': coordinates['time']['units']})
+                        raise RuntimeError(_('In the Copernicus Marine Service catalogue, for the "time" coordinate of the %(var)s" variable of the "%(datasetID)s", the value of the "units" attribute, "%(units)s", could not be parsed. MGET may not be compatible with this dataset, or there may be problem with Copernicus Marine Service or the copernicusmarine Python package. Please contact the MGET development team for assistance.') % {'datasetID': self._DatasetID, 'var': self._VariableShortName, 'units': coordinates['time'][key]})
 
                     # Handle times being provided with a constant step.
 
@@ -688,8 +744,11 @@ class CMEMSARCOArray(Grid):
 
     def _Open(self):
         if self._Dataset is None:
+            import copernicusmarine
             from copernicusmarine.download_functions.download_arco_series import open_dataset_from_arco_series
             from copernicusmarine.download_functions.subset_parameters import DepthParameters, GeographicalParameters, TemporalParameters
+            if int(copernicusmarine.__version__.split('.')[0]) >= 2:
+                from copernicusmarine.core_functions.models import DEFAULT_COORDINATES_SELECTION_METHOD
 
             if isinstance(self._VariableStandardName, str) and len(self._VariableStandardName) > 0:
                 variableName = self._VariableStandardName
@@ -700,14 +759,25 @@ class CMEMSARCOArray(Grid):
             self._LogDebug('%(class)s 0x%(id)016X: Opening the xarray by calling copernicusmarine.download_functions.download_arco_series.open_dataset_from_arco_series(username="%(username)s", password=\'*****\', dataset_url="%(url)s", variables=["%(var)s"], geographical_parameters=GeographicalParameters(), temporal_parameters=TemporalParameters(), depth_parameters=DepthParameters(), chunks="auto")' % {'class': self.__class__.__name__, 'username': self._Username, 'id': id(self), 'url': self._URI, 'var': variableName})
 
             try:
-                self._Dataset = open_dataset_from_arco_series(username=self._Username, 
-                                                              password=self._Password,
-                                                              dataset_url=self._URI,
-                                                              variables=[variableName],
-                                                              geographical_parameters=GeographicalParameters(),
-                                                              temporal_parameters=TemporalParameters(),
-                                                              depth_parameters=DepthParameters(),
-                                                              chunks='auto')
+                if int(copernicusmarine.__version__.split('.')[0]) >= 2:
+                    self._Dataset = open_dataset_from_arco_series(username=self._Username, 
+                                                                  password=self._Password,
+                                                                  dataset_url=self._URI,
+                                                                  variables=[variableName],
+                                                                  geographical_parameters=GeographicalParameters(),
+                                                                  temporal_parameters=TemporalParameters(),
+                                                                  depth_parameters=DepthParameters(),
+                                                                  coordinates_selection_method=DEFAULT_COORDINATES_SELECTION_METHOD,   # Added and required in copernicusmarine 2.0.0
+                                                                  chunks='auto')
+                else:
+                    self._Dataset = open_dataset_from_arco_series(username=self._Username, 
+                                                                  password=self._Password,
+                                                                  dataset_url=self._URI,
+                                                                  variables=[variableName],
+                                                                  geographical_parameters=GeographicalParameters(),
+                                                                  temporal_parameters=TemporalParameters(),
+                                                                  depth_parameters=DepthParameters(),
+                                                                  chunks='auto')
             except Exception as e:
                 raise RuntimeError(_('Failed to open Copernicus Marine Service dataset "%(url)s". Please check your internet connectivity and that your username and password is correct. The following error, reported by the copernicusmarine.download_functions.download_arco_series.open_dataset_from_arco_series() function, may indicate the problem: %(e)s: %(msg)s.') % {'url': self._URI, 'e': e.__class__.__name__, 'msg': e})
 
