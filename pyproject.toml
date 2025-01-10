@@ -37,7 +37,7 @@ dependencies = [
     "gdal",
     "lxml",
     "netCDF4",
-    "numpy>=1.22.4",    # We support ArcGIS Pro 3.2.2 or later; it came with nume 1.22.4
+    "numpy>=1.22.4",    # We support ArcGIS Pro 3.2.2 or later; it came with numpy 1.22.4
     "packaging",
     "pyparsing",
     "python-dateutil",

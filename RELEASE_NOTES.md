@@ -1,5 +1,11 @@
 # MGET Release Notes
 
+## [v3.1.1](https://github.com/jjrob/MGET/releases/tag/v3.1.1) - In progress
+
+### Fixed
+- CMEMSARCOArray constructor accepts a lazyPropertyValues parameter but does not use it ([#19](https://github.com/jjrob/MGET/issues/19))
+- MaskedGrid fails with AttributeError: np.cast was removed in the NumPy 2.0 release. Use np.asarray(arr, dtype=dtype) instead. ([#20](https://github.com/jjrob/MGET/issues/20))
+
 ## [v3.1.0](https://github.com/jjrob/MGET/releases/tag/v3.1.0) - 2024-10-10
 
 ### Added

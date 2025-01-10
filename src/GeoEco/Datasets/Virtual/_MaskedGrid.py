@@ -305,8 +305,8 @@ class MaskedGrid(Grid):
                 
                 for i in range(len(mask.Dimensions)):
                     if mask.Dimensions[i] != 't':
-                        gridCoords = numpy.cast['float32'](self.CenterCoords[mask.Dimensions[i]])
-                        maskCoords = numpy.cast['float32'](mask.CenterCoords[mask.Dimensions[i]])
+                        gridCoords = numpy.asarray(self.CenterCoords[mask.Dimensions[i]], dtype='float64')
+                        maskCoords = numpy.asarray(mask.CenterCoords[mask.Dimensions[i]], dtype='float64')
                     else:
                         gridCoords = self.CenterCoords[mask.Dimensions[i]]
                         maskCoords = mask.CenterCoords[mask.Dimensions[i]]
