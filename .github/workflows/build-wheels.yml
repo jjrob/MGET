@@ -72,6 +72,9 @@ jobs:
         os: [ubuntu-22.04, ubuntu-24.04]
         python-version: ["3.9", "3.10", "3.11", "3.12"]
 
+    environment:
+      name: "Test data products"
+
     steps:
       - name: Set up Python ${{ matrix.python-version }}
         uses: actions/setup-python@v5
@@ -173,6 +176,11 @@ jobs:
           fetch-depth: 0
 
       - name: Run tests
+        env:
+          CMEMS_USERNAME: ${{ secrets.CMEMS_USERNAME }}
+          CMEMS_PASSWORD: ${{ secrets.CMEMS_PASSWORD }}
+          NASA_EARTHDATA_USERNAME: ${{ secrets.NASA_EARTHDATA_USERNAME }}
+          NASA_EARTHDATA_PASSWORD: ${{ secrets.NASA_EARTHDATA_PASSWORD }}
         run: |
           python -m pytest ./test/GeoEco/
 
@@ -191,6 +199,9 @@ jobs:
         # just running this job on windows-latest.
         os: [windows-latest]
         python-version: ["3.9", "3.10", "3.11", "3.12"]
+
+    environment:
+      name: "Test data products"
 
     steps:
       - name: Set up Python ${{ matrix.python-version }}
@@ -269,5 +280,10 @@ jobs:
           MATLAB_Runtime\setup -agreeToLicense yes
 
       - name: Run tests
+        env:
+          CMEMS_USERNAME: ${{ secrets.CMEMS_USERNAME }}
+          CMEMS_PASSWORD: ${{ secrets.CMEMS_PASSWORD }}
+          NASA_EARTHDATA_USERNAME: ${{ secrets.NASA_EARTHDATA_USERNAME }}
+          NASA_EARTHDATA_PASSWORD: ${{ secrets.NASA_EARTHDATA_PASSWORD }}
         run: |
           python -m pytest test\\GeoEco
