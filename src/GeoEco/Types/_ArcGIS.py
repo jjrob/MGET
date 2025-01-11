@@ -197,14 +197,6 @@ class ArcGISRasterTypeMetadata(StoredObjectTypeMetadata):
     
     AllowedPixelTypes = property(_GetAllowedPixelTypes, doc=DynamicDocString())
 
-    def AppendXMLNodes(self, node, document):
-        super(ArcGISRasterTypeMetadata, self).AppendXMLNodes(node, document)
-        allowedPixelTypesNode = node.appendChild(document.createElement('AllowedPixelTypes'))
-        if self.AllowedPixelTypes is not None:
-            listNode = allowedPixelTypesNode.appendChild(document.createElement('ArrayList'))
-            for i in range(len(self.AllowedPixelTypes)):
-                self.AppendXMLNodesForValue(self.AllowedPixelTypes[i], listNode, document)
-
     def ValidateValue(self, value, variableName, methodLocals=None, argMetadata=None):
         # Before invoking the super-class ValidateValue function,
         # temporarily set the CreateParentDirectories property to
@@ -616,14 +608,6 @@ class ArcGISFeatureClassTypeMetadata(StoredObjectTypeMetadata):
         return None
 
     ArcGISDomainDict = property(_GetArcGISDomainDict, doc=DynamicDocString())
-
-    def AppendXMLNodes(self, node, document):
-        super(ArcGISFeatureClassTypeMetadata, self).AppendXMLNodes(node, document)
-        allowedShapeTypesNode = node.appendChild(document.createElement('AllowedShapeTypes'))
-        if self.AllowedShapeTypes is not None:
-            listNode = allowedShapeTypesNode.appendChild(document.createElement('ArrayList'))
-            for i in range(len(self.AllowedShapeTypes)):
-                self.AppendXMLNodesForValue(self.AllowedShapeTypes[i], listNode, document)
 
     def ValidateValue(self, value, variableName, methodLocals=None, argMetadata=None):
         (valueChanged, value) = super(ArcGISFeatureClassTypeMetadata, self).ValidateValue(value, variableName, methodLocals, argMetadata)
@@ -1079,14 +1063,6 @@ class ArcGISFieldTypeMetadata(StoredObjectTypeMetadata):
 
     ArcGISDomainDict = property(_GetArcGISDomainDict, doc=DynamicDocString())
 
-    def AppendXMLNodes(self, node, document):
-        super(ArcGISFieldTypeMetadata, self).AppendXMLNodes(node, document)
-        allowedFieldTypesNode = node.appendChild(document.createElement('AllowedFieldTypes'))
-        if self.AllowedFieldTypes is not None:
-            listNode = allowedFieldTypesNode.appendChild(document.createElement('ArrayList'))
-            for i in range(len(self.AllowedFieldTypes)):
-                self.AppendXMLNodesForValue(self.AllowedFieldTypes[i], listNode, document)
-
     def ValidateValue(self, value, variableName, methodLocals=None, argMetadata=None):
         (valueChanged, value) = super(ArcGISFieldTypeMetadata, self).ValidateValue(value, variableName, methodLocals, argMetadata)
         if value is not None and self.AllowedFieldTypes is not None and methodLocals is not None and argMetadata.ArcGISParameterDependencies is not None and len(argMetadata.ArcGISParameterDependencies) > 0 and methodLocals[argMetadata.ArcGISParameterDependencies[0]] is not None:
@@ -1149,10 +1125,6 @@ class CoordinateSystemTypeMetadata(UnicodeStringTypeMetadata):
         return {'type': 'GPCoordinateSystem'}
 
     ArcGISDataTypeDict = property(_GetArcGISDataTypeDict, doc=DynamicDocString())
-
-    def AppendXMLNodes(self, node, document):
-        super(CoordinateSystemTypeMetadata, self).AppendXMLNodes(node, document)
-        Metadata.AppendPropertyXMLNode(self, 'TreatUnknownCSAsNone', node, document)
 
     def ValidateValue(self, value, variableName, methodLocals=None, argMetadata=None):
         valueChanged = False

@@ -164,24 +164,6 @@ class StoredObjectTypeMetadata(UnicodeStringTypeMetadata):
     
     CreateParentDirectories = property(_GetCreateParentDirectories, _SetCreateParentDirectories)
 
-    def AppendXMLNodes(self, node, document):
-        super(StoredObjectTypeMetadata, self).AppendXMLNodes(node, document)
-        Metadata.AppendPropertyXMLNode(self, 'TypeDisplayName', node, document)
-        Metadata.AppendPropertyXMLNode(self, 'IsPath', node, document)
-        Metadata.AppendPropertyXMLNode(self, 'CanBeRelativePath', node, document)
-        Metadata.AppendPropertyXMLNode(self, 'BasePathArgument', node, document)
-        Metadata.AppendPropertyXMLNode(self, 'UseArcGISWorkspace', node, document)
-        Metadata.AppendPropertyXMLNode(self, 'NormalizePath', node, document)
-        mustBeDifferentThanArgumentsNode = node.appendChild(document.createElement('MustBeDifferentThanArguments'))
-        if self.MustBeDifferentThanArguments is not None:
-            listNode = mustBeDifferentThanArgumentsNode.appendChild(document.createElement('ArrayList'))
-            for i in range(len(self.MustBeDifferentThanArguments)):
-                self.AppendXMLNodesForValue(self.MustBeDifferentThanArguments[i], listNode, document)
-        Metadata.AppendPropertyXMLNode(self, 'MustExist', node, document)
-        Metadata.AppendPropertyXMLNode(self, 'MustNotExist', node, document)
-        Metadata.AppendPropertyXMLNode(self, 'DeleteIfParameterIsTrue', node, document)
-        Metadata.AppendPropertyXMLNode(self, 'CreateParentDirectories', node, document)
-
     def ValidateValue(self, value, variableName, methodLocals=None, argMetadata=None):
         valueChanged = False
         if self.IsPath and isinstance(value, pathlib.Path):
@@ -409,11 +391,6 @@ class FileTypeMetadata(StoredObjectTypeMetadata):
         return {'type': 'DEFile'}
 
     ArcGISDataTypeDict = property(_GetArcGISDataTypeDict, doc=DynamicDocString())
-
-    def AppendXMLNodes(self, node, document):
-        super(FileTypeMetadata, self).AppendXMLNodes(node, document)
-        Metadata.AppendPropertyXMLNode(self, 'MayBeCompressed', node, document)
-        Metadata.AppendPropertyXMLNode(self, 'DecompressedFileToUse', node, document)
 
     @classmethod
     def Exists(cls, name, argMetadata=None, methodLocals=None):

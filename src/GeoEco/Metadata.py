@@ -75,66 +75,6 @@ class Metadata(object):
     def __str__(self):
         return self.DocString
 
-    def AppendXMLNodes(self, node, document):
-        assert isinstance(node, xml.dom.Node) and node.nodeType == xml.dom.Node.ELEMENT_NODE, 'node must be an instance of xml.dom.Node with nodeType==ELEMENT_NODE'
-        assert isinstance(document, xml.dom.Node) and document.nodeType == xml.dom.Node.DOCUMENT_NODE, 'node must be an instance of xml.dom.Node with nodeType==DOCUMENT_NODE'
-        self.AppendPropertyXMLNode(self, 'Name', node, document)
-        self.AppendPropertyDocutilsXMLNodes(self, 'ShortDescription', node, document)
-        self.AppendPropertyDocutilsXMLNodes(self, 'LongDescription', node, document)
-
-    @classmethod
-    def AppendPropertyXMLNode(cls, instance, propertyName, node, document):
-        assert isinstance(propertyName, str), 'propertyName must be a string.'
-        assert hasattr(instance, propertyName), 'instance must have a property named %s.' % propertyName
-        assert isinstance(node, xml.dom.Node) and node.nodeType == xml.dom.Node.ELEMENT_NODE, 'node must be an instance of xml.dom.Node with nodeType==ELEMENT_NODE'
-        assert isinstance(document, xml.dom.Node) and document.nodeType == xml.dom.Node.DOCUMENT_NODE, 'node must be an instance of xml.dom.Node with nodeType==DOCUMENT_NODE'
-        n = node.appendChild(document.createElement(propertyName))
-        if getattr(instance, propertyName) is not None:
-            if isinstance(getattr(instance, propertyName), bool):
-                n.appendChild(document.createTextNode(str(getattr(instance, propertyName)).lower()))
-            else:
-                n.appendChild(document.createTextNode(str(getattr(instance, propertyName))))
-
-    @classmethod
-    def AppendPropertyDocutilsXMLNodes(cls, instance, propertyName, node, document):
-        assert isinstance(propertyName, str), 'propertyName must be a string.'
-        assert hasattr(instance, propertyName), 'instance must have a property named %s.' % propertyName
-        assert isinstance(node, xml.dom.Node) and node.nodeType == xml.dom.Node.ELEMENT_NODE, 'node must be an instance of xml.dom.Node with nodeType==ELEMENT_NODE'
-        assert isinstance(document, xml.dom.Node) and document.nodeType == xml.dom.Node.DOCUMENT_NODE, 'node must be an instance of xml.dom.Node with nodeType==DOCUMENT_NODE'
-        import docutils.core
-        from xml.dom.minidom import parseString
-        n = node.appendChild(document.createElement(propertyName))
-        if getattr(instance, propertyName) is not None:
-            rstString = str(getattr(instance, propertyName))
-            if rstString in Metadata.DocutilsXMLCache:
-                xmlString = Metadata.DocutilsXMLCache[rstString]
-            else:
-                xmlString = docutils.core.publish_string(rstString, writer_name='xml')     # This publish_string call is very slow, so we cache the results. You should probably blow away the cache on the MGET build machine when you upgrade to a new version of docutils.
-                Metadata.DocutilsXMLCache[rstString] = xmlString
-            xmlDom = xml.dom.minidom.parseString(xmlString)
-            for child in xmlDom.documentElement.childNodes:
-                n.appendChild(child.cloneNode(True))
-
-    DocutilsXMLCache = {}
-
-    @staticmethod
-    def WriteDocutilsXMLCache(cacheFile):
-        import pickle
-        f = open(cacheFile, 'wb')
-        try:
-            pickle.dump(Metadata.DocutilsXMLCache, f)
-        finally:
-            f.close()
-
-    @staticmethod
-    def LoadDocutilsXMLCache(cacheFile):
-        import pickle
-        f = open(cacheFile, 'rb')
-        try:
-            Metadata.DocutilsXMLCache = pickle.load(f)
-        finally:
-            f.close()
-
 
 class ModuleMetadata(Metadata):
     __doc__ = DynamicDocString()
@@ -172,15 +112,6 @@ class ModuleMetadata(Metadata):
         if len(doc) <= 0:
             return 'No description available.'
         return doc.rstrip()
-
-    def AppendXMLNodes(self, node, document):
-        super(ModuleMetadata, self).AppendXMLNodes(node, document)
-        self.AppendPropertyXMLNode(self, 'IsExposedToPythonCallers', node, document)
-        classesNode = node.appendChild(document.createElement('Classes'))
-        for (name, cls) in list(self.Object.__dict__.items()):
-            if inspect.isclass(cls) and isinstance(cls.__doc__, DynamicDocString) and isinstance(cls.__doc__.Obj, ClassMetadata) and cls.__doc__.Obj.Module == self:
-                classNode = classesNode.appendChild(document.createElement('ClassMetadata'))
-                cls.__doc__.Obj.AppendXMLNodes(classNode, document)
 
 
 class ClassMetadata(Metadata):
@@ -430,20 +361,6 @@ class ClassMetadata(Metadata):
         finally:
             del parentFrame
 
-    def AppendXMLNodes(self, node, document):
-        super(ClassMetadata, self).AppendXMLNodes(node, document)
-        self.AppendPropertyXMLNode(self, 'IsExposedToPythonCallers', node, document)
-        propertiesNode = node.appendChild(document.createElement('Properties'))
-        for (name, prop) in inspect.getmembers(self.Object, inspect.isdatadescriptor):
-            if isinstance(prop, property) and isinstance(prop.__doc__, DynamicDocString) and isinstance(prop.__doc__.Obj, PropertyMetadata):
-                propertyNode = propertiesNode.appendChild(document.createElement('PropertyMetadata'))
-                prop.__doc__.Obj.AppendXMLNodes(propertyNode, document)
-        methodsNode = node.appendChild(document.createElement('Methods'))
-        for (name, method) in inspect.getmembers(self.Object, inspect.ismethod):
-            if isinstance(method.__doc__, DynamicDocString) and isinstance(method.__doc__.Obj, MethodMetadata):
-                methodNode = methodsNode.appendChild(document.createElement('MethodMetadata'))
-                method.__doc__.Obj.AppendXMLNodes(methodNode, document, self.Object)
-
 
 class PropertyMetadata(Metadata):
     __doc__ = DynamicDocString()
@@ -508,13 +425,6 @@ class PropertyMetadata(Metadata):
             doc += '\n' + self.LongDescription
 
         return doc.rstrip()
-
-    def AppendXMLNodes(self, node, document):
-        super(PropertyMetadata, self).AppendXMLNodes(node, document)
-        typeNode = node.appendChild(document.createElement('TypeMetadata'))
-        self.Type.AppendXMLNodes(typeNode, document)
-        self.AppendPropertyXMLNode(self, 'IsExposedToPythonCallers', node, document)
-        self.AppendPropertyXMLNode(self, 'IsReadOnly', node, document)
         
     
 class MethodMetadata(Metadata):
@@ -719,37 +629,6 @@ class MethodMetadata(Metadata):
             return 'No description available.'
         return doc.rstrip()
 
-    def AppendXMLNodes(self, node, document, cls):
-        super(MethodMetadata, self).AppendXMLNodes(node, document)
-        self.AppendPropertyXMLNode(self, 'IsExposedToPythonCallers', node, document)
-        n = node.appendChild(document.createElement('IsExposedAsArcGISTool'))
-        n.appendChild(document.createTextNode(str(self._IsExposedAsArcGISToolByUsNotParent(cls)).lower()))     # Only set IsExposedAsArcGISTool to true for classes that define the method, not for child classes.
-        self.AppendPropertyXMLNode(self, 'ArcGISDisplayName', node, document)
-        self.AppendPropertyXMLNode(self, 'ArcGISToolCategory', node, document)
-        self.AppendPropertyXMLNode(self, 'IsInstanceMethod', node, document)
-        self.AppendPropertyXMLNode(self, 'IsClassMethod', node, document)
-        self.AppendPropertyXMLNode(self, 'IsStaticMethod', node, document)
-
-        args = inspect.getfullargspec(self.Object)
-        expectedArgCount = 0
-        if args[0] is not None:
-            expectedArgCount += len(args[0])
-        if args[1] is not None:
-            expectedArgCount += 1
-        if args[2] is not None:
-            expectedArgCount += 1
-        assert len(self.Arguments) == expectedArgCount, 'The method %s.%s.%s has %i arguments but %i ArgumentMetadata objects in its metadata. Please adjust the method\'s metadata so it has the same number of arguments and ArgumentMetadata objects.' % (self.Class.Module.Name, self.Class.Name, self.Name, expectedArgCount, len(self.Arguments))
-        
-        argsNode = node.appendChild(document.createElement('Arguments'))
-        for arg in self.Arguments:
-            argNode = argsNode.appendChild(document.createElement('Argument'))
-            arg.AppendXMLNodes(argNode, document)
-
-        resultsNode = node.appendChild(document.createElement('Results'))
-        for result in self.Results:
-            resultNode = resultsNode.appendChild(document.createElement('Result'))
-            result.AppendXMLNodes(resultNode, document)
-
 
 class ArgumentMetadata(object):
     __doc__ = DynamicDocString()
@@ -946,33 +825,6 @@ class ArgumentMetadata(object):
     
     Default = property(_GetDefault, doc=DynamicDocString())
 
-    def AppendXMLNodes(self, node, document):
-        Metadata.AppendPropertyXMLNode(self, 'Name', node, document)
-        typeNode = node.appendChild(document.createElement('TypeMetadata'))
-        self.Type.AppendXMLNodes(typeNode, document)
-        Metadata.AppendPropertyDocutilsXMLNodes(self, 'Description', node, document)
-        Metadata.AppendPropertyXMLNode(self, 'Direction', node, document)
-        Metadata.AppendPropertyXMLNode(self, 'InitializeToArcGISGeoprocessorVariable', node, document)
-        Metadata.AppendPropertyXMLNode(self, 'ArcGISDisplayName', node, document)
-        Metadata.AppendPropertyXMLNode(self, 'ArcGISCategory', node, document)
-        depNode = node.appendChild(document.createElement('ArcGISParameterDependencies'))
-        if self.ArcGISParameterDependencies is not None:
-            for param in self.ArcGISParameterDependencies:
-                depNode.appendChild(document.createElement('Parameter')).appendChild(document.createTextNode(param))
-        Metadata.AppendPropertyXMLNode(self, 'IsFormalParameter', node, document)
-        Metadata.AppendPropertyXMLNode(self, 'IsArbitraryArgumentList', node, document)
-        Metadata.AppendPropertyXMLNode(self, 'IsKeywordArgumentDictionary', node, document)
-        Metadata.AppendPropertyXMLNode(self, 'HasDefault', node, document)
-        if self.HasDefault:
-            self.Type.ValidateValue(self.Default, 'default for the %s argument of the %s.%s.%s method' % (self.Name, self.Method.Class.Module.Name, self.Method.Class.Name, self.Method.Name))
-            node.appendChild(document.createElement('PythonTypeOfDefault')).appendChild(document.createTextNode(type(self.Default).__name__))
-            defaultElement = node.appendChild(document.createElement('Default'))
-            if self.Default is not None:
-                self.Type.AppendXMLNodesForValue(self.Default, defaultElement, document)
-        else:
-            node.appendChild(document.createElement('PythonTypeOfDefault'))
-            node.appendChild(document.createElement('Default'))
-
 
 class ResultMetadata(object):
     __doc__ = DynamicDocString()
@@ -1038,17 +890,6 @@ class ResultMetadata(object):
         self._ArcGISParameterDependencies = value
         
     ArcGISParameterDependencies = property(_GetArcGISParameterDependencies, _SetArcGISParameterDependencies, doc=DynamicDocString())
-
-    def AppendXMLNodes(self, node, document):
-        Metadata.AppendPropertyXMLNode(self, 'Name', node, document)
-        typeNode = node.appendChild(document.createElement('TypeMetadata'))
-        self.Type.AppendXMLNodes(typeNode, document)
-        Metadata.AppendPropertyDocutilsXMLNodes(self, 'Description', node, document)
-        Metadata.AppendPropertyXMLNode(self, 'ArcGISDisplayName', node, document)
-        depNode = node.appendChild(document.createElement('ArcGISParameterDependencies'))
-        if self.ArcGISParameterDependencies is not None:
-            for param in self.ArcGISParameterDependencies:
-                depNode.appendChild(document.createElement('Parameter')).appendChild(document.createTextNode(param))
 
 
 # Private helper functions
@@ -1506,116 +1347,6 @@ AddPropertyMetadata(Metadata.DocString,
     typeMetadata=UnicodeStringTypeMetadata(),
     shortDescription=_('Python docstring (the value used for the ``__doc__`` attribute).'),
     longDescription=_('The docstring is constructed dynamically from metadata. It uses the format described in Google\'s Python Style Guide.'))
-
-# Public method: AppendXMLNodes
-
-AddMethodMetadata(Metadata.AppendXMLNodes,
-    shortDescription=_('Appends the metadata to the specified :ref:`xml.dom.Node <python:dom-node-objects>` object as child nodes.'),
-    longDescription=_(
-"""This function is called by the GeoEco build script when it produces the
-file Metadata.xml, which contains all of the GeoEco metadata in a single XML
-file. This file is input to various other build operations."""))
-
-AddArgumentMetadata(Metadata.AppendXMLNodes, 'self',
-    typeMetadata=ClassInstanceTypeMetadata(cls=Metadata),
-    description=_(':class:`%s` instance.') % Metadata.__name__)
-
-AddArgumentMetadata(Metadata.AppendXMLNodes, 'node',
-    typeMetadata=ClassInstanceTypeMetadata(cls=xml.dom.Node),
-    description=_(':ref:`xml.dom.Node <python:dom-node-objects>` to which metadata should be appended.'))
-
-AddArgumentMetadata(Metadata.AppendXMLNodes, 'document',
-    typeMetadata=ClassInstanceTypeMetadata(cls=xml.dom.Node),
-    description=_(':ref:`xml.dom.Node <python:dom-node-objects>` that represents the XML document. The function uses this node to create new objects.'))
-
-# Public method: AppendPropertyXMLNode
-
-AddMethodMetadata(Metadata.AppendPropertyXMLNode,
-    shortDescription=_('Appends the specified property to the specified :ref:`xml.dom.Node <python:dom-node-objects>` object as a child element.'),
-    longDescription=_(
-"""This is a helper function mainly intended to be called by derived class
-implementations of :func:`AppendXMLNodes`. In certain circumstances, it is
-also called from classes that do not derive from :class:`Metadata`."""))
-
-AddArgumentMetadata(Metadata.AppendPropertyXMLNode, 'cls',
-    typeMetadata=ClassOrClassInstanceTypeMetadata(cls=Metadata),
-    description=_(':class:`%s` or an instance of it.') % Metadata.__name__)
-
-AddArgumentMetadata(Metadata.AppendPropertyXMLNode, 'instance',
-    typeMetadata=ClassInstanceTypeMetadata(cls=object),
-    description=_('Instance of a class that has the property specified by `propertyName`.'))
-
-AddArgumentMetadata(Metadata.AppendPropertyXMLNode, 'propertyName',
-    typeMetadata=UnicodeStringTypeMetadata(),
-    description=_('Name of the property to append to `node` as a child element.'))
-
-AddArgumentMetadata(Metadata.AppendPropertyXMLNode, 'node',
-    typeMetadata=ClassInstanceTypeMetadata(cls=xml.dom.Node),
-    description=_(':ref:`xml.dom.Node <python:dom-node-objects>` to which metadata should be appended.'))
-
-AddArgumentMetadata(Metadata.AppendPropertyXMLNode, 'document',
-    typeMetadata=ClassInstanceTypeMetadata(cls=xml.dom.Node),
-    description=_(':ref:`xml.dom.Node <python:dom-node-objects>` that represents the XML document.'))
-
-# Public method: AppendPropertyDocutilsXMLNodes
-
-AddMethodMetadata(Metadata.AppendPropertyDocutilsXMLNodes,
-    shortDescription=_('Appends the specified property to the specified :ref:`xml.dom.Node <python:dom-node-objects>` object as a child element, first running it through the docutils processor to translate reStructuredText into docutils XML.'),
-    longDescription=_(
-"""This is a helper function mainly intended to be called by derived class
-implementations of :func:`AppendXMLNodes`. In certain circumstances, it is
-also called from classes that do not derive from :class:`Metadata`."""))
-
-AddArgumentMetadata(Metadata.AppendPropertyDocutilsXMLNodes, 'cls',
-    typeMetadata=ClassOrClassInstanceTypeMetadata(cls=Metadata),
-    description=_(':class:`%s` or an instance of it.') % Metadata.__name__)
-
-AddArgumentMetadata(Metadata.AppendPropertyDocutilsXMLNodes, 'instance',
-    typeMetadata=ClassInstanceTypeMetadata(cls=object),
-    description=_('Instance of a class that has the property specified by `propertyName`.'))
-
-AddArgumentMetadata(Metadata.AppendPropertyDocutilsXMLNodes, 'propertyName',
-    typeMetadata=UnicodeStringTypeMetadata(),
-    description=_('Name of the property to append to `node` as a child element.'))
-
-AddArgumentMetadata(Metadata.AppendPropertyDocutilsXMLNodes, 'node',
-    typeMetadata=ClassInstanceTypeMetadata(cls=xml.dom.Node),
-    description=_(':ref:`xml.dom.Node <python:dom-node-objects>` to which metadata should be appended.'))
-
-AddArgumentMetadata(Metadata.AppendPropertyDocutilsXMLNodes, 'document',
-    typeMetadata=ClassInstanceTypeMetadata(cls=xml.dom.Node),
-    description=_(':ref:`xml.dom.Node <python:dom-node-objects>` that represents the XML document.'))
-
-# Public method: WriteDocutilsXMLCache
-
-AddMethodMetadata(Metadata.WriteDocutilsXMLCache,
-    shortDescription=_('Writes :class:`Metadata`\'s internal cache of docutils XML to the specified file.'),
-    longDescription=_(
-"""This is a helper function used by the GeoEco build script. One of the tasks
-done by that script is to convert all of the reStructuredText documentation
-from :class:`Metadata` objects into `docutils
-<https://pypi.org/project/docutils/>`_ XML format. The docutils function for
-doing this can be slow, so to speed up the build process when repeatedly
-building GeoEco during development, we cache its output.
-
-Note:
-    After upgrading docutils, you should delete the cache file to force it to
-    be recreated, in case the docutils XML format was changed.
-"""))
-
-AddArgumentMetadata(Metadata.WriteDocutilsXMLCache, 'cacheFile',
-    typeMetadata=FileTypeMetadata(),
-    description=_('Path to the file to write. If it exists, it will be overwritten.'))
-
-# Public method: LoadDocutilsXMLCache
-
-AddMethodMetadata(Metadata.LoadDocutilsXMLCache,
-    shortDescription=_('Initializes :class:`Metadata`\'s internal cache of docutils XML from the specified file.'),
-    longDescription=Metadata.WriteDocutilsXMLCache.__doc__.Obj.LongDescription)
-
-AddArgumentMetadata(Metadata.LoadDocutilsXMLCache, 'cacheFile',
-    typeMetadata=FileTypeMetadata(mustExist=True),
-    description=_('Path to the file to read.'))
 
 # Private method: _GetObject
 
@@ -2205,27 +1936,6 @@ AddPropertyMetadata(ArgumentMetadata.Default,
     typeMetadata=AnyObjectTypeMetadata(canBeNone=True),
     shortDescription=_('The default value of the parameter as defined in the method signature, if :attr:`HasDefault` is True. :py:data:`None` otherwise.'))
 
-# Public method: AppendXMLNodes
-
-AddMethodMetadata(ArgumentMetadata.AppendXMLNodes,
-    shortDescription=_('Appends the metadata to the specified :ref:`xml.dom.Node <python:dom-node-objects>` object as child nodes.'),
-    longDescription=_(
-"""This function is called by the GeoEco build script when it produces the
-file Metadata.xml, which contains all of the GeoEco metadata in a single XML
-file. This file is input to various other build operations."""))
-
-AddArgumentMetadata(ArgumentMetadata.AppendXMLNodes, 'self',
-    typeMetadata=ClassInstanceTypeMetadata(cls=ArgumentMetadata),
-    description=_(':class:`%s` instance.') % ArgumentMetadata.__name__)
-
-AddArgumentMetadata(ArgumentMetadata.AppendXMLNodes, 'node',
-    typeMetadata=ClassInstanceTypeMetadata(cls=xml.dom.Node),
-    description=_(':ref:`xml.dom.Node <python:dom-node-objects>` to which metadata should be appended.'))
-
-AddArgumentMetadata(ArgumentMetadata.AppendXMLNodes, 'document',
-    typeMetadata=ClassInstanceTypeMetadata(cls=xml.dom.Node),
-    description=_(':ref:`xml.dom.Node <python:dom-node-objects>` that represents the XML document. The function uses this node to create new objects.'))
-
 ###############################################################################
 # Metadata: ResultMetadata class
 ###############################################################################
@@ -2294,27 +2004,6 @@ AddPropertyMetadata(ResultMetadata.ArcGISDisplayName,
 AddPropertyMetadata(ResultMetadata.ArcGISParameterDependencies,
     typeMetadata=ResultMetadata.__init__.__doc__.Obj.Arguments[6].Type,
     shortDescription=ResultMetadata.__init__.__doc__.Obj.Arguments[6]._Description)
-
-# Public method: AppendXMLNodes
-
-AddMethodMetadata(ResultMetadata.AppendXMLNodes,
-    shortDescription=_('Appends the metadata to the specified :ref:`xml.dom.Node <python:dom-node-objects>` object as child nodes.'),
-    longDescription=_(
-"""This function is called by the GeoEco build script when it produces the
-file Metadata.xml, which contains all of the GeoEco metadata in a single XML
-file. This file is input to various other build operations."""))
-
-AddArgumentMetadata(ResultMetadata.AppendXMLNodes, 'self',
-    typeMetadata=ClassInstanceTypeMetadata(cls=ResultMetadata),
-    description=_(':class:`%s` instance.') % ResultMetadata.__name__)
-
-AddArgumentMetadata(ResultMetadata.AppendXMLNodes, 'node',
-    typeMetadata=ClassInstanceTypeMetadata(cls=xml.dom.Node),
-    description=_(':ref:`xml.dom.Node <python:dom-node-objects>` to which metadata should be appended.'))
-
-AddArgumentMetadata(ResultMetadata.AppendXMLNodes, 'document',
-    typeMetadata=ClassInstanceTypeMetadata(cls=xml.dom.Node),
-    description=_(':ref:`xml.dom.Node <python:dom-node-objects>` that represents the XML document. The function uses this node to create new objects.'))
 
 ###############################################################################
 # Names exported by this module

@@ -91,29 +91,6 @@ class NumPyArrayTypeMetadata(TypeMetadata):
     
     AllowedDTypes = property(_GetAllowedDTypes, doc=DynamicDocString())
 
-    def AppendXMLNodes(self, node, document):
-        super(NumPyArrayTypeMetadata, self).AppendXMLNodes(node, document)
-
-        Metadata.AppendPropertyXMLNode(self, 'Dimensions', node, document)
-
-        minShapeNode = node.appendChild(document.createElement('MinShape'))
-        if self.MinShape is not None:
-            listNode = minShapeNode.appendChild(document.createElement('ArrayList'))
-            for value in self.MinShape:
-                listNode.appendChild(document.createElement('int')).appendChild(document.createTextNode(str(value)))
-
-        maxShapeNode = node.appendChild(document.createElement('MaxShape'))
-        if self.MaxShape is not None:
-            listNode = maxShapeNode.appendChild(document.createElement('ArrayList'))
-            for value in self.MaxShape:
-                listNode.appendChild(document.createElement('int')).appendChild(document.createTextNode(str(value)))
-
-        allowedDTypesNode = node.appendChild(document.createElement('AllowedDTypes'))
-        if self.AllowedDTypes is not None:
-            listNode = allowedDTypesNode.appendChild(document.createElement('ArrayList'))
-            for value in self.AllowedDTypes:
-                listNode.appendChild(document.createElement('string')).appendChild(document.createTextNode(value))
-
     def GetConstraintDescriptionStrings(self):
         constraints = []
         if self.Dimensions is not None:

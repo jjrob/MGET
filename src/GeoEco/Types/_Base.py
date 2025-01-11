@@ -142,30 +142,6 @@ class TypeMetadata(object):
             return ['Allowed values: ' + ', '.join(['``' + repr(av) + '``' for av in self.AllowedValues])]
         return []
 
-    def AppendXMLNodes(self, node, document):
-        assert isinstance(node, xml.dom.Node) and node.nodeType == xml.dom.Node.ELEMENT_NODE, 'node must be an instance of xml.dom.Node with nodeType==ELEMENT_NODE'
-        assert isinstance(document, xml.dom.Node) and document.nodeType == xml.dom.Node.DOCUMENT_NODE, 'node must be an instance of xml.dom.Node with nodeType==DOCUMENT_NODE'
-        node.setAttribute('xsi:type', self.__class__.__name__)
-        if self.PythonType.__module__ == '__builtin__':
-            node.appendChild(document.createElement('PythonType')).appendChild(document.createTextNode(self.PythonType.__name__))
-        else:
-            node.appendChild(document.createElement('PythonType')).appendChild(document.createTextNode(self.PythonType.__module__ + '.' + self.PythonType.__name__))
-        from ..Metadata import Metadata
-        Metadata.AppendPropertyXMLNode(self, 'CanBeNone', node, document)
-        allowedValuesNode = node.appendChild(document.createElement('AllowedValues'))
-        if self.AllowedValues is not None:
-            listNode = allowedValuesNode.appendChild(document.createElement('ArrayList'))
-            for i in range(len(self.AllowedValues)):
-                assert isinstance(self.AllowedValues[i], self.PythonType), '%s.AllowedValues[%i] is %r %r but it must be an instance of %s' % (self.__class__.__name__, i, type(self.AllowedValues[i]), self.AllowedValues[i], self.PythonType.__name__)
-                self.AppendXMLNodesForValue(self.AllowedValues[i], listNode, document)
-        Metadata.AppendPropertyXMLNode(self, 'ArcGISType', node, document)
-        Metadata.AppendPropertyXMLNode(self, 'ArcGISAssembly', node, document)
-        Metadata.AppendPropertyXMLNode(self, 'CanBeArcGISInputParameter', node, document)
-        Metadata.AppendPropertyXMLNode(self, 'CanBeArcGISOutputParameter', node, document)
-
-    def AppendXMLNodesForValue(self, value, node, document):
-        raise NotImplementedError('The derived class must override this method.')
-
     def ValidateValue(self, value, variableName, methodLocals=None, argMetadata=None):
         if value is None:
             if not self.CanBeNone:
@@ -393,12 +369,6 @@ class BooleanTypeMetadata(TypeMetadata):
 
     ArcGISDomainDict = property(_GetArcGISDomainDict, doc=DynamicDocString())
 
-    def AppendXMLNodesForValue(self, value, node, document):
-        assert isinstance(value, self.PythonType), 'value must be an instance of %s' % self.PythonType.__name__
-        assert isinstance(node, xml.dom.Node) and node.nodeType == xml.dom.Node.ELEMENT_NODE, 'node must be an instance of xml.dom.Node with nodeType==ELEMENT_NODE'
-        assert isinstance(document, xml.dom.Node) and document.nodeType == xml.dom.Node.DOCUMENT_NODE, 'node must be an instance of xml.dom.Node with nodeType==DOCUMENT_NODE'
-        node.appendChild(document.createElement('boolean')).appendChild(document.createTextNode(str(value).lower()))
-
     def ParseValueFromArcGISInputParameterString(self, paramString, paramDisplayName, paramIndex):
         s = super(BooleanTypeMetadata, self).ParseValueFromArcGISInputParameterString(paramString, paramDisplayName, paramIndex).strip().lower()
         if s == 'true':
@@ -478,12 +448,6 @@ class DateTimeTypeMetadata(TypeMetadata):
         return None     
 
     ArcGISDomainDict = property(_GetArcGISDomainDict, doc=DynamicDocString())
-
-    def AppendXMLNodes(self, node, document):
-        super(DateTimeTypeMetadata, self).AppendXMLNodes(node, document)
-
-    def AppendXMLNodesForValue(self, value, node, document):
-        _RaiseException(NotImplementedError(_('Properties or method parameters of type DateTimeTypeMetadata cannot currently have default values.')))
 
     def ValidateValue(self, value, variableName, methodLocals=None, argMetadata=None):
         valueChanged = False
@@ -743,20 +707,6 @@ class FloatTypeMetadata(TypeMetadata):
 
     ArcGISDomainDict = property(_GetArcGISDomainDict, doc=DynamicDocString())
 
-    def AppendXMLNodes(self, node, document):
-        super(FloatTypeMetadata, self).AppendXMLNodes(node, document)
-        from ..Metadata import Metadata
-        Metadata.AppendPropertyXMLNode(self, 'MinValue', node, document)
-        Metadata.AppendPropertyXMLNode(self, 'MustBeGreaterThan', node, document)
-        Metadata.AppendPropertyXMLNode(self, 'MinValue', node, document)
-        Metadata.AppendPropertyXMLNode(self, 'MustBeLessThan', node, document)
-
-    def AppendXMLNodesForValue(self, value, node, document):
-        assert isinstance(value, self.PythonType), 'value must be an instance of %s' % self.PythonType.__name__
-        assert isinstance(node, xml.dom.Node) and node.nodeType == xml.dom.Node.ELEMENT_NODE, 'node must be an instance of xml.dom.Node with nodeType==ELEMENT_NODE'
-        assert isinstance(document, xml.dom.Node) and document.nodeType == xml.dom.Node.DOCUMENT_NODE, 'node must be an instance of xml.dom.Node with nodeType==DOCUMENT_NODE'
-        node.appendChild(document.createElement('double')).appendChild(document.createTextNode(str(value)))
-
     def ValidateValue(self, value, variableName, methodLocals=None, argMetadata=None):
         valueChanged = False
         if isinstance(value, int) or hasattr(value, 'dtype') and (value.dtype.name.startswith('int') or value.dtype.name.startswith('uint')):
@@ -917,20 +867,6 @@ class IntegerTypeMetadata(TypeMetadata):
 
     ArcGISDomainDict = property(_GetArcGISDomainDict, doc=DynamicDocString())
 
-    def AppendXMLNodes(self, node, document):
-        super(IntegerTypeMetadata, self).AppendXMLNodes(node, document)
-        from ..Metadata import Metadata
-        Metadata.AppendPropertyXMLNode(self, 'MinValue', node, document)
-        Metadata.AppendPropertyXMLNode(self, 'MustBeGreaterThan', node, document)
-        Metadata.AppendPropertyXMLNode(self, 'MinValue', node, document)
-        Metadata.AppendPropertyXMLNode(self, 'MustBeLessThan', node, document)
-
-    def AppendXMLNodesForValue(self, value, node, document):
-        assert isinstance(value, self.PythonType), 'value must be an instance of %s' % self.PythonType.__name__
-        assert isinstance(node, xml.dom.Node) and node.nodeType == xml.dom.Node.ELEMENT_NODE, 'node must be an instance of xml.dom.Node with nodeType==ELEMENT_NODE'
-        assert isinstance(document, xml.dom.Node) and document.nodeType == xml.dom.Node.DOCUMENT_NODE, 'node must be an instance of xml.dom.Node with nodeType==DOCUMENT_NODE'
-        node.appendChild(document.createElement('int')).appendChild(document.createTextNode(str(value)))
-
     def ValidateValue(self, value, variableName, methodLocals=None, argMetadata=None):
         (valueChanged, value) = super(IntegerTypeMetadata, self).ValidateValue(value, variableName, methodLocals, argMetadata)
         if value is not None:
@@ -1052,22 +988,6 @@ class UnicodeStringTypeMetadata(TypeMetadata):
         return None
 
     ArcGISDomainDict = property(_GetArcGISDomainDict, doc=DynamicDocString())
-
-    def AppendXMLNodes(self, node, document):
-        super(UnicodeStringTypeMetadata, self).AppendXMLNodes(node, document)
-        from ..Metadata import Metadata
-        Metadata.AppendPropertyXMLNode(self, 'StripWhitespace', node, document)
-        Metadata.AppendPropertyXMLNode(self, 'MakeLowercase', node, document)
-        Metadata.AppendPropertyXMLNode(self, 'MakeUppercase', node, document)
-        Metadata.AppendPropertyXMLNode(self, 'MinLength', node, document)
-        Metadata.AppendPropertyXMLNode(self, 'MaxLength', node, document)
-        Metadata.AppendPropertyXMLNode(self, 'MustMatchRegEx', node, document)
-
-    def AppendXMLNodesForValue(self, value, node, document):
-        assert isinstance(value, self.PythonType), 'value must be an instance of %s' % self.PythonType.__name__
-        assert isinstance(node, xml.dom.Node) and node.nodeType == xml.dom.Node.ELEMENT_NODE, 'node must be an instance of xml.dom.Node with nodeType==ELEMENT_NODE'
-        assert isinstance(document, xml.dom.Node) and document.nodeType == xml.dom.Node.DOCUMENT_NODE, 'node must be an instance of xml.dom.Node with nodeType==DOCUMENT_NODE'
-        node.appendChild(document.createElement('string')).appendChild(document.createTextNode(value))
 
     def ValidateValue(self, value, variableName, methodLocals=None, argMetadata=None):
         # For convenience, we accept a pathlib.Path object and automatically

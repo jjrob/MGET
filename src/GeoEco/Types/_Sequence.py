@@ -94,23 +94,6 @@ class SequenceTypeMetadata(TypeMetadata):
 
     ArcGISDomainDict = property(_GetArcGISDomainDict, doc=DynamicDocString())
 
-    def AppendXMLNodes(self, node, document):
-        super(SequenceTypeMetadata, self).AppendXMLNodes(node, document)
-        elementTypeNode = node.appendChild(document.createElement('ElementTypeMetadata'))
-        self.ElementType.AppendXMLNodes(elementTypeNode, document)
-        Metadata.AppendPropertyXMLNode(self, 'MinLength', node, document)
-        Metadata.AppendPropertyXMLNode(self, 'MaxLength', node, document)
-        Metadata.AppendPropertyXMLNode(self, 'MaxItemsToValidate', node, document)
-        Metadata.AppendPropertyXMLNode(self, 'MustBeSameLengthAsArgument', node, document)
-
-    def AppendXMLNodesForValue(self, value, node, document):
-        assert isinstance(value, self.PythonType), 'value must be an instance of %s' % self.PythonType.__name__
-        assert isinstance(node, xml.dom.Node) and node.nodeType == xml.dom.Node.ELEMENT_NODE, 'node must be an instance of xml.dom.Node with nodeType==ELEMENT_NODE'
-        assert isinstance(document, xml.dom.Node) and document.nodeType == xml.dom.Node.DOCUMENT_NODE, 'node must be an instance of xml.dom.Node with nodeType==DOCUMENT_NODE'
-        listNode = node.appendChild(document.createElement('ArrayList'))
-        for element in value:
-            self.ElementType.AppendXMLNodesForValue(element, listNode, document)
-
     def ValidateValue(self, value, variableName, methodLocals=None, argMetadata=None):
         (valueChanged, value) = super(SequenceTypeMetadata, self).ValidateValue(value, variableName, methodLocals, argMetadata)
 
@@ -444,18 +427,6 @@ class DictionaryTypeMetadata(TypeMetadata):
     
     MaxLength = property(_GetMaxLength, doc=DynamicDocString())
 
-    def AppendXMLNodes(self, node, document):
-        super(DictionaryTypeMetadata, self).AppendXMLNodes(node, document)
-        keyTypeNode = node.appendChild(document.createElement('KeyTypeMetadata'))
-        self.KeyType.AppendXMLNodes(keyTypeNode, document)
-        valueTypeNode = node.appendChild(document.createElement('ValueTypeMetadata'))
-        self.ValueType.AppendXMLNodes(valueTypeNode, document)
-        Metadata.AppendPropertyXMLNode(self, 'MinLength', node, document)
-        Metadata.AppendPropertyXMLNode(self, 'MaxLength', node, document)
-
-    def AppendXMLNodesForValue(self, value, node, document):
-        raise AssertionError('Default values are not currently supported for parameters of type DictionaryTypeMetadata. Please remove the default value %s.' % str(repr(value)))
-
     def ValidateValue(self, value, variableName, methodLocals=None, argMetadata=None):
         (valueChanged, value) = super(DictionaryTypeMetadata, self).ValidateValue(value, variableName, methodLocals, argMetadata)
 
@@ -583,30 +554,6 @@ class ListTableTypeMetadata(TypeMetadata):
         return self._MustBeSameLengthAsArgument
     
     MustBeSameLengthAsArgument = property(_GetMustBeSameLengthAsArgument, doc=DynamicDocString())
-
-    def AppendXMLNodes(self, node, document):
-        super(ListTableTypeMetadata, self).AppendXMLNodes(node, document)
-        
-        columnTypesNode = node.appendChild(document.createElement('ColumnTypes'))
-        for columnType in self.ColumnTypes:
-            columnTypeNode = columnTypesNode.appendChild(document.createElement('TypeMetadata'))
-            columnType.AppendXMLNodes(columnTypeNode, document)
-
-        columnNamesNode = node.appendChild(document.createElement('ColumnNames'))
-        for columnName in self.ColumnNames:
-            columnNamesNode.appendChild(document.createElement('Name')).appendChild(document.createTextNode(columnName))
-
-        columnLengthsNode = node.appendChild(document.createElement('ColumnLengths'))
-        for columnLength in self.ColumnLengths:
-            columnLengthsNode.appendChild(document.createElement('Length')).appendChild(document.createTextNode(str(columnLength)))
-
-        Metadata.AppendPropertyXMLNode(self, 'MinLength', node, document)
-        Metadata.AppendPropertyXMLNode(self, 'MaxLength', node, document)
-        Metadata.AppendPropertyXMLNode(self, 'MaxItemsToValidate', node, document)
-        Metadata.AppendPropertyXMLNode(self, 'MustBeSameLengthAsArgument', node, document)
-
-    def AppendXMLNodesForValue(self, value, node, document):
-        _RaiseException(NotImplementedError(_('Properties or method parameters of type ListTableTypeMetadata cannot currently have default values.')))
 
     def ValidateValue(self, value, variableName, methodLocals=None, argMetadata=None):
         (valueChanged, value) = super(ListTableTypeMetadata, self).ValidateValue(value, variableName, methodLocals, argMetadata)

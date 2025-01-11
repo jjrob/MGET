@@ -78,15 +78,6 @@ class TableFieldTypeMetadata(StoredObjectTypeMetadata):
     
     AllowedFieldTypes = property(_GetAllowedFieldTypes, doc=DynamicDocString())
 
-    def AppendXMLNodes(self, node, document):
-        super(TableFieldTypeMetadata, self).AppendXMLNodes(node, document)
-        Metadata.AppendPropertyXMLNode(self, 'TableParameterName', node, document)
-        allowedFieldTypesNode = node.appendChild(document.createElement('AllowedFieldTypes'))
-        if self.AllowedFieldTypes is not None:
-            listNode = allowedFieldTypesNode.appendChild(document.createElement('ArrayList'))
-            for i in range(len(self.AllowedFieldTypes)):
-                self.AppendXMLNodesForValue(self.AllowedFieldTypes[i], listNode, document)
-
     def ValidateValue(self, value, variableName, methodLocals=None, argMetadata=None):
         (valueChanged, value) = super(TableFieldTypeMetadata, self).ValidateValue(value, variableName, methodLocals, argMetadata)
         if value is not None and self.AllowedFieldTypes is not None and methodLocals is not None and self.TableParameterName is not None and methodLocals[self.TableParameterName] is not None:
