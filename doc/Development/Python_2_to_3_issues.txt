@@ -26,6 +26,8 @@ Remove unnecessary calls to _Str()
 Comparison of NoDataValue and UnscaledNoDataValue must account for nan: Grid.numpy_equal_nan(a, b)
 DerivedGrid now takes a function rather than an expression
 When importing rasters to a geodatabase from data products tools, need to pass suppressRenameWarning=True
+Remove calls to ArcGISWorkspace.ToRasterCatalog and all uses of raster catalogs (they were removed in ArcGIS Pro)
+
 
 ArcPro vs. Desktop issues to check for:
 =======================================

@@ -3,6 +3,7 @@
 ## [v3.1.1](https://github.com/jjrob/MGET/releases/tag/v3.1.1) - In progress
 
 ### Fixed
+- Datasets/ArcGIS/_ArcGISWorkspace.py: remove ArcGISWorkspace.ToRasterCatalog ([#4](https://github.com/jjrob/MGET/issues/4))
 - "Build and test wheels" action should not skip Copernicus tests ([#9](https://github.com/jjrob/MGET/issues/9))
 - Update MGET to be compatible with Copernicus Marine Toolbox 2.0.0 ([#17](https://github.com/jjrob/MGET/issues/17))
 - On Windows + ArcGIS Pro 3.4, installing MGET with conda fails with: vs2015_runtime 14.27.29016.* is not installable because it conflicts with any installable versions previously repor.  ([#18](https://github.com/jjrob/MGET/issues/18))
