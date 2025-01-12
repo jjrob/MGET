@@ -1,6 +1,6 @@
 # MGET Release Notes
 
-## [v3.1.1](https://github.com/jjrob/MGET/releases/tag/v3.1.1) - In progress
+## [v3.1.1](https://github.com/jjrob/MGET/releases/tag/v3.1.1) - 2025-01-11
 
 ### Fixed
 - Datasets/ArcGIS/_ArcGISWorkspace.py: remove ArcGISWorkspace.ToRasterCatalog ([#4](https://github.com/jjrob/MGET/issues/4))
