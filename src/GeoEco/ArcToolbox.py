@@ -256,7 +256,25 @@ class ArcToolboxGenerator(object):
                 toolContent['params'][am.Name]['type'] = 'optional'
 
             if am.HasDefault and am.Default is not None:
-                toolContent['params'][am.Name]['value'] = str(am.Default)
+                # If the default is not a list or a tuple, just turn it into a
+                # string.
+
+                if not isinstance(am.Default, list) and not isinstance(am.Default, tuple):
+                    toolContent['params'][am.Name]['value'] = str(am.Default)
+
+                # Otherwise (it is a list or tuple), it means this is a
+                # GPMultiValue parameter. We could find no documentation on
+                # how the default of a GPMultiValue parameter should be
+                # represented in JSON, but we discovered that if you render
+                # the values into a semicolon-separated string, they will
+                # each appear as a separate entry in the GUI, which is what
+                # we need.
+
+                else:
+                    for v in am.Default:
+                        if ';' in str(v):
+                            raise ValueError(f'The default value for the {am.Name} argument of the {toolName} tool contains an item {v!r} that contains a semicolon. This argument must be represented in the tool.content JSON as a GPMultiValue parameter. We don\'t know how to encode default values of this type of parameter that include semicolons, because the semicolon is used as the delimiter in the list of default values.')
+                    toolContent['params'][am.Name]['value'] = ';'.join([str(v) for v in am.Default])
 
             if am.ArcGISParameterDependencies is not None and len(am.ArcGISParameterDependencies) > 0:
                 toolContent['params'][am.Name]['depends'] = am.ArcGISParameterDependencies
