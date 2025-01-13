@@ -155,6 +155,69 @@ class TestCMEMSARCOArray():
 
 
 @pytest.mark.skipif(None in getCMEMSCredentials(), reason='CMEMS_USERNAME or CMEMS_PASSWORD environment variables not defined')
+@pytest.mark.parametrize('datasetID,variableShortName', [
+    ('cmems_mod_glo_phy_my_0.083deg_P1D-m', 'bottomT'),
+    ('cmems_mod_glo_phy_my_0.083deg_P1D-m', 'mlotst'),
+    ('cmems_mod_glo_phy_my_0.083deg_P1D-m', 'siconc'),
+    ('cmems_mod_glo_phy_my_0.083deg_P1D-m', 'sithick'),
+    ('cmems_mod_glo_phy_my_0.083deg_P1D-m', 'zos'),
+    ('cmems_mod_glo_phy_my_0.083deg_P1M-m', 'bottomT'),
+    ('cmems_mod_glo_phy_my_0.083deg_P1M-m', 'mlotst'),
+    ('cmems_mod_glo_phy_my_0.083deg_P1M-m', 'siconc'),
+    ('cmems_mod_glo_phy_my_0.083deg_P1M-m', 'sithick'),
+    ('cmems_mod_glo_phy_my_0.083deg_P1M-m', 'zos'),
+    ('cmems_mod_glo_phy_myint_0.083deg_P1D-m', 'bottomT'),
+    ('cmems_mod_glo_phy_myint_0.083deg_P1D-m', 'mlotst'),
+    ('cmems_mod_glo_phy_myint_0.083deg_P1D-m', 'siconc'),
+    ('cmems_mod_glo_phy_myint_0.083deg_P1D-m', 'sithick'),
+    ('cmems_mod_glo_phy_myint_0.083deg_P1D-m', 'zos'),
+    ('cmems_mod_glo_phy_myint_0.083deg_P1M-m', 'bottomT'),
+    ('cmems_mod_glo_phy_myint_0.083deg_P1M-m', 'mlotst'),
+    ('cmems_mod_glo_phy_myint_0.083deg_P1M-m', 'siconc'),
+    ('cmems_mod_glo_phy_myint_0.083deg_P1M-m', 'sithick'),
+    ('cmems_mod_glo_phy_myint_0.083deg_P1M-m', 'zos'),
+])
+class TestCMEMSARCOArrayBuggyTYX():
+
+    # Some datasets that have variables that should be tyx were erroneously
+    # listed in the Copernicus catalog as tzyx, e.g. the bottom temperature
+    # (bottomT) and mixed layer thickness (mlotst) of the Global Ocean Physics
+    # Reanalysis (GLOBAL_MULTIYEAR_PHY_001_030). These are bugs in the
+    # Copernicus catalog. Test that we handle them correctly.
+
+    def test_buggy_tyx(self, datasetID, variableShortName, tmp_path):
+        username, password = getCMEMSCredentials()
+        grid = CMEMSARCOArray(username=username,
+                              password=password,
+                              datasetID=datasetID,
+                              variableShortName=variableShortName)
+        assert grid.Dimensions == 'tyx'
+        assert grid.Shape[-3] > 1
+        assert grid.Shape[-2] > 1
+        assert grid.Shape[-1] > 1
+
+        tStart = grid.Shape[-3] - 2
+        tStop = grid.Shape[-3]
+
+        yStart = int(grid.Shape[-2] / 2)
+        yStop = yStart + int(grid.Shape[-2] * 0.1)
+
+        xStart = 0
+        xStop = xStart + int(grid.Shape[-1] * 0.1)
+
+        slices = (slice(tStart, tStop), slice(yStart, yStop), slice(xStart, xStop))
+
+        Logger.Info(f'From {grid.DisplayName}, getting slice {slices}')
+
+        data = grid.Data.__getitem__(slices)
+
+        assert len(data.shape) == 3
+        assert data.shape[-3] == 2
+        assert data.shape[-2] > 1
+        assert data.shape[-1] > 1
+
+
+@pytest.mark.skipif(None in getCMEMSCredentials(), reason='CMEMS_USERNAME or CMEMS_PASSWORD environment variables not defined')
 @pytest.mark.skipif(not isArcPyInstalled(), reason='ArcGIS arcpy module is not installed')
 class TestCMEMSARCOArrayArcGIS():
 
