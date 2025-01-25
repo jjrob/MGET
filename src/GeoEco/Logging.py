@@ -26,13 +26,14 @@ from .Internationalization import _
 class Logger(object):
     __doc__ = DynamicDocString()
 
+    _GeoEcoLogger = logging.getLogger('GeoEco')
     _LogInfoAsDebug = False    
     _LogErrorsAsWarnings = False    
     
     @classmethod
     def Debug(cls, format, *args):
         try:
-            logging.getLogger('GeoEco').debug(format.rstrip(), *args)
+            Logger._GeoEcoLogger.debug(format.rstrip(), *args)
         except:
             pass
 
@@ -40,16 +41,16 @@ class Logger(object):
     def Info(cls, format, *args):
         try:
             if cls.GetLogInfoAsDebug():
-                logging.getLogger('GeoEco').debug(format.rstrip(), *args)
+                Logger._GeoEcoLogger.debug(format.rstrip(), *args)
             else:
-                logging.getLogger('GeoEco').info(format.rstrip(), *args)
+                Logger._GeoEcoLogger.info(format.rstrip(), *args)
         except:
             pass
 
     @classmethod
     def Warning(cls, format, *args):
         try:
-            logging.getLogger('GeoEco').warning(format.rstrip(), *args)
+            Logger._GeoEcoLogger.warning(format.rstrip(), *args)
         except:
             pass
 
@@ -57,9 +58,9 @@ class Logger(object):
     def Error(cls, format, *args):
         try:
             if cls.GetLogErrorsAsWarnings():
-                logging.getLogger('GeoEco').warning(format.rstrip(), *args)
+                Logger._GeoEcoLogger.warning(format.rstrip(), *args)
             else:
-                logging.getLogger('GeoEco').error(format.rstrip(), *args)
+                Logger._GeoEcoLogger.error(format.rstrip(), *args)
         except:
             pass
 
@@ -121,7 +122,7 @@ class Logger(object):
     @classmethod
     def _LogExceptionAndMessage(cls, level, format=None, *args):
         try:
-            logger = logging.getLogger('GeoEco')
+            logger = Logger._GeoEcoLogger
 
             # Log the exception, if it has not been done already.
 
@@ -396,7 +397,7 @@ class Logger(object):
                 # supposedly fixed in Python 2.5.
                 
                 if '_TempHandler' in globals() and globals()['_TempHandler'] is not None:
-                    logging.getLogger('GeoEco').removeHandler(globals()['_TempHandler'])
+                    Logger._GeoEcoLogger.removeHandler(globals()['_TempHandler'])
                     globals()['_TempHandler'].close()
                     del globals()['_TempHandler']
 
