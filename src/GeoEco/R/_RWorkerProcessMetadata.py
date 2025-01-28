@@ -23,7 +23,161 @@ from ._RWorkerProcess import RWorkerProcess
 AddClassMetadata(RWorkerProcess,
     module=__package__,
     shortDescription=_('Starts and manages an R child process and provides methods for interacting with it.'),
-    longDescription=_("""TODO: Write long description."""))
+    longDescription=_(
+"""Similar to the `rpy2 <https://rpy2.github.io/>`__ package,
+:class:`~GeoEco.R.RWorkerProcess` starts the R interpreter and provides
+mechanisms for Python code to get and set R variables and evaluate R
+expressions. :class:`~GeoEco.R.RWorkerProcess` is not as fully-featured as
+rpy2 and has several important differences in how it is implemented:
+
+1. :class:`~GeoEco.R.RWorkerProcess` hosts the R interpreter in a child
+   process (using the Rscript program), while rpy2 hosts it within the same
+   process as the Python interpreter. :class:`~GeoEco.R.RWorkerProcess` is
+   therefore less likely to encounter "DLL Hell" conflicts, in which Python
+   and R try to load different versions of the same shared library, which can
+   cause the process to crash. However, :class:`~GeoEco.R.RWorkerProcess` is
+   slower than rpy2, because interactions with R have to occur via
+   interprocess communication. :class:`~GeoEco.R.RWorkerProcess` implements
+   this with the R `plumber <https://www.rplumber.io/>`__ package, which
+   allows R functions to be exposed as HTTP endpoints. This mechanism is also
+   less secure than that used by rpy2. The HTTP endpoints are only accessible
+   by processes running on the local machine (IPv4 address 127.0.0.1), use a
+   randomly-selected TCP point, and require callers to provide a
+   randomly-generated token that only the Python process knows, but a
+   malicious party who can run processes on the local machine could still
+   mount a denial of service attack on the Python/R interface by flooding the
+   HTTP endpoints with bogus requests.
+
+2. :class:`~GeoEco.R.RWorkerProcess` does not need to be compiled against a
+   specific version of R, and can therefore work with any version of R that
+   you have installed, while rpy2 must be recompiled for the R version you
+   have, whenever you change it.
+
+3. :class:`~GeoEco.R.RWorkerProcess` supports Microsoft Windows, while rpy2
+   historically has lacked a Windows maintainer. While it can be possible to
+   get rpy2 working on Windows, there are usually no binary distributions
+   (Python wheels) for Windows on the `Python Package Index
+   <https://pypi.org/project/rpy2>`__. For Conda users, which generally
+   includes users of ArcGIS, there is a release of `rpy2 on conda-forge
+   <https://anaconda.org/conda-forge/rpy2>`__, but it can be out of date by a
+   year or more and may not be compatible with recent R versions. To work
+   around this, Windows users can try to build rpy2 from source, but
+   installing the correct compiler and required libraries can be challenging
+   and time consuming.
+
+If rpy2 works for you, we recommend you continue to use it. But if not, or
+some of the issues mentioned above affect you,
+:class:`~GeoEco.R.RWorkerProcess` could provide an effective alternative.
+
+**Using RWorkerProcess**
+
+:class:`~GeoEco.R.RWorkerProcess` represents the child R process. When you
+instantiate :class:`~GeoEco.R.RWorkerProcess`, nothing happens at first. The
+child process is started automatically when you start using the
+:class:`~GeoEco.R.RWorkerProcess` instance to interact with R. If desired, you
+can call :func:`~GeoEco.R.RWorkerProcess.Start` to start it manually or
+:func:`~GeoEco.R.RWorkerProcess.Stop` to stop it. We recommend you use the
+``with`` statement to automatically control the child process's lifetime:
+
+.. code-block:: python
+
+    from GeoEco.R import RWorkerProcess
+    with RWorkerProcess() as r:
+        # do stuff with the r instance
+
+This will start the child process when it is first needed and automatically
+stop it when the ``with`` block is exited, even if an exception is raised. If
+the Python process dies without Python exiting properly, the operating system
+will stop the child process automatically.
+
+**Evaluating R expressions from Python**
+
+func:`~GeoEco.R.RWorkerProcess.Eval` accepts a string representing an R
+expression, passes it to the R interpreter for evaluation, and returns the
+result, translating R types into suitable Python types. You can supply
+multiple expressions in a single call, separated by newline characters or
+semicolons. The last value of the last expression will be returned.
+
+A limited number of R types can be translated into Python types. The rules of
+translation are governed by the serialization formats used to marshal data
+between Python and R. For most types, JSON is used as the serialization
+format, with the `requests <https://pypi.org/project/requests/>`__ package
+handling it on the Python side and `plumber <https://www.rplumber.io/>`__ on
+the R side. In general, R vectors, lists, and data frames are supported, as
+follows:
+
+* R vectors of length 1, sometimes known as atomic values, with the type
+  ``logical``, ``integer``, ``double``, or ``character`` are returned as
+  Python :py:class:`bool`, :py:class:`int`, :py:class:`float`, and
+  :py:class:`str`, respectively. Complex numbers are not supported (because
+  JSON does not support them) and are returned as Python :py:class:`str`.
+
+* R vectors of length 2 or more are returned as Python :py:class:`list`.
+
+* R lists are returned as Python :py:class:`dict`.
+
+* R ``NA`` and R ``NULL`` are often returned as Python :py:data`None`, but not
+  always, owing to there being no perfect way to handle ``NA`` and ``NULL``
+  with JSON serialization (e.g. `see here
+  <https://github.com/jeroen/jsonlite/issues/70>`__). You should not make any
+  assumptions about how ``NA`` or ``NULL`` will be returned in Python, and
+  should always test your specific scenario. Here are some illustrative
+  examples:
+
+  .. code-block:: python
+
+      >>> from GeoEco.R import RWorkerProcess
+      >>> r = RWorkerProcess()
+
+**Getting and setting R variables from Python**
+
+You can get and set variables in the R interpreter through the dictionary
+interface of the :class:`~GeoEco.R.RWorkerProcess` instance:
+
+.. code-block:: python
+
+    from GeoEco.R import RWorkerProcess
+    with RWorkerProcess() as r:
+        r['my_variable'] = 42     # Set my_variable to 42 in the R interpreter
+        print(r['my_variable'])   # Get back the value of my_variable and print it
+        print(dir(r))             # Print a list of the variables defined in the R interpreter
+        del r['my_variable']      # Delete my_variable from the R interpreter
+
+Python types will be automatically translated to and from R types. A limited
+number of types are supported. For types other than data frames, JSON is
+exchanged between Python and R, and the rules of translation are governed by
+the JSON serializers used in each environment (in Python, the serializer used
+by the `requests <https://pypi.org/project/requests/>`__ package; in R, the
+serializer used by the `plumber <https://www.rplumber.io/>`__ package). For
+data frames, the feather format is exchanged.
+
+In general:
+
+* Python :py:class:`bool`, :py:class:`int`, :py:class:`float`, and
+  :py:class:`str` are translated to/from R length 1 vectors of the type
+  ``logical``, ``integer``, ``double``, and ``character``, respectively.
+
+* A Python :py:class:`list` of length two or more of the types above will be
+  translated to/from an R vector of the same length. If the items in the
+  Python :py:class:`list` are all the same type, the R vector will be the
+  corresponding type. If the Python :py:class:`list` contains a mix of types,
+  they will all be coerced into ``integer``, ``double``, or ``character`` as
+  appropriate so that an R vector can be constructed.
+
+  .. note::
+      When R returns ``logical``, ``integer``, ``double``, and ``character``
+      vectors that have a length of 1, they are translated to Python
+      :py:class:`bool`, :py:class:`int`, :py:class:`float`, and
+      :py:class:`str` instances, not to a :py:class:`list` with a single
+      instance of those types within it.
+
+* Python :py:data:`None` is often translated to/from an R ``NA`` if it is
+  contained in a list, but not always. This is a consequence of R supporting
+  ``NA`` and ``NULL`` as distinct concepts, while Python supports just
+  :py:data:`None` and JSON just ``null``.
+
+
+"""))
 
 # TODO: document the issue with None being translated to JSON null and then R NULL
 # See https://github.com/jeroen/jsonlite/issues/70
@@ -55,21 +209,21 @@ automatically (on Windows). Three methods will be tried, in this order:
 
 1. If the R_HOME environment variable has been set, it will be used. The 
    program Rscript.exe must exist in the `bin\\x64` subdirectory of R_HOME or
-   a :exp:`FileNotFoundError`: exception will be raised.
+   a :exc:`FileNotFoundError`: exception will be raised.
 
 2. Otherwise, if R_HOME has not been set, the Registry will be checked,
    starting with the ``HKEY_CURRENT_USER\\Software\\R-core`` key and falling
    back to ``HKEY_LOCAL_MACHINE\\Software\\R-core`` only if the former does
    not exist. For whichever exists, the value of ``R64\\InstallPath`` will be
    used. The program Rscript.exe must exist in the `bin\\x64` subdirectory of
-   that directory or a :exp:`FileNotFoundError`: exception will be raised.
+   that directory or a :exc:`FileNotFoundError`: exception will be raised.
 
 3. Otherwise, if neither of those registry keys exist, the PATH environment
    variable will be checked for the program Rscript.exe. If it does not
-   exist, :exp:`FileNotFoundError`: exception will be raised.
+   exist, :exc:`FileNotFoundError`: exception will be raised.
 
 Raises:
-    :exp:`FileNotFoundError`: The R executable files were not found at the
+    :exc:`FileNotFoundError`: The R executable files were not found at the
         specified/expected location.
 
 """),

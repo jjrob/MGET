@@ -92,3 +92,17 @@ tasks.
     :recursive:
 
     GeoEco.SpatialAnalysis.Interpolation
+
+Accessing R from Python
+-----------------------
+
+Provides the :class:`~GeoEco.R.RWorkerProcess` class, which starts R as a
+child process and allows getting and setting of variables in the R interpreter
+and evaluation of R expressions.
+
+.. autosummary::
+    :toctree: _autodoc/GeoEco
+    :template: autosummary/module.rst
+    :recursive:
+
+    GeoEco.R
