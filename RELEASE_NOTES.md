@@ -1,5 +1,13 @@
 # MGET Release Notes
 
+## v3.2.0 - Under construction
+
+### Added
+- RWorkerProcess class, for invoking R from Python as a child process
+
+### Fixed
+- NameError raised by ArcGISWorkspace.QueryDatasets() when the workspace is an ArcGIS geodatabase that contains relationship classes ([#23](https://github.com/jjrob/MGET/issues/23))
+
 ## [v3.1.1](https://github.com/jjrob/MGET/releases/tag/v3.1.1) - 2025-01-11
 
 ### Fixed
