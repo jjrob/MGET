@@ -192,7 +192,7 @@ class ArcGISWorkspace(DatasetCollectionTree, Database):
                     # Enumerate these using the arcpy.da module.
 
                     for dirpath, dirnames, relClasses in gp.da.Walk(gp.env.workspace, datatype='RelationshipClass')._Object:    # _ArcGISObjectWrapper does not currently support iteration so we have to extract _Object
-                        for relclass in relClasses:
+                        for relClass in relClasses:
                             d = gp.Describe(os.path.join(gp.env.workspace, relClass))
                             if d.DataType.lower() == 'relationshipclass' and bool(d.isAttributed):
                                 contents.append(os.path.basename(relClass))
