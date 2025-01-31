@@ -8,6 +8,8 @@
 # root of this project or https://opensource.org/license/bsd-3-clause for the
 # full license text.
 
+import datetime
+
 from ..Dependencies import PythonModuleDependency
 from ..Internationalization import _
 from ..Metadata import *
@@ -96,7 +98,14 @@ func:`~GeoEco.R.RWorkerProcess.Eval` accepts a string representing an R
 expression, passes it to the R interpreter for evaluation, and returns the
 result, translating R types into suitable Python types. You can supply
 multiple expressions in a single call, separated by newline characters or
-semicolons. The last value of the last expression will be returned.
+semicolons. The last value of the last expression will be returned:
+
+.. code-block:: python
+
+    >>> from GeoEco.R import RWorkerProcess
+    >>> r = RWorkerProcess()
+    >>> r.Eval('x <- 6; y <- 7; x * y')
+    42      
 
 A limited number of R types can be translated into Python types. The rules of
 translation are governed by the serialization formats used to marshal data
@@ -109,16 +118,42 @@ follows:
 * R vectors of length 1, sometimes known as atomic values, with the type
   ``logical``, ``integer``, ``double``, or ``character`` are returned as
   Python :py:class:`bool`, :py:class:`int`, :py:class:`float`, and
-  :py:class:`str`, respectively. Complex numbers are not supported (because
-  JSON does not support them) and are returned as Python :py:class:`str`.
+  :py:class:`str`, respectively.
 
 * R vectors of length 2 or more are returned as Python :py:class:`list`.
 
 * R lists are returned as Python :py:class:`dict`.
 
-* R ``NA`` and R ``NULL`` are often returned as Python :py:data`None`, but not
-  always, owing to there being no perfect way to handle ``NA`` and ``NULL``
-  with JSON serialization (e.g. `see here
+* If all of the elements of an R ``double`` vector happen to be integers,
+  Python :py:class:`int`\\s will be returned rather than :py:class:`float`\\s.
+
+  .. code-block:: python
+
+      >>> r.Eval('typeof(2)')     # R's interpreter parses double, even if mathematically it is an integer
+      'double'
+      >>> type(r.Eval('2'))       # R does not include a decimal point when serializing to JSON, so Python deserializes an integer
+      <class 'int'>
+      >>> r.Eval('typeof(2.5)')   # This one includes a decimal
+      'double'
+      >>> type(r.Eval('2.5'))     # The JSON includes the decimal point, so now a float is returned
+      <class 'float'>
+      >>> 
+      >>> r.Eval('c(1,2,3.7)')
+      [1, 2, 3.7]
+      >>> [type(x) for x in r.Eval('c(1,2,3.7)')]
+      [<class 'int'>, <class 'int'>, <class 'float'>]
+
+* R ``complex`` is not supported (because JSON does not support complex
+  numbers) and is returned as Python :py:class:`str`:
+
+  .. code-block:: python
+
+      >>> r.Eval('c(1+2i, 3-5i, 6)')
+      ['1+2i', '3-5i', '6+0i']
+
+* R ``NA`` and R ``NULL`` are often returned as Python :py:data:`None`, but
+  not always, owing to there being no perfect way to handle ``NA`` and
+  ``NULL`` with JSON serialization (e.g. `see here
   <https://github.com/jeroen/jsonlite/issues/70>`__). You should not make any
   assumptions about how ``NA`` or ``NULL`` will be returned in Python, and
   should always test your specific scenario. Here are some illustrative
@@ -176,7 +211,6 @@ In general:
   ``NA`` and ``NULL`` as distinct concepts, while Python supports just
   :py:data:`None` and JSON just ``null``.
 
-
 """))
 
 # TODO: document the issue with None being translated to JSON null and then R NULL
@@ -188,7 +222,8 @@ AddMethodMetadata(RWorkerProcess.__init__,
     shortDescription=_('RWorkerProcess constructor.'),
     dependencies=[PythonModuleDependency('pandas', cheeseShopName='pandas'), 
                   PythonModuleDependency('pyarrow', cheeseShopName='pyarrow'), 
-                  PythonModuleDependency('requests', cheeseShopName='requests')])
+                  PythonModuleDependency('requests', cheeseShopName='requests'),
+                  PythonModuleDependency('tzlocal', cheeseShopName='tzlocal')])
 
 AddArgumentMetadata(RWorkerProcess.__init__, 'self',
     typeMetadata=ClassInstanceTypeMetadata(cls=RWorkerProcess),
@@ -310,6 +345,59 @@ raised.
 
 """), 
     arcGISDisplayName=_('Startup timeout'))
+
+AddArgumentMetadata(RWorkerProcess.__init__, 'defaultTZ',
+    typeMetadata=UnicodeStringTypeMetadata(minLength=1, canBeNone=True),
+    description=_(
+"""Name of the time zone to use when 1) setting R variables from time-zone
+naive :py:class:`~datetime.datetime` instances, 2) getting the values of R
+variables that return :py:class:`~datetime.datetime` instances, and 3) 
+returning :py:class:`~datetime.datetime` instances from :py:func:`Eval`.
+This time zone only applies when dealing with data types other than data
+frames. 
+
+**Setting R variables using naive :py:class:`~datetime.datetime` instances**
+
+When a :py:class:`~datetime.datetime` instance is sent to R, it is converted
+to an R ``POSIXct`` object, which represents time as the number of seconds
+since the UNIX epoch, which is defined as 1970-01-01 00:00:00 UTC. Because of
+this, :class:`~GeoEco.R.RWorkerProcess` needs to know which time zone
+the :py:class:`~datetime.datetime` instance is in so that it can be converted
+to UTC for R.
+
+If a :py:class:`~datetime.datetime` instance has a time zone defined (meaning
+that its `tzinfo` attribute is not :py:data:`None`), then
+:class:`~GeoEco.R.RWorkerProcess` will apply that time zone when computing UTC
+times to send to R. But if it does not have a time zone defined, it is known
+as a "naive" :py:class:`~datetime.datetime`. In this case, the `defaultTZ`
+parameter determines the time zone to use, as follows:
+
+If `defaultTZ` is :py:data:`None` (the default), 
+:class:`~GeoEco.R.RWorkerProcess` will assume that naive 
+:py:class:`~datetime.datetime` instances are in the local time zone,
+consistent with how many of the Python :py:class:`~datetime.datetime` methods
+treat naive instances. :class:`~GeoEco.R.RWorkerProcess` will then look up the
+local time zone using the Python `tzlocal
+<https://pypi.org/project/tzlocal/>`__ package and apply it when computing
+UTC times to send to R.
+
+If `defaultTZ` is a string, a :py:class:`~zoneinfo.ZoneInfo` will be
+instantiated and used instead. For example, if you want all naive 
+:py:class:`~datetime.datetime` instances to be treated as UTC, provide
+``"UTC"`` for `defaultTZ`.
+
+**Getting :py:class:`~datetime.datetime` instances back from R**
+
+For consistency with the behavior described above, if `defaultTZ`
+is :py:data:`None` (the default), :class:`~GeoEco.R.RWorkerProcess` will look
+up the local time zone using the Python `tzlocal
+<https://pypi.org/project/tzlocal/>`__ package and convert all 
+:py:class:`~datetime.datetime` instances to that time zone before returning
+them. The returned instances will have that time zone defined (they will not
+be naive).
+
+If `defaultTZ` is a string, a :py:class:`~zoneinfo.ZoneInfo` will be
+instantiated and used instead."""))
 
 AddResultMetadata(RWorkerProcess.__init__, 'obj',
     typeMetadata=ClassInstanceTypeMetadata(cls=RWorkerProcess),

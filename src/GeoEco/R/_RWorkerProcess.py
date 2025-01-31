@@ -9,7 +9,10 @@
 # full license text.
 
 import collections.abc
+import datetime
+import functools
 import io
+import json
 import logging
 import os
 import shutil
@@ -17,29 +20,101 @@ import socket
 import subprocess
 import sys
 import threading
+import zoneinfo
 
 from ..DynamicDocString import DynamicDocString
 from ..Internationalization import _
 from ..Logging import Logger
 
 
+# The R plumber package uses jsonlite for deserialization. jsonlite will
+# deserialize datetimes in "mongo" format, e.g. '{"$date": 1393193680926}',
+# to R POSIXct objects (see https://github.com/jeroen/jsonlite/issues/8).
+# Here, we define our own Python json.JSONEncoder that formats Python
+# datetimes 
+
+class _MongoDateTimeEncoder(json.JSONEncoder):
+
+    def __init__(self, *args, default_tzinfo=datetime.timezone.utc, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.default_tzinfo = default_tzinfo 
+
+    def default(self, obj):
+        # Convert to milliseconds since the UNIX epoch (in UTC) and return a
+        # dict with a '$date' key, which is "mongo" format according to the R
+        # jsonlite package.
+
+        if isinstance(obj, datetime.datetime):
+            if obj.tzinfo is None:
+                obj = obj.replace(tzinfo=self.default_tzinfo)
+            millis = int(obj.timestamp() * 1000)
+            return {'$date': millis}
+
+        # If it's not a datetime, just use the JSONEncoder default.
+
+        return super().default(obj)
+
+
+class _MongoDateTimeDecoder(json.JSONDecoder):
+    def __init__(self, *args, default_tzinfo=datetime.timezone.utc, **kwargs):
+        if 'object_hook' not in kwargs or kwargs['object_hook'] is None:
+            kwargs['object_hook'] = self._DecodeMongoDates
+        super().__init__(*args, **kwargs)
+        self.default_tzinfo = default_tzinfo
+        self.parse_array = self._UnboxMongoDates
+        self.scan_once = json.scanner.py_make_scanner(self)
+
+    # Times are serialized by R in "mongo" format, which is a dict with a
+    # single $date key and POSIX time value (in UTC) that includes
+    # milliseconds, e.g. {'$date': 1738270573145}. If we find a dictionary
+    # that looks like that, convert it to a datetime.datetime instance (in
+    # the requested time zone).
+
+    def _DecodeMongoDates(self, obj):
+        if len(obj) == 1 and '$date' in obj and isinstance(obj['$date'], (int, float)):
+            return datetime.datetime.fromtimestamp(obj['$date'] / 1000., tz=self.default_tzinfo)
+        return obj
+
+    # Unfortunately, R plumber does not automatically unbox a length 1 POSIXct
+    # vector that have been serialized as mongo dates. dates. E.g.,
+    # c(Sys.time()) is serialized to JSON as [{'$date': 1738270573145}].
+    # However, POSIXct vectors of length 2 or more do not wrap each mongo date
+    # in a list. E.g., c(Sys.time(), Sys.time()) is serialized to JSON as
+    # [{'$date': 1738270573145}, {'$date': 1738270573145}]. So, after decoding,
+    # if we find a list with a single datetime instance in it, just return the
+    # datetime instance.
+
+    def _UnboxMongoDates(self, s, idx):
+        result, end = json.decoder.JSONArray(s, idx)
+        if isinstance(result, list) and len(result) == 1 and isinstance(result[0], datetime.datetime):
+            return result[0], end
+        return result, end
+
+
 class RWorkerProcess(collections.abc.MutableMapping):
     __doc__ = DynamicDocString()
 
-    def __init__(self, rInstallDir=None, rLibDir=None, rRepository='https://cloud.r-project.org', updateRPackages=False, port=None, timeout=5., startupTimeout=300.):
+    def __init__(self, rInstallDir=None, rLibDir=None, rRepository='https://cloud.r-project.org', updateRPackages=False, port=None, timeout=5., startupTimeout=300., defaultTZ=None):
         self.__doc__.Obj.ValidateMethodInvocation()
 
         self._RInstallDir = rInstallDir
         self._RLibDir = rLibDir
         self._RRepository = rRepository
         self._UpdateRPackages = updateRPackages
-        self._Port = port
+        self._RequestedPort = port
+        self._Port = None
         self._Timeout = timeout
         self._StartupTimeout =startupTimeout
         self._WorkerProcess = None
         self._Session = None
         self._Lock = threading.RLock()
         self._WorkerProcessIsReady = threading.Event()
+
+        if defaultTZ is None:
+            import tzlocal
+            self._TZInfo = tzlocal.get_localzone()
+        else:
+            self._TZInfo = zoneinfo.ZoneInfo(defaultTZ)
 
     def Start(self):
         import requests
@@ -75,28 +150,28 @@ class RWorkerProcess(collections.abc.MutableMapping):
                 else:
                     raise NotImplementedError(_('RWorkerProcess is only supported on the "%(plat)s" platform, only on win32 and linux.') % {'plat': sys.platform})
 
-                # Unfortately, there is no way to have plumber itself find a free
+                # Unfortunately, there is no way to have plumber itself find a free
                 # TCP port to use. So we find one here, unless the caller
                 # specified one. Note that this creates a small race condition in
                 # which some other process could grab the free port before we can
                 # start plumber. We do not handle that case, and leave it to the
                 # caller to try again.
 
-                if self._Port is None:
+                if self._RequestedPort is None:
                     with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
                         s.bind(('127.0.0.1', 0))
-                        port = s.getsockname()[1]
+                        self._Port = int(s.getsockname()[1])
                 else:
-                    port = self._Port
+                    self._Port = self._RequestedPort
 
-                Logger.Debug(f'{self.__class__.__name__} 0x{id(self):016X}: Using TCP port {port}.')
+                Logger.Debug(f'{self.__class__.__name__} 0x{id(self):016X}: Using TCP port {self._Port}.')
 
                 # Create the args we will pass to subprocess.Popen.
 
                 args = [rscriptPath,
                         '--vanilla',
                         os.path.join(os.path.dirname(__file__), 'RunPlumber.R'),
-                        str(port),
+                        str(self._Port),
                         os.path.join(os.path.dirname(__file__), 'PlumberAPI.R'),
                         str(self._RLibDir),
                         str(self._RRepository),
@@ -215,6 +290,8 @@ class RWorkerProcess(collections.abc.MutableMapping):
         # Locate the Rscript.exe excutable. First, if self._RInstallDir was
         # provided by the caller, try it.
 
+        rscriptPath = None
+
         if self._RInstallDir is not None:
             rscriptPath = os.path.join(self._RInstallDir, 'bin', 'x64', 'Rscript.exe')
             if not os.path.isfile(rscriptPath):
@@ -232,7 +309,6 @@ class RWorkerProcess(collections.abc.MutableMapping):
         # Otherwise, check the registry.
 
         else:
-            rscriptPath = None
             import winreg
             for hkey, hkeyName in [[winreg.HKEY_CURRENT_USER, 'HKEY_CURRENT_USER'], [winreg.HKEY_LOCAL_MACHINE, 'HKEY_LOCAL_MACHINE']]:
                 try:
@@ -258,6 +334,7 @@ class RWorkerProcess(collections.abc.MutableMapping):
                     Logger.Debug(f'{self.__class__.__name__} 0x{id(self):016X}: Found path to {rscriptPath} via the {hkeyName}\\SOFTWARE\\R-Core\\R64 registry key.')
                     break
 
+                rscriptPath = None
                 Logger.Warning(_('Failed to find the file bin\\x64\\Rscript.exe in the InstallDir given by Windows Registry key %(hkeyName)s\\SOFTWARE\\R-Core\\R64. That version of R may no longer be installed.') % {'hkeyName': hkeyName})
 
         # If we still haven't found it, check the PATH.
@@ -507,7 +584,7 @@ class RWorkerProcess(collections.abc.MutableMapping):
             if resp.headers['Content-Type'] == 'application/json':
                 Logger.Debug(f'{self.__class__.__name__} 0x{id(self):016X}: Recieved HTTP 200, parsing JSON.')
                 try:
-                    respJSON = resp.json()
+                    respJSON = json.loads(resp.text, cls=functools.partial(_MongoDateTimeDecoder, default_tzinfo=self._TZInfo))
                 except:
                     Logger.Error('MGET placed a call to R through HTTP and the R plumber package and was supposed receive a JSON response but JSON parser failed. The following exception contains the details.')
                     raise
@@ -551,6 +628,48 @@ class RWorkerProcess(collections.abc.MutableMapping):
             Logger.Debug(f'{self.__class__.__name__} 0x{id(self):016X}: Sending POST to {url}')
             resp = self._Session.post(url, allow_redirects=False, timeout=self._Timeout)
             return(self._ProcessResponse(resp, parseReturnValue=True))
+
+    def _SerializeValueToJSON(self, obj):
+
+        # It turns out that with the latest versions of R jsonlite(1.8.9) and
+        # plumber (1.2.2), if value is an atomic datetime (i.e. a single
+        # datetime instance, rather than several in a list or tuple) and we
+        # then serialize it in "mongo" format with _MongoDateTimeEncoder, our
+        # plumbed "set" function in PlumberAPI.R will receive R NULL as the
+        # value instead of a POSIXct. This appears to be a bug in those
+        # packages, but the deserialization of mongo format is not a
+        # documented feature (it is only mentioned in
+        # https://github.com/jeroen/jsonlite/issues/8), so it's hard to say.
+        # In any case, we work around it by constructing a special dict that
+        # is recognized by our "set" function, which then extracts an atomic
+        # POSIXct.
+
+        value = obj['value']
+        if isinstance(value, datetime.datetime):
+            value = {'value': value, 'RWorkerProcess_IsAtomicDatetime': True}
+
+        # Similarly, if it is a length 1 list or tuple with a single
+        # datetime.datetime in it, the same thing will happen. Note that in
+        # R, atomic values are just length 1 vectors, so we can use the same
+        # mechanism as above.
+
+        elif isinstance(value, (list, tuple)) and len(value) == 1 and isinstance(value[0], datetime.datetime):
+            value = {'value': value, 'RWorkerProcess_IsAtomicDatetime': True}
+
+        # Similarly, if value is a dictionary where all the values are
+        # datetimes or length 1 lists or tuples of datetimes, the list will
+        # be flattened to a vector by jsonlite. We can prevent this by adding
+        # a dummy value to the list that is some other type, and then having
+        # our "set" function remove it.
+
+        elif isinstance(value, collections.abc.Mapping) and all([isinstance(v, datetime.datetime) or isinstance(v, (list, tuple)) and len(v) == 1 and isinstance(v[0], datetime.datetime) for k, v in value.items()]):
+            value = {**value, **{'RWorkerProcess_IsDatetimeList': True}}
+
+        # Now serialize the value with _MongoDateTimeEncoder. It has to be
+        # inside a dict with the key 'value' so that plumber will use it for
+        # the value parameter of the "set" function in PlumberAPI.R.
+
+        return json.dumps({'value': value}, cls=functools.partial(_MongoDateTimeEncoder, default_tzinfo=self._TZInfo))
 
     def __len__(self):
         return(len(self._GetVariableNames()))
@@ -596,13 +715,14 @@ class RWorkerProcess(collections.abc.MutableMapping):
                                          allow_redirects=False, 
                                          timeout=self._Timeout)
 
-            # Otherwise let requests serialize it with JSON.
+            # Otherwise serialize it to JSON.
 
             else:
                 Logger.Debug(f'{self.__class__.__name__} 0x{id(self):016X}: Sending PUT to {url} with JSON.')
                 resp = self._Session.put(url, 
                                          params={'name': key.strip()}, 
-                                         json={'value': value}, 
+                                         data=self._SerializeValueToJSON({'value': value}),
+                                         headers={'Content-Type': 'application/json'},
                                          allow_redirects=False, 
                                          timeout=self._Timeout)
             

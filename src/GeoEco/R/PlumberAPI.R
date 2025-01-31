@@ -68,22 +68,6 @@ getValueForLogging <- function(obj) {
   return(c(paste0(line1, ":\n"), sprintf("  %s\n", lines)))
 }
 
-# cat(getValueForLogging(numeric(0)))
-# cat(getValueForLogging(integer(0)))
-# cat(getValueForLogging(complex(0)))
-# cat(getValueForLogging(logical(0)))
-# cat(getValueForLogging(character(0)))
-# cat(getValueForLogging(1))
-# cat(getValueForLogging(2L))
-# cat(getValueForLogging(TRUE))
-# cat(getValueForLogging(FALSE))
-# cat(getValueForLogging("asdfasdf \"sdf\" asdfsdf"))
-# cat(getValueForLogging(iris))
-# cat(getValueForLogging(cars[1:5,]))
-# cat(getValueForLogging(rep(1:100)))
-# cat(getValueForLogging(rep(1:1000)))
-# cat(getValueForLogging(list(foo=5)))
-
 ###############################################################################
 # API functions exposed through plumber
 ###############################################################################
@@ -161,6 +145,20 @@ function(name, value) {
       stop("The \"value\" parameter is required.")
     }
 
+    # To work around apparent JSON deserialization bugs in the plumber or
+    # jsonlite packages , check whether value is a list that contains an item
+    # named RWorkerProcess_IsAtomicDatetime. If so, extract the atomic
+    # POSIXct from within it. Similarly, if value is a list that contains an
+    # item named RWorkerProcess_IsDatetimeList, just remove that item and
+    # proceed with the list. See the comments in _SerializeToJSON
+    # in _RWorkerProcess.py for more information about these kludges.
+
+    if (typeof(value) == "list" && "RWorkerProcess_IsAtomicDatetime" %in% names(value)) {
+      value <- value$value
+    } else if (typeof(value) == "list" && "RWorkerProcess_IsDatetimeList" %in% names(value)) {
+      value$RWorkerProcess_IsDatetimeList <- NULL
+    }
+
     # Log a debug message.
 
     lines <- getValueForLogging(value)
@@ -176,15 +174,17 @@ function(name, value) {
   })
 }
 
-# curl -X PUT "http://127.0.0.1:8000/set?name=foo&value=1" --verbose --trace -
-# curl -X PUT "http://127.0.0.1:8000/set?name=foo" -H "Content-Type: multipart/form-data" --verbose -F "value=5;type=application/json" --trace -
-# curl -X PUT "http://127.0.0.1:8000/set?name=foo" -H "Content-Type: multipart/form-data" --verbose -F "value={\"foo\":5};type=application/json" --trace -
-# curl -X PUT "http://127.0.0.1:8000/set?name=foo" -H "Content-Type: multipart/form-data" --verbose -F "value=<iris2.arrow;type=application/feather" --trace -
-# curl -X PUT "http://127.0.0.1:8000/set?name=foo" -H "Content-Type: multipart/form-data" --verbose -F "value=null;type=application/json" --trace -
-# curl -X PUT "http://127.0.0.1:8000/set?name=foo" -H "Content-Type: multipart/form-data" --verbose -F "value={\"foo\":null, \"bar":3};type=application/json" --trace -
-# curl -X PUT "http://127.0.0.1:8000/set?name=foo" -H "Content-Type: multipart/form-data" --verbose -F "value=[1, 2, null, 3, null, 5, 6];type=application/json" --trace -
+# NOTE: below, we define digits=17 rather than digits=NA. The plumber
+# documentation says to use NA for full precision, but at the time of this
+# writing, jsonlite::toJSON treated NA as 15 digits. See:
+# https://github.com/jeroen/jsonlite/commit/120cca8df83f6f6e6ce26610b113c15e881a95de
+# By using 17, we can round-trip numbers from Python --> R --> Python without
+# any loss of precision.
 
-serializers <- list(json=serializer_unboxed_json(), feather=serializer_feather())
+serializers <- list(
+  json=serializer_unboxed_json(na="null", null="null", digits=17, POSIXt="mongo", force=TRUE), 
+  feather=serializer_feather()
+)
 
 #* Returns the value of a variable.
 #* @post /get
