@@ -8,6 +8,7 @@
 # root of this project or https://opensource.org/license/bsd-3-clause for the
 # full license text.
 
+import base64
 import collections.abc
 import datetime
 import functools
@@ -15,6 +16,7 @@ import io
 import json
 import logging
 import os
+import secrets
 import shutil
 import socket
 import subprocess
@@ -116,6 +118,8 @@ class RWorkerProcess(collections.abc.MutableMapping):
         else:
             self._TZInfo = zoneinfo.ZoneInfo(defaultTZ)
 
+        self._AuthenticationToken = base64.b64encode(secrets.token_bytes(64), b'+-').decode('utf-8')
+
     def Start(self):
         import requests
 
@@ -175,7 +179,8 @@ class RWorkerProcess(collections.abc.MutableMapping):
                         os.path.join(os.path.dirname(__file__), 'PlumberAPI.R'),
                         str(self._RLibDir),
                         str(self._RRepository),
-                        str(self._UpdateRPackages)]
+                        str(self._UpdateRPackages),
+                        self._AuthenticationToken]
 
                 # Start Rscript with subprocess.Popen. Exactly how do do this is
                 # platform-specific.
@@ -488,7 +493,10 @@ class RWorkerProcess(collections.abc.MutableMapping):
             url = f'http://127.0.0.1:{self._Port}/shutdown'
             Logger.Debug(f'{self.__class__.__name__} 0x{id(self):016X}: Sending POST to {url}')
             try:
-                resp = self._Session.post(url, allow_redirects=False, timeout=timeout)
+                resp = self._Session.post(url, 
+                                          headers={'Authentication-Token': self._AuthenticationToken},
+                                          allow_redirects=False, 
+                                          timeout=timeout)
             except:
                 pass
 
@@ -626,7 +634,12 @@ class RWorkerProcess(collections.abc.MutableMapping):
             self._PollWorkerProcess()
             url = f'http://127.0.0.1:{self._Port}/list'
             Logger.Debug(f'{self.__class__.__name__} 0x{id(self):016X}: Sending POST to {url}')
-            resp = self._Session.post(url, allow_redirects=False, timeout=self._Timeout)
+
+            resp = self._Session.post(url, 
+                                      headers={'Authentication-Token': self._AuthenticationToken},
+                                      allow_redirects=False, 
+                                      timeout=self._Timeout)
+
             return(self._ProcessResponse(resp, parseReturnValue=True))
 
     def _SerializeValueToJSON(self, obj):
@@ -685,7 +698,13 @@ class RWorkerProcess(collections.abc.MutableMapping):
             self._PollWorkerProcess()
             url = f'http://127.0.0.1:{self._Port}/get'
             Logger.Debug(f'{self.__class__.__name__} 0x{id(self):016X}: Sending POST to {url}')
-            resp = self._Session.post(url, params={'name': key.strip()}, allow_redirects=False, timeout=self._Timeout)
+
+            resp = self._Session.post(url, 
+                                      params={'name': key.strip()}, 
+                                      headers={'Authentication-Token': self._AuthenticationToken},
+                                      allow_redirects=False, 
+                                      timeout=self._Timeout)
+
             return(self._ProcessResponse(resp, parseReturnValue=True))
 
     def __setitem__(self, key, value):
@@ -712,6 +731,7 @@ class RWorkerProcess(collections.abc.MutableMapping):
                 resp = self._Session.put(url, 
                                          params={'name': key.strip()}, 
                                          files={'value': (None, buffer, 'application/vnd.apache.arrow.file')},
+                                         headers={'Authentication-Token': self._AuthenticationToken},
                                          allow_redirects=False, 
                                          timeout=self._Timeout)
 
@@ -722,7 +742,7 @@ class RWorkerProcess(collections.abc.MutableMapping):
                 resp = self._Session.put(url, 
                                          params={'name': key.strip()}, 
                                          data=self._SerializeValueToJSON({'value': value}),
-                                         headers={'Content-Type': 'application/json'},
+                                         headers={'Content-Type': 'application/json', 'Authentication-Token': self._AuthenticationToken},
                                          allow_redirects=False, 
                                          timeout=self._Timeout)
             
@@ -736,7 +756,13 @@ class RWorkerProcess(collections.abc.MutableMapping):
             self._PollWorkerProcess()
             url = f'http://127.0.0.1:{self._Port}/delete'
             Logger.Debug(f'{self.__class__.__name__} 0x{id(self):016X}: Sending DELETE to {url}')
-            resp = self._Session.delete(url, params={'name': key.strip()}, allow_redirects=False, timeout=self._Timeout)
+
+            resp = self._Session.delete(url, 
+                                        params={'name': key.strip()}, 
+                                        headers={'Authentication-Token': self._AuthenticationToken},
+                                        allow_redirects=False, 
+                                        timeout=self._Timeout)
+
             self._ProcessResponse(resp)
 
     def Eval(self, expr, timeout=60.):
@@ -746,7 +772,13 @@ class RWorkerProcess(collections.abc.MutableMapping):
             self._PollWorkerProcess()
             url = f'http://127.0.0.1:{self._Port}/eval'
             Logger.Debug(f'{self.__class__.__name__} 0x{id(self):016X}: Sending POST to {url}')
-            resp = self._Session.post(url, json={'expr': expr}, allow_redirects=False, timeout=timeout)
+
+            resp = self._Session.post(url, 
+                                      json={'expr': expr}, 
+                                      headers={'Authentication-Token': self._AuthenticationToken},
+                                      allow_redirects=False, 
+                                      timeout=timeout)
+            
             return(self._ProcessResponse(resp, parseReturnValue=True))
 
 

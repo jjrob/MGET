@@ -167,7 +167,31 @@ class TestRWorkerProcess():
                 assert r['x'].tzinfo is not None and r['x'].tzinfo != now.tzinfo
                 assert r['x'] == now.astimezone(r['x'].tzinfo)
 
+    def test_AuthenticationToken(self, rWorkerProcess):
+        # Change Python's copy of the authentication token and verify that R
+        # rejects our calls.
 
+        originalAuthToken = rWorkerProcess._AuthenticationToken
+        rWorkerProcess._AuthenticationToken = 'foo'
+        with pytest.raises(RuntimeError, match='.*401: Unauthorized.*'):
+            rWorkerProcess['x'] = 1
+        with pytest.raises(RuntimeError, match='.*401: Unauthorized.*'):
+            x = rWorkerProcess['x']
+        with pytest.raises(RuntimeError, match='.*401: Unauthorized.*'):
+            x = len(rWorkerProcess)
+        with pytest.raises(RuntimeError, match='.*401: Unauthorized.*'):
+            del rWorkerProcess['x']
+        with pytest.raises(RuntimeError, match='.*401: Unauthorized.*'):
+            rWorkerProcess.Eval('1+1')
+
+        # Verify that it works again if we use the original token.
+
+        rWorkerProcess._AuthenticationToken = originalAuthToken
+        rWorkerProcess['x'] = 2
+        assert rWorkerProcess['x'] == 2
+        assert len(rWorkerProcess) == 1
+        del rWorkerProcess['x']
+        assert rWorkerProcess.Eval('1+1') == 2
 
     # def test_PythonToRJSONTypes(self, capsys):
     #     Logger.Initialize()   # Do not remove this from here, even though it is already called at module scope. If it is not here, capsys will not work.

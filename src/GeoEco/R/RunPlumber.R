@@ -39,6 +39,11 @@ if (length(args) <= 4 || (tolower(trimws(args[5])) != "true" && tolower(trimws(a
 }
 updateRPackages <- tolower(trimws(args[5]))
 
+if (length(args) <= 5) {
+  stop("The authentication token must be given as the sixth command line argument.")
+}
+authenticationToken <- trimws(args[6])
+
 # If an R library directory was given, check whether it ends in the current
 # major.minor version of R (excluding .patch), similar R's default. If it
 # does not, add the version number. Then, if it does not exist, create it.
@@ -149,4 +154,11 @@ errorHandler <- function(req, res, err) {
 
 pr(rFile) %>%
   pr_set_error(errorHandler) %>% 
+  pr_filter("check_auth_token", function(req, res) {
+    if (is.null(req$HTTP_AUTHENTICATION_TOKEN) || req$HTTP_AUTHENTICATION_TOKEN != authenticationToken) {
+      res$status <- 401 # Unauthorized
+      return(list(error="Missing or invalid authentication token"))
+    }
+    plumber::forward()
+  }) %>%
   pr_run(port = port)
