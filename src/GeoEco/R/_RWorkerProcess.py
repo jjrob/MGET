@@ -359,27 +359,35 @@ class RWorkerProcess(collections.abc.MutableMapping):
         # default it will keep running, even if the parent process exits. We
         # do not want to do this; we want the child to be terminated if the
         # parent exits. To accomplish this, we add the child process to a
-        # win32 Job object with the JOB_OBJECT_LIMIT_KILL_ON_JOB_CLOSE flag,
-        # so that when the parent releases the job's handle automatically
-        # when the parent exits, the child will be terminated. Thanks to the
-        # author of https://stackoverflow.com/a/16791778 for the example code
-        # working with Job objects.
+        # win32 Job object with the JOB_OBJECT_LIMIT_KILL_ON_JOB_CLOSE flag
+        # set, so that when the parent (us) releases the job's handle
+        # automatically when the parent exits, the child will be terminated.
+        # Thanks to the author of https://stackoverflow.com/a/16791778 for
+        # the example code working with Job objects.
         #
-        # First create and configure the job object.
+        # First check whether the current process is already in a job.
 
         import ctypes
+        kernel32 = ctypes.windll.kernel32
         import _winapi
 
-        JobObjectExtendedLimitInformation = 9
-        JOB_OBJECT_LIMIT_KILL_ON_JOB_CLOSE = 0x00002000
+        isInJob = ctypes.c_bool()
+        success = kernel32.IsProcessInJob(ctypes.c_void_p(kernel32.GetCurrentProcess()),
+                                          ctypes.c_void_p(0),   # Use NULL to check whether the process is running under any job
+                                          ctypes.POINTER(ctypes.c_bool)(isInJob))
+        if success == 0:
+            raise RuntimeError(_('Failed to determine if the current process is within a Win32 Job: ctypes.windll.kernel32.IsProcessInJob() failed with error 0x%(error)08X.') % {'error': _winapi.GetLastError()})
+        Logger.Debug(f'{self.__class__.__name__} 0x{id(self):016X}: The current process {"is" if isInJob else "is not"} already in a Win32 job.')
 
-        class IO_COUNTERS(ctypes.Structure):
-            _fields_ = [('ReadOperationCount', ctypes.c_uint64),
-                        ('WriteOperationCount', ctypes.c_uint64),
-                        ('OtherOperationCount', ctypes.c_uint64),
-                        ('ReadTransferCount', ctypes.c_uint64),
-                        ('WriteTransferCount', ctypes.c_uint64),
-                        ('OtherTransferCount', ctypes.c_uint64)]
+        # If it is already in a job, query it to determine if
+        # JOB_OBJECT_LIMIT_KILL_ON_JOB_CLOSE is set. If so, then we don't
+        # need to do anything, because our parent process has already
+        # configured things the way we want.
+
+        needToCreateJob = True
+        JobObjectBasicLimitInformation = 2
+        JOB_OBJECT_LIMIT_BREAKAWAY_OK = 0x00000800
+        JOB_OBJECT_LIMIT_KILL_ON_JOB_CLOSE = 0x00002000
 
         class JOBOBJECT_BASIC_LIMIT_INFORMATION(ctypes.Structure):
             _fields_ = [('PerProcessUserTimeLimit', ctypes.c_int64),
@@ -392,45 +400,92 @@ class RWorkerProcess(collections.abc.MutableMapping):
                         ('PriorityClass', ctypes.c_uint32),
                         ('SchedulingClass', ctypes.c_uint32)]
 
-        class JOBOBJECT_EXTENDED_LIMIT_INFORMATION(ctypes.Structure):
-            _fields_ = [('BasicLimitInformation', JOBOBJECT_BASIC_LIMIT_INFORMATION),
-                        ('IoInfo', IO_COUNTERS),
-                        ('ProcessMemoryLimit', ctypes.c_void_p),
-                        ('JobMemoryLimit', ctypes.c_void_p),
-                        ('PeakProcessMemoryUsed', ctypes.c_void_p),
-                        ('PeakJobMemoryUsed', ctypes.c_void_p)]
+        if isInJob:
+            jobInfo = JOBOBJECT_BASIC_LIMIT_INFORMATION()
+            outSize = ctypes.c_uint32()
 
-        jobInfo = JOBOBJECT_EXTENDED_LIMIT_INFORMATION()
-        outSize = ctypes.c_uint32()
+            success = kernel32.QueryInformationJobObject(ctypes.c_void_p(0),    # Use NULL to query the job associated with the current process
+                                                         JobObjectBasicLimitInformation,
+                                                         ctypes.POINTER(JOBOBJECT_BASIC_LIMIT_INFORMATION)(jobInfo),
+                                                         ctypes.sizeof(JOBOBJECT_BASIC_LIMIT_INFORMATION),
+                                                         ctypes.POINTER(ctypes.c_uint32)(outSize))
+            if success == 0:
+                raise RuntimeError(_('Failed to query Win32 Job object for the current process: ctypes.windll.kernel32.QueryInformationJobObject() failed with error 0x%(error)08X.') % {'error': _winapi.GetLastError()})
 
-        hJob = ctypes.windll.kernel32.CreateJobObjectW(None, None)
-        if hJob == 0:
-            raise RuntimeError('Failed to create Win32 Job object: ctypes.windll.kernel32.CreateJobObjectW() failed.')
+            needToCreateJob = not(jobInfo.LimitFlags & JOB_OBJECT_LIMIT_KILL_ON_JOB_CLOSE)
+            Logger.Debug(f'{self.__class__.__name__} 0x{id(self):016X}: The current process\'s Win32 job {"does not have" if needToCreateJob else "already has"} JOB_OBJECT_LIMIT_KILL_ON_JOB_CLOSE set.')
 
+            # If JOB_OBJECT_LIMIT_KILL_ON_JOB_CLOSE is not set, check whether
+            # JOB_OBJECT_LIMIT_BREAKAWAY_OK is set. If it is not, it means
+            # that we cannot create our own job to put the child process
+            # into. In that case, report a warning, but do not try to create
+            # a job. The R child process can still be started, but will not
+            # be terminated automatically if we do not explicitly stop it
+            # before our process exits.
+
+            if needToCreateJob and not(jobInfo.LimitFlags & JOB_OBJECT_LIMIT_BREAKAWAY_OK):
+                Logger.Warning(_('MGET was unable to instruct Windows to automatically terminate its Rscript worker process when MGET\'s process exits. MGET\'s process is already part of a Win32 job that does not allow child processes to be placed into a different job (JOB_OBJECT_LIMIT_BREAKAWAY_OK is FALSE). As a consequence, if MGET\'s process exits abnormally, the Rscript worker process may not be automatically terminated.'))
+                needToCreateJob = False
+
+        # If we determined above that we need to create a job for the child
+        # process, do it and set JOB_OBJECT_LIMIT_KILL_ON_JOB_CLOSE. Note:
+        # for some reason, we have to use
+        # JOBOBJECT_EXTENDED_LIMIT_INFORMATION when calling
+        # SetInformationJobObject. I could not get it to work when I tried
+        # JOBOBJECT_BASIC_LIMIT_INFORMATION.
+
+        hJob = 0
         try:
-            success = ctypes.windll.kernel32.QueryInformationJobObject(hJob,
-                                                                       JobObjectExtendedLimitInformation,
-                                                                       ctypes.POINTER(JOBOBJECT_EXTENDED_LIMIT_INFORMATION)(jobInfo),
-                                                                       ctypes.sizeof(JOBOBJECT_EXTENDED_LIMIT_INFORMATION),
-                                                                       ctypes.POINTER(ctypes.c_uint32)(outSize))
-            if success == 0:
-                raise RuntimeError('Failed to create Win32 Job object: ctypes.windll.kernel32.CreateJobObjectW() failed.')
+            if needToCreateJob:
+                JobObjectExtendedLimitInformation = 9
 
-            jobInfo.BasicLimitInformation.LimitFlags |= JOB_OBJECT_LIMIT_KILL_ON_JOB_CLOSE
+                class IO_COUNTERS(ctypes.Structure):
+                    _fields_ = [('ReadOperationCount', ctypes.c_uint64),
+                                ('WriteOperationCount', ctypes.c_uint64),
+                                ('OtherOperationCount', ctypes.c_uint64),
+                                ('ReadTransferCount', ctypes.c_uint64),
+                                ('WriteTransferCount', ctypes.c_uint64),
+                                ('OtherTransferCount', ctypes.c_uint64)]
 
-            success = ctypes.windll.kernel32.SetInformationJobObject(hJob,
-                                                                     JobObjectExtendedLimitInformation,
-                                                                     ctypes.POINTER(JOBOBJECT_EXTENDED_LIMIT_INFORMATION)(jobInfo),
-                                                                     ctypes.sizeof(JOBOBJECT_EXTENDED_LIMIT_INFORMATION))
-            if success == 0:
-                raise RuntimeError('Failed to set LimitFlags on Win32 Job object: ctypes.windll.kernel32.SetInformationJobObject() failed.')
+                class JOBOBJECT_EXTENDED_LIMIT_INFORMATION(ctypes.Structure):
+                    _fields_ = [('BasicLimitInformation', JOBOBJECT_BASIC_LIMIT_INFORMATION),
+                                ('IoInfo', IO_COUNTERS),
+                                ('ProcessMemoryLimit', ctypes.c_void_p),
+                                ('JobMemoryLimit', ctypes.c_void_p),
+                                ('PeakProcessMemoryUsed', ctypes.c_void_p),
+                                ('PeakJobMemoryUsed', ctypes.c_void_p)]
 
-            # Start the process.
+                jobInfo = JOBOBJECT_EXTENDED_LIMIT_INFORMATION()
+                outSize = ctypes.c_uint32()
 
-            creationFlags = subprocess.CREATE_BREAKAWAY_FROM_JOB
+                hJob = kernel32.CreateJobObjectW(None, None)
+                if hJob == 0:
+                    raise RuntimeError(_('Failed to create Win32 Job object: ctypes.windll.kernel32.CreateJobObjectW() failed with error 0x%(error)08X.') % {'error': _winapi.GetLastError()})
 
+                success = kernel32.QueryInformationJobObject(hJob,
+                                                             JobObjectExtendedLimitInformation,
+                                                             ctypes.POINTER(JOBOBJECT_EXTENDED_LIMIT_INFORMATION)(jobInfo),
+                                                             ctypes.sizeof(JOBOBJECT_EXTENDED_LIMIT_INFORMATION),
+                                                             ctypes.POINTER(ctypes.c_uint32)(outSize))
+                if success == 0:
+                    raise RuntimeError(_('Failed to query newly-created Win32 Job object: ctypes.windll.kernel32.QueryInformationJobObject() failed with error 0x%(error)08X.') % {'error': _winapi.GetLastError()})
+
+                jobInfo.BasicLimitInformation.LimitFlags |= JOB_OBJECT_LIMIT_KILL_ON_JOB_CLOSE
+
+                success = kernel32.SetInformationJobObject(hJob,
+                                                           JobObjectExtendedLimitInformation,
+                                                           ctypes.POINTER(JOBOBJECT_EXTENDED_LIMIT_INFORMATION)(jobInfo),
+                                                           ctypes.sizeof(JOBOBJECT_EXTENDED_LIMIT_INFORMATION))
+                if success == 0:
+                    raise RuntimeError(_('Failed to set LimitFlags on Win32 Job object: ctypes.windll.kernel32.SetInformationJobObject() failed with error 0x%(error)08X.') % {'error': _winapi.GetLastError()})
+
+                Logger.Debug(f'{self.__class__.__name__} 0x{id(self):016X}: Created Win32 Job object for the child Rscript process with JOB_OBJECT_LIMIT_KILL_ON_JOB_CLOSE set.')
+
+            # Start the child process.
+
+            creationFlags = subprocess.CREATE_BREAKAWAY_FROM_JOB if needToCreateJob else 0
             argsStr = subprocess.list2cmdline(args)
-            Logger.Debug(f'{self.__class__.__name__} 0x{id(self):016X}: Starting worker process: {argsStr}')
+            Logger.Debug(f'{self.__class__.__name__} 0x{id(self):016X}: Starting worker process with creationFlags 0x{creationFlags:08X}: {argsStr}')
 
             try:
                 self._WorkerProcess = subprocess.Popen(args=args,
@@ -439,26 +494,30 @@ class RWorkerProcess(collections.abc.MutableMapping):
                                                        stderr=subprocess.PIPE,
                                                        creationflags=subprocess.CREATE_BREAKAWAY_FROM_JOB)
             except Exception as e:
-                Logger.Error(_('Failed to start Rscript with the command line: {argsStr}'))
+                Logger.Error(_('MGET failed to start an Rscript worker process with the command line: {argsStr}'))
                 raise
 
             Logger.Debug(f'{self.__class__.__name__} 0x{id(self):016X}: Worker process {self._WorkerProcess.pid} started.')
 
             # Assign the child process to the job object.
 
-            success = ctypes.windll.kernel32.AssignProcessToJobObject(hJob, self._WorkerProcess._handle)
-            if success == 0:
-                raise RuntimeError('Failed to assign the worker process to a Win32 Job object: ctypes.windll.kernel32.AssignProcessToJobObject() failed.')
+            if needToCreateJob:
+                success = kernel32.AssignProcessToJobObject(hJob, self._WorkerProcess._handle)
+                if success == 0:
+                    raise RuntimeError(_('Failed to assign the worker process to a Win32 Job object: ctypes.windll.kernel32.AssignProcessToJobObject() failed with error 0x%(error)08X.') % {'error': _winapi.GetLastError()})
 
-        # If we got an exception, close the job handle. But if we did not, do
-        # NOT close the job handle. If we do, it will end the job and kill
-        # the child process. Instead we allow Windows to close it
-        # automatically when we exit. When that happens, if the child process
-        # is still running, Windows will kill it.
+                Logger.Debug(f'{self.__class__.__name__} 0x{id(self):016X}: Assigned worker process {self._WorkerProcess.pid} to the Win32 Job object.')
+
+        # If we got an exception and we created a job, close the job handle.
+        # But if we did not, do NOT close the job handle. If we do, it will
+        # end the job and kill the child process. Instead we allow Windows to
+        # close it automatically when we exit. When that happens, if the
+        # child process is still running, Windows will kill it.
 
         except:
             try:
-                _winapi.CloseHandle(hJob)
+                if hJob != 0:
+                    kernel32.CloseHandle(hJob)
             except:
                 pass
             raise
@@ -778,7 +837,7 @@ class RWorkerProcess(collections.abc.MutableMapping):
                                       headers={'Authentication-Token': self._AuthenticationToken},
                                       allow_redirects=False, 
                                       timeout=timeout)
-            
+
             return(self._ProcessResponse(resp, parseReturnValue=True))
 
 
