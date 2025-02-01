@@ -32,13 +32,14 @@ Logger.Initialize()
 
 def isRInstalled():
     r = RWorkerProcess()
-    if sys.platform == 'win32':
-        rscriptPath = r._LocateRscriptOnWin32()
-    elif sys.platform == 'linux':
-        rscriptPath = None
-        # rscriptPath = r._LocateRscriptOnLinux()  # Disable testing on Linux until RWorkerProcess fully supports Linux
-    else:
-        rscriptPath = None
+    rscriptPath = None
+    try:
+        if sys.platform == 'win32':
+            rscriptPath = r._LocateRscriptOnWin32()
+        elif sys.platform == 'linux':
+            rscriptPath = r._LocateRscriptOnLinux()
+    except:
+        pass
     return rscriptPath is not None
 
 
