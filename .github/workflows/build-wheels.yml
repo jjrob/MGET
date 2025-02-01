@@ -175,6 +175,11 @@ jobs:
         with:
           fetch-depth: 0
 
+      - name: Install R
+        uses: r-lib/actions/setup-r@v2
+        run: |
+          Rscript -e 'print("hello")'
+
       - name: Run tests
         env:
           CMEMS_USERNAME: ${{ secrets.CMEMS_USERNAME }}
@@ -278,6 +283,11 @@ jobs:
         shell: cmd
         run: |
           MATLAB_Runtime\setup -agreeToLicense yes
+
+      - name: Install R
+        uses: r-lib/actions/setup-r@v2
+        run: |
+          Rscript -e 'print("hello")'
 
       - name: Run tests
         env:
