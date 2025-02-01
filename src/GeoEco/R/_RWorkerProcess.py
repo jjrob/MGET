@@ -485,16 +485,16 @@ class RWorkerProcess(collections.abc.MutableMapping):
 
             creationFlags = subprocess.CREATE_BREAKAWAY_FROM_JOB if needToCreateJob else 0
             argsStr = subprocess.list2cmdline(args)
-            Logger.Debug(f'{self.__class__.__name__} 0x{id(self):016X}: Starting worker process with creationFlags 0x{creationFlags:08X}: {argsStr}')
+            Logger.Debug(f'{self.__class__.__name__} 0x{id(self):016X}: Starting worker process with creation flags 0x{creationFlags:08X}: {argsStr}')
 
             try:
                 self._WorkerProcess = subprocess.Popen(args=args,
                                                        stdin=subprocess.DEVNULL,
                                                        stdout=subprocess.PIPE,
                                                        stderr=subprocess.PIPE,
-                                                       creationflags=subprocess.CREATE_BREAKAWAY_FROM_JOB)
+                                                       creationflags=creationFlags)
             except Exception as e:
-                Logger.Error(_('MGET failed to start an Rscript worker process with the command line: {argsStr}'))
+                Logger.Error(_('MGET failed to start an Rscript worker process with creation flags 0x%(creationFlags)08X and the command line: %(argsStr)s') % {'creationFlags': creationFlags, 'argsStr': argsStr})
                 raise
 
             Logger.Debug(f'{self.__class__.__name__} 0x{id(self):016X}: Worker process {self._WorkerProcess.pid} started.')

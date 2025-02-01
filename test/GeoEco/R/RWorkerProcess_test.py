@@ -35,7 +35,8 @@ def isRInstalled():
     if sys.platform == 'win32':
         rscriptPath = r._LocateRscriptOnWin32()
     elif sys.platform == 'linux':
-        rscriptPath = r._LocateRscriptOnLinux()
+        rscriptPath = None
+        # rscriptPath = r._LocateRscriptOnLinux()  # Disable testing on Linux until RWorkerProcess fully supports Linux
     else:
         rscriptPath = None
     return rscriptPath is not None
