@@ -10,6 +10,7 @@
 
 import base64
 import collections.abc
+import ctypes
 import datetime
 import functools
 import io
@@ -25,6 +26,7 @@ import threading
 import time
 import zoneinfo
 
+from ..Dependencies import SoftwareNotInstalledError
 from ..DynamicDocString import DynamicDocString
 from ..Internationalization import _
 from ..Logging import Logger
@@ -314,6 +316,16 @@ class RWorkerProcess(collections.abc.MutableMapping):
 
     def _LocateRscriptOnWin32(self):
 
+        # The R plumber package requires libsodium. Check that it is
+        # installed.
+
+        try:
+            ctypes.CDLL("libsodium.dll")
+        except Exception as e:
+            raise SoftwareNotInstalledError(_('MGET interacts with R using the R plumber package, which requires libsodium.dll, which is not installed. See https://doc.libsodium.org/ for installation instructions. Error details: %(error)s: %(msg)s') % {'error': e.__class__.__name__, 'msg': e})
+
+        # Before checking 
+
         # Locate the Rscript.exe excutable. First, if self._RInstallDir was
         # provided by the caller, try it.
 
@@ -369,7 +381,7 @@ class RWorkerProcess(collections.abc.MutableMapping):
         if rscriptPath is None:
             rscriptPath = shutil.which('Rscript.exe')
             if rscriptPath is None:
-                raise FileNotFoundError(_('Failed to find the program Rscript.exe via the the Windows Registry or R_HOME or PATH environment variables. Is R installed?'))
+                raise SoftwareNotInstalledError(_('Failed to find the program Rscript.exe via the the Windows Registry or R_HOME or PATH environment variables. Is R installed?'))
             Logger.Debug(f'{self.__class__.__name__} 0x{id(self):016X}: Found path to {rscriptPath} via the PATH environment variable.')
 
         return rscriptPath
@@ -389,7 +401,6 @@ class RWorkerProcess(collections.abc.MutableMapping):
         #
         # First check whether the current process is already in a job.
 
-        import ctypes
         kernel32 = ctypes.windll.kernel32
         import _winapi
 
@@ -546,12 +557,20 @@ class RWorkerProcess(collections.abc.MutableMapping):
 
     def _LocateRscriptOnLinux(self):
 
+        # The R plumber package requires libsodium. Check that it is
+        # installed.
+
+        try:
+            ctypes.CDLL("libsodium.so")
+        except Exception as e:
+            raise SoftwareNotInstalledError(_('MGET interacts with R using the R plumber package, which requires libsodium, which is not installed. On Debian-based systems such as Ubuntu, you can probably install it with "sudo apt-get install libsodium-dev". Error details: %(error)s: %(msg)s') % {'error': e.__class__.__name__, 'msg': e})
+
         # On Linux, the R executables are expected to be available via the
         # PATH.
 
         rscriptPath = shutil.which('Rscript')
         if rscriptPath is None:
-            raise FileNotFoundError(_('Failed to find the program Rscript. Is R installed and accessible through the PATH environment variable?'))
+            raise SoftwareNotInstalledError(_('Failed to find the program Rscript. Is R installed and accessible through the PATH environment variable?'))
         Logger.Debug(f'{self.__class__.__name__} 0x{id(self):016X}: Found path to {rscriptPath} via the PATH environment variable.')
 
         return rscriptPath
@@ -563,8 +582,6 @@ class RWorkerProcess(collections.abc.MutableMapping):
         # thread right here that's about to call subprocess.Popen) exits. This
         # will help ensure the child process will exit if we exit without
         # explicitly stopping it.
-
-        import ctypes
 
         libc = ctypes.CDLL("libc.so.6")
         PR_SET_PDEATHSIG = 1  # Option to set signal on parent death
