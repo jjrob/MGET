@@ -22,6 +22,7 @@ import socket
 import subprocess
 import sys
 import threading
+import time
 import zoneinfo
 
 from ..DynamicDocString import DynamicDocString
@@ -96,7 +97,7 @@ class _MongoDateTimeDecoder(json.JSONDecoder):
 class RWorkerProcess(collections.abc.MutableMapping):
     __doc__ = DynamicDocString()
 
-    def __init__(self, rInstallDir=None, rLibDir=None, rRepository='https://cloud.r-project.org', updateRPackages=False, port=None, timeout=5., startupTimeout=300., defaultTZ=None):
+    def __init__(self, rInstallDir=None, rLibDir=None, rRepository='https://cloud.r-project.org', updateRPackages=False, port=None, timeout=5., startupTimeout=15., defaultTZ=None):
         self.__doc__.Obj.ValidateMethodInvocation()
 
         self._RInstallDir = rInstallDir
@@ -106,11 +107,12 @@ class RWorkerProcess(collections.abc.MutableMapping):
         self._RequestedPort = port
         self._Port = None
         self._Timeout = timeout
-        self._StartupTimeout =startupTimeout
+        self._StartupTimeout = startupTimeout
         self._WorkerProcess = None
         self._Session = None
         self._Lock = threading.RLock()
         self._WorkerProcessIsReady = threading.Event()
+        self._WorkerProcessIsInstallingRPackages = threading.Event()
 
         if defaultTZ is None:
             import tzlocal
@@ -205,7 +207,10 @@ class RWorkerProcess(collections.abc.MutableMapping):
                             for line in iter(stream.readline, b''):
                                 line = line.decode('utf-8').rstrip()
                                 if line.startswith("Running plumber API at"):
+                                    self._WorkerProcessIsInstallingRPackages.clear()
                                     self._WorkerProcessIsReady.set()
+                                elif line.startswith("INSTALLING_R_PACKAGES"):
+                                    self._WorkerProcessIsInstallingRPackages.set()
                                 elif line.startswith("Running swagger Docs at"):
                                     pass
                                 elif line.startswith("DEBUG:"):
@@ -218,6 +223,10 @@ class RWorkerProcess(collections.abc.MutableMapping):
                             Logger.Debug(f'{self.__class__.__name__} 0x{id(self):016X}: _LogStream {streamName} thread: no more data.')
                         try:
                             stream.close()
+                        except:
+                            pass
+                        try:
+                            self._WorkerProcessIsInstallingRPackages.clear()
                         except:
                             pass
                         Logger.Debug(f'{self.__class__.__name__} 0x{id(self):016X}: _LogStream {streamName} thread: exiting.')
@@ -281,14 +290,27 @@ class RWorkerProcess(collections.abc.MutableMapping):
                 raise
 
         # If we got to here, we successfully configured a request.Session and
-        # started R. Wait for self._WorkerProcessIsReady event to be set.
-        # (We do this outside of self._Lock, although it is not necessary to
-        # do so.)
+        # started R. Wait for self._WorkerProcessIsReady event to be set. (We
+        # do this outside of self._Lock, although it is not necessary to do
+        # so.) If it expired, raise a RuntimeError, except if the child
+        # process signalled that it is installing R packages, which can take
+        # long time (10s of minutes on Linux, which requires C compilation).
 
-        if not self._WorkerProcessIsReady.wait(self._StartupTimeout):
-            raise RuntimeError(_('%(startupTimeout)s seconds have elapsed after starting MGET\'s R worker process without the process indicating it is ready. Please check preceding log messages to determine if there is a problem with R. If not, consider increasing the Startup Timeout to allow R more time to initialize.') % {'startupTimeout': self._StartupTimeout})
+        while not self._WorkerProcessIsReady.is_set():
+            if not self._WorkerProcessIsReady.wait(timeout=self._StartupTimeout):
+                if not self._WorkerProcessIsInstallingRPackages.is_set():
+                    raise RuntimeError(_('%(startupTimeout)s seconds have elapsed after starting MGET\'s R worker process without the process indicating it is ready. Please check preceding log messages to determine if there is a problem with R. If not, consider increasing the Startup Timeout to allow R more time to initialize.') % {'startupTimeout': self._StartupTimeout})
 
         Logger.Debug(f'{self.__class__.__name__} 0x{id(self):016X}: R plumber reported that it is ready to receive requests.')
+
+        # On Linux, it seems that if we now immediately issue a request to
+        # plumber, it usually fails with "connection refused" for the first
+        # two attempts and then succeeds. This is ok, except that requests or
+        # httplib3 logs warnings. To try to avoid this, sleep for 100 ms to
+        # allow plumber to become truly ready.
+
+        if sys.platform == 'linux':
+            time.sleep(0.1)
 
     def _LocateRscriptOnWin32(self):
 
@@ -535,8 +557,38 @@ class RWorkerProcess(collections.abc.MutableMapping):
         return rscriptPath
 
     def _StartProcessOnLinux(self, args):
-        # TODO
-        raise NotImplementedError('This function has not been implemented yet.')
+
+        # Define a subprocess preexec_fn that configures the child process to
+        # be sent SIGKILL when the thread that created the child (i.e. the
+        # thread right here that's about to call subprocess.Popen) exits. This
+        # will help ensure the child process will exit if we exit without
+        # explicitly stopping it.
+
+        import ctypes
+
+        libc = ctypes.CDLL("libc.so.6")
+        PR_SET_PDEATHSIG = 1  # Option to set signal on parent death
+        SIGKILL = 9
+
+        def setDeathSignal():
+            libc.prctl(PR_SET_PDEATHSIG, SIGKILL)
+
+        # Start the child process.
+
+        argsStr = subprocess.list2cmdline(args)
+        Logger.Debug(f'{self.__class__.__name__} 0x{id(self):016X}: Starting worker process: {argsStr}')
+
+        try:
+            self._WorkerProcess = subprocess.Popen(args=args,
+                                                   stdin=subprocess.DEVNULL,
+                                                   stdout=subprocess.PIPE,
+                                                   stderr=subprocess.PIPE,
+                                                   preexec_fn=setDeathSignal)
+        except Exception as e:
+            Logger.Error(_('MGET failed to start an Rscript worker process with the command line: %(argsStr)s') % {'argsStr': argsStr})
+            raise
+
+        Logger.Debug(f'{self.__class__.__name__} 0x{id(self):016X}: Worker process {self._WorkerProcess.pid} started.')
 
     def Stop(self, timeout=5.):
         with self._Lock:

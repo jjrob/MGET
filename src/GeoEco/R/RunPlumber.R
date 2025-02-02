@@ -44,13 +44,29 @@ if (length(args) <= 5) {
 }
 authenticationToken <- trimws(args[6])
 
+# If an R library directory was not given, check whether any of the current
+# .libPaths() are writable. If not, set rLibrary based on the operating
+# system, so that we'll create and use it below.
+
+versionStr <- paste(R.Version()$major, ".", sub("\\..*", "", R.Version()$minor), sep="")
+
+if (tolower(rLibrary) == "none" && !any(file.access(.libPaths(), 2) == 0)) {
+  if (grepl("w32", version$os, ignore.case=TRUE)) {
+    rLibrary <- file.path(Sys.getenv("LOCALAPPDATA"), "R", "win-library", versionStr)
+  } else if (grepl("linux", version$os, ignore.case=TRUE)) {
+    rLibrary <- paste0("~/R/", version$platform, "-library/", versionStr, sep="")
+  }
+  if (tolower(rLibrary) != "none") {
+    cat(paste0("None of R's default library directories were writable. The directory ", rLibrary, " will be used instead.\n", sep=""))
+  }
+}
+
 # If an R library directory was given, check whether it ends in the current
 # major.minor version of R (excluding .patch), similar R's default. If it
 # does not, add the version number. Then, if it does not exist, create it.
 # Then instruct R to use it.
 
 if (tolower(rLibrary) != "none") {
-  versionStr <- paste(R.Version()$major, ".", sub("\\..*", "", R.Version()$minor), sep="")
   versionRE <- paste("[/\\\\]", R.Version()$major, "\\.", sub("\\..*", "", R.Version()$minor), "$", sep="")
   if (!grepl(versionRE, rLibrary)) {
     rLibrary <- file.path(rLibrary, versionStr)
@@ -62,15 +78,20 @@ if (tolower(rLibrary) != "none") {
   .libPaths(rLibrary)
 }
 
-# Set the R repository and update the R packages, if requested.
+# Set the R repository and update the R packages, if requested. On linux,
+# package installations often require compiling from source, which takes a
+# long time, and sometimes fails if certain C libraries are missing.
+# Therefore, on linux, we want quiet=FALSE when updating or installing
+# packages. On other platforms, we want quiet=TRUE
 
 options(repos=c(CRAN=rRepository))
-
+quietInstall <- !grepl("linux", version$os, ignore.case=TRUE)
 loggedInstallDir <- FALSE
 
 if (updateRPackages == "true") {
   cat("Updating R packages...\n")
   cat(paste0("R packages will be installed to ", .libPaths()[1], "\n", sep=""))
+  cat(paste0("INSTALLING_R_PACKAGES\n", sep=""))
   loggedInstallDir <- TRUE
 
   # Unless the caller has root/administrator access, packages cannot be
@@ -84,7 +105,8 @@ if (updateRPackages == "true") {
   # that, even if it seems redundant with our calling .libPaths(rLibrary)
   # above.
 
-  update.packages(instlib=.libPaths()[1], ask=FALSE, quiet=TRUE)
+  sink(stdout(), type="message")  # Redirect message() to stdout, so it results in INFO rather than WARNING messages
+  update.packages(instlib=.libPaths()[1], ask=FALSE, quiet=quietInstall)
 }
 
 # Install required packages and load plumber. (The others will be loaded later
@@ -98,8 +120,10 @@ for (pkg in requiredPackages) {
     if (!loggedInstallDir) {
       cat(paste0("R packages will be installed to ", .libPaths()[1], "\n", sep=""))
       loggedInstallDir <- TRUE
+      cat(paste0("INSTALLING_R_PACKAGES\n", sep=""))
     }
-    install.packages(pkg, quiet=TRUE)
+    sink(stdout(), type="message")  # Redirect message() to stdout, so it results in INFO rather than WARNING messages
+    install.packages(pkg, quiet=quietInstall)
   }
 }
 
