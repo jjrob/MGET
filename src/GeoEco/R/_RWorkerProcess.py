@@ -132,6 +132,15 @@ class RWorkerProcess(collections.abc.MutableMapping):
                 return
             Logger.Debug(f'{self.__class__.__name__} 0x{id(self):016X}: Start() called.')
 
+            # On Linux, the R plumber package requires libsodium. Check that
+            # it is installed.
+
+            if sys.platform == 'linux':
+                try:
+                    ctypes.CDLL("libsodium.so")
+                except Exception as e:
+                    raise SoftwareNotInstalledError(_('MGET interacts with R using the R plumber package, which requires libsodium, which is not installed. On Debian-based systems such as Ubuntu, you can probably install it with "sudo apt-get install libsodium-dev". Error details: %(error)s: %(msg)s') % {'error': e.__class__.__name__, 'msg': e})
+
             # Sometimes the plumber HTTP server does not respond to the first
             # connection request. Configure a requests.Session to issue five
             # retries, with the first coming after 250 ms. Only retry on
@@ -315,16 +324,6 @@ class RWorkerProcess(collections.abc.MutableMapping):
             time.sleep(0.1)
 
     def _LocateRscriptOnWin32(self):
-
-        # The R plumber package requires libsodium. Check that it is
-        # installed.
-
-        try:
-            ctypes.CDLL("libsodium.dll")
-        except Exception as e:
-            raise SoftwareNotInstalledError(_('MGET interacts with R using the R plumber package, which requires libsodium.dll, which is not installed. See https://doc.libsodium.org/ for installation instructions. Error details: %(error)s: %(msg)s') % {'error': e.__class__.__name__, 'msg': e})
-
-        # Before checking 
 
         # Locate the Rscript.exe excutable. First, if self._RInstallDir was
         # provided by the caller, try it.
@@ -556,14 +555,6 @@ class RWorkerProcess(collections.abc.MutableMapping):
             raise
 
     def _LocateRscriptOnLinux(self):
-
-        # The R plumber package requires libsodium. Check that it is
-        # installed.
-
-        try:
-            ctypes.CDLL("libsodium.so")
-        except Exception as e:
-            raise SoftwareNotInstalledError(_('MGET interacts with R using the R plumber package, which requires libsodium, which is not installed. On Debian-based systems such as Ubuntu, you can probably install it with "sudo apt-get install libsodium-dev". Error details: %(error)s: %(msg)s') % {'error': e.__class__.__name__, 'msg': e})
 
         # On Linux, the R executables are expected to be available via the
         # PATH.
