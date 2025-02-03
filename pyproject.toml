@@ -44,8 +44,7 @@ dependencies = [
     "pyparsing",
     "python-dateutil",
     "requests",
-    "scikit-fmm; sys_platform!='win32'",                                       # Install the latest scikit-fmm on non-Windows platforms
-    "scikit-fmm<=2023.4.2; sys_platform=='win32' and python_version<'3.12'",   # On Windows, wheels are only currently available scikit-fmm 2023.4.2 for Python 3.11 and earlier. For 3.12, just don't install scikit-fmm.
+    "scikit-fmm",
     "scipy",
     "tzlocal",
 ]
