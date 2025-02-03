@@ -241,8 +241,9 @@ jobs:
           curl -L -o GDAL_wheels\\GDAL-3.10.1-cp312-cp312-win_amd64.whl https://github.com/cgohlke/geospatial-wheels/releases/download/v2025.1.10/GDAL-3.10.1-cp312-cp312-win_amd64.whl
 
       - name: Echo matrix.python-version
-        run: echo "${{ matrix.python-version }}"
-        run: echo "${{ fromJSON(matrix.python-version) }}"
+        run: |
+          echo "${{ matrix.python-version }}"
+          echo "${{ fromJSON(matrix.python-version) }}"
 
       - name: Install GDAL wheel on Python 3.9
         if: ${{ matrix.python-version == '3.9' }}
