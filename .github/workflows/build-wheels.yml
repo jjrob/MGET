@@ -240,19 +240,16 @@ jobs:
           curl -L -o GDAL_wheels\\GDAL-3.10.1-cp311-cp311-win_amd64.whl https://github.com/cgohlke/geospatial-wheels/releases/download/v2025.1.10/GDAL-3.10.1-cp311-cp311-win_amd64.whl
           curl -L -o GDAL_wheels\\GDAL-3.10.1-cp312-cp312-win_amd64.whl https://github.com/cgohlke/geospatial-wheels/releases/download/v2025.1.10/GDAL-3.10.1-cp312-cp312-win_amd64.whl
 
-      - name: Install GDAL wheel on Python 3.9
-        if: ${{ matrix.python-version }} == '3.9'
+      - name: Install GDAL wheel
+        shell: bash   # Yes, bash on Windows
         run: |
           python -m pip install -U pip
           python -m pip install -U setuptools wheel
-          python -m pip install GDAL==3.9.2 --find-links=GDAL_wheels
-
-      - name: Install GDAL wheel on Python 3.10 and later
-        if: fromJSON(${{ matrix.python-version }}) > 3.9 
-        run: |
-          python -m pip install -U pip
-          python -m pip install -U setuptools wheel
-          python -m pip install GDAL==3.10.1 --find-links=GDAL_wheels
+          if [ "${{ matrix.python-version }}" = "3.9" ]; then
+            python -m pip install GDAL==3.9.2 --find-links=GDAL_wheels
+          else
+            python -m pip install GDAL==3.10.1 --find-links=GDAL_wheels
+          fi        
 
       - name: Download built wheels
         uses: actions/download-artifact@v4
