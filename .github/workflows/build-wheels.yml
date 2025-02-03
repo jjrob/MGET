@@ -182,7 +182,7 @@ jobs:
       - name: Install R
         uses: r-lib/actions/setup-r@v2
 
-      - name: Test R
+      - name: Display R version
         run: |
           Rscript -e 'print(version)'
 
@@ -219,6 +219,16 @@ jobs:
         uses: actions/setup-python@v5
         with:
           python-version: ${{ matrix.python-version }}
+
+      # Note: this checkout apparently needs to happen before the
+      # actions/cache below or the actions/cache won't work. so I'm moving it
+      # up, even though it is not actually needed until just before the "Run
+      # tests" step.
+
+      - name: Checkout source
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       - name: Cache GDAL wheels from cgohlke/geospatial-wheels
         id: cache-GDAL-wheels
@@ -267,16 +277,6 @@ jobs:
         run: |
           python -m pip install pytest python-dotenv
 
-      # Note: this checkout apparently needs to happen before the
-      # actions/cache below or the actions/cache won't work. so I'm moving it
-      # up, even though it is not actually needed until just before the "Run
-      # tests" step.
-
-      - name: Checkout source
-        uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-
       - name: Cache MATLAB Runtime
         id: cache-matlab-runtime-windows
         uses: actions/cache@v4
@@ -302,7 +302,7 @@ jobs:
       - name: Install R
         uses: r-lib/actions/setup-r@v2
 
-      - name: Test R
+      - name: Display R version
         shell: cmd
         run: |
           Rscript -e "print(version)"
