@@ -8,6 +8,7 @@
 # root of this project or https://opensource.org/license/bsd-3-clause for the
 # full license text.
 
+library(jsonlite)
 library(plumber)
 
 ###############################################################################
@@ -66,6 +67,31 @@ getValueForLogging <- function(obj) {
     lines <- lines[1:length(lines)-1]
   }
   return(c(paste0(line1, ":\n"), sprintf("  %s\n", lines)))
+}
+
+#' A serializer that emits JSON customized for parsing by our Python caller
+#'
+#' This serializer emits doubles at full (17-digit) precision and renders the
+#' special values NaN, Inf, and -Inf as "NaN", "Infinity", and "-Infinity"
+#' (without the quotes), which the Python json module will parse as those
+#' special values. This serializer also emits JSON null for R NULL and NA,
+#' renders POSIXt values in "mongo" format, automatically unclasses objects
+#' (via force=TRUE), and automatically unboxes length 1 vectors.
+#'
+#' NOTE: For digits, the plumber ' documentation says to use NA for full
+#' precision, but at the time of this writing, jsonlite::toJSON treated NA as
+#' 15 digits, which is not enough for full 64-bit float precision. See: 
+#' https://github.com/jeroen/jsonlite/commit/120cca8df83f6f6e6ce26610b113c15e881a95de
+
+serializer_unboxed_json_for_python <- function(auto_unbox=TRUE, na="string", null="null", digits=17, POSIXt="mongo", force=TRUE, ..., type="application/json") {
+  serializer_content_type(type, function(val) {
+    val <- jsonlite::toJSON(val, auto_unbox=auto_unbox, na=na, null=null, digits=digits, POSIXt=POSIXt, force=force, ...)
+    val <- gsub('(?<!\\\\)"NaN"', 'NaN', val, perl=TRUE)
+    val <- gsub('(?<!\\\\)"-Inf"', '-Infinity', val, perl=TRUE)
+    val <- gsub('(?<!\\\\)"Inf"', 'Infinity', val, perl=TRUE)
+    val <- gsub('(?<!\\\\)"NA"', 'null', val, perl=TRUE)
+    val
+  })
 }
 
 ###############################################################################
@@ -174,15 +200,8 @@ function(name, value) {
   })
 }
 
-# NOTE: below, we define digits=17 rather than digits=NA. The plumber
-# documentation says to use NA for full precision, but at the time of this
-# writing, jsonlite::toJSON treated NA as 15 digits. See:
-# https://github.com/jeroen/jsonlite/commit/120cca8df83f6f6e6ce26610b113c15e881a95de
-# By using 17, we can round-trip numbers from Python --> R --> Python without
-# any loss of precision.
-
 serializers <- list(
-  json=serializer_unboxed_json(na="null", null="null", digits=17, POSIXt="mongo", force=TRUE), 
+  json=serializer_unboxed_json_for_python(), 
   feather=serializer_feather()
 )
 

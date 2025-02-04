@@ -10,6 +10,7 @@
 import datetime
 import json
 import logging
+import math
 import os
 import sys
 import zoneinfo
@@ -48,6 +49,22 @@ def rWorkerProcess():
     r = RWorkerProcess()
     yield r
     r.Stop()
+
+
+def equalWithNaN(obj1, obj2):
+    """Recursively compares two objects, treating NaNs as equal."""
+    if isinstance(obj1, float) and isinstance(obj2, float):
+        return math.isnan(obj1) and math.isnan(obj2) or obj1 == obj2
+
+    if isinstance(obj1, list) and isinstance(obj2, list):
+        return len(obj1) == len(obj2) and all(equalWithNaN(a, b) for a, b in zip(obj1, obj2))
+
+    if isinstance(obj1, dict) and isinstance(obj2, dict):
+        if obj1.keys() != obj2.keys():
+            return False
+        return all(equalWithNaN(obj1[k], obj2[k]) for k in obj1)
+
+    return obj1 == obj2
 
 
 @pytest.mark.skipif(not isRInstalled(), reason='R is not installed, or the Rscript program could not be located')
@@ -93,6 +110,10 @@ class TestRWorkerProcess():
         (str(2**31), 2**31),            # Largest 32-bit signed int + 1
         # (str(0-2**63), 0-2**63),      # Smallest 64-bit signed int: doesn't work because R coerces this to a 64-bit float, which can't represent this number at full precision
         # (str(2**63-1), 2**63-1),      # Largest 64-bit signed int: doesn't work because R coerces this to a 64-bit float, which can't represent this number at full precision
+        ('as.integer(c(0))', 0),
+        ('as.integer(c(1))', 1),
+        ('as.integer(c(-1))', -1),
+        ('as.integer(c(1, NA, 2))', [1, None, 2]),
 
         ('0.', 0.),
         ('0.0', 0.),
@@ -106,6 +127,15 @@ class TestRWorkerProcess():
         (repr(sys.float_info.min * -1), sys.float_info.min * -1),
         ('-4.9406564584124654e-324', 4.9406564584124654e-324 * -1),
         ('-5e-324', 5e-324 * -1),
+        ('NaN', float('nan')),
+        ('Inf', float('inf')),
+        ('-Inf', float('-inf')),
+        ('c(1.1, 2.2, NaN, 3.3, Inf, 4.4, -Inf, 5.5, NA, 6.6)', [1.1, 2.2, float('nan'), 3.3, float('inf'), 4.4, float('-inf'), 5.5, None, 6.6]),
+        ('list(1.1, NaN, Inf, -Inf, NA, 2.2)', [1.1, float('nan'), float('inf'), float('-inf'), None, 2.2]),
+        ('list(a=1.1, b=NaN, c=Inf, d=-Inf, e=NA, f=2.2)', {'a': 1.1, 'b': float('nan'), 'c': float('inf'), 'd': float('-inf'), 'e': None, 'f': 2.2}),
+        ('list(a=c(1.1), b=c(NaN), c=c(Inf), d=c(-Inf), e=c(NA), f=c(2.2))', {'a': 1.1, 'b': float('nan'), 'c': float('inf'), 'd': float('-inf'), 'e': None, 'f': 2.2}),
+        ('list(a=c(1.1,5), b=c(NaN,6), c=c(Inf,7), d=c(-Inf,8), e=c(NA,9), f=c(2.2,10))', {'a': [1.1,5], 'b': [float('nan'),6], 'c': [float('inf'),7], 'd': [float('-inf'),8], 'e': [None,9], 'f': [2.2,10]}),
+        ('list(x=list(q=1, r=2), y=list(a=1.1, b=NaN, c=Inf, d=-Inf, e=NA, f=2.2))', {'x': {'q':1, 'r': 2}, 'y': {'a': 1.1, 'b': float('nan'), 'c': float('inf'), 'd': float('-inf'), 'e': None, 'f': 2.2}}),
 
         ('""', ''),
         ('"abc"', 'abc'),
@@ -117,12 +147,14 @@ class TestRWorkerProcess():
         ('","',','),
     ])
     def test_RtoPythonJSONTypes(self, expr, result, rWorkerProcess):
-        assert(result == rWorkerProcess.Eval(expr))
+        x = rWorkerProcess.Eval(expr)
+        assert equalWithNaN(x, result)
+
         rWorkerProcess['x'] = result
+        x = rWorkerProcess['x']
         if isinstance(result, list) and len(result) == 1:
-            assert (rWorkerProcess['x'] == result[0])      # Lists of length 1 are automatically unboxed
-        else:
-            assert (rWorkerProcess['x'] == result)
+            result = result[0]    # Lists of length 1 are automatically unboxed
+        assert equalWithNaN(x, result)
 
     def test_JSONUTF8strings(self, rWorkerProcess):
         with open(os.path.join(os.path.dirname(__file__), 'utf8_test.json'), 'rt', encoding='utf-8') as f:

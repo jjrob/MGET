@@ -16,6 +16,7 @@ import functools
 import io
 import json
 import logging
+import math
 import os
 import secrets
 import shutil
@@ -36,18 +37,19 @@ from ..Logging import Logger
 # deserialize datetimes in "mongo" format, e.g. '{"$date": 1393193680926}',
 # to R POSIXct objects (see https://github.com/jeroen/jsonlite/issues/8).
 # Here, we define our own Python json.JSONEncoder that formats Python
-# datetimes 
+# datetimes in "mongo" format.
 
-class _MongoDateTimeEncoder(json.JSONEncoder):
+class _CustomJSONEncoder(json.JSONEncoder):
 
     def __init__(self, *args, default_tzinfo=datetime.timezone.utc, **kwargs):
         super().__init__(*args, **kwargs)
         self.default_tzinfo = default_tzinfo 
 
     def default(self, obj):
-        # Convert to milliseconds since the UNIX epoch (in UTC) and return a
-        # dict with a '$date' key, which is "mongo" format according to the R
-        # jsonlite package.
+
+        # If it's a datetime, convert to milliseconds since the UNIX epoch (in
+        # UTC) and return a dict with a '$date' key, which is "mongo" format
+        # according to the R jsonlite package.
 
         if isinstance(obj, datetime.datetime):
             if obj.tzinfo is None:
@@ -55,9 +57,60 @@ class _MongoDateTimeEncoder(json.JSONEncoder):
             millis = int(obj.timestamp() * 1000)
             return {'$date': millis}
 
-        # If it's not a datetime, just use the JSONEncoder default.
+        # Otherwise, just use the JSONEncoder default.
 
         return super().default(obj)
+
+    # Also define a custom iterencode, based on Python's, but that encodes
+    # NaN, Inf, and -Inf as "NaN", "Inf", "-Inf" (including the doublequotes),
+    # which are recognized by R's jsonlite package.
+
+    def iterencode(self, o, _one_shot=False):
+        """Encode the given object and yield each string
+        representation as available.
+
+        For example::
+
+            for chunk in JSONEncoder().iterencode(bigobject):
+                mysocket.write(chunk)
+
+        """
+        if self.check_circular:
+            markers = {}
+        else:
+            markers = None
+        if self.ensure_ascii:
+            _encoder = json.encoder.encode_basestring_ascii
+        else:
+            _encoder = json.encoder.encode_basestring
+
+        def floatstr(o, allow_nan=self.allow_nan,
+                _repr=float.__repr__, _inf=float('inf'), _neginf=-float('inf')):
+            # Check for specials.  Note that this type of test is processor
+            # and/or platform-specific, so do tests which don't depend on the
+            # internals.
+
+            if o != o:
+                text = '"NaN"'
+            elif o == _inf:
+                text = '"Inf"'
+            elif o == _neginf:
+                text = '"-Inf"'
+            else:
+                return _repr(o)
+
+            if not allow_nan:
+                raise ValueError(
+                    "Out of range float values are not JSON compliant: " +
+                    repr(o))
+
+            return text
+
+        _iterencode = json.encoder._make_iterencode(
+            markers, self.default, _encoder, self.indent, floatstr,
+            self.key_separator, self.item_separator, self.sort_keys,
+            self.skipkeys, _one_shot)
+        return _iterencode(o, 0)
 
 
 class _MongoDateTimeDecoder(json.JSONDecoder):
@@ -763,20 +816,27 @@ class RWorkerProcess(collections.abc.MutableMapping):
 
     def _SerializeValueToJSON(self, obj):
 
+        # This function must be called on a dict with a single item that has
+        # the key 'value'.
+
+        if not isinstance(obj, dict) or len(obj) != 1 or 'value' not in obj:
+            raise RuntimeError(_('RWorkerProcess._SerializeToJSON() must be called with a dict with a single item that has the key \'value\'. This error is unexpected. Please contact the MGET development team for assistance.'))
+
+        value = obj['value']
+
         # It turns out that with the latest versions of R jsonlite(1.8.9) and
-        # plumber (1.2.2), if value is an atomic datetime (i.e. a single
-        # datetime instance, rather than several in a list or tuple) and we
-        # then serialize it in "mongo" format with _MongoDateTimeEncoder, our
-        # plumbed "set" function in PlumberAPI.R will receive R NULL as the
-        # value instead of a POSIXct. This appears to be a bug in those
-        # packages, but the deserialization of mongo format is not a
-        # documented feature (it is only mentioned in
+        # plumber (1.2.2), if it's an atomic datetime (i.e. a single datetime
+        # instance, rather than several in a list or tuple) and we then
+        # serialize it in "mongo" format with _CustomJSONEncoder, our plumbed
+        # "set" function in PlumberAPI.R will receive R NULL as the value
+        # instead of a POSIXct. This appears to be a bug in those packages,
+        # but the deserialization of mongo format is not a documented feature
+        # (it is only mentioned in
         # https://github.com/jeroen/jsonlite/issues/8), so it's hard to say.
         # In any case, we work around it by constructing a special dict that
         # is recognized by our "set" function, which then extracts an atomic
         # POSIXct.
 
-        value = obj['value']
         if isinstance(value, datetime.datetime):
             value = {'value': value, 'RWorkerProcess_IsAtomicDatetime': True}
 
@@ -797,11 +857,44 @@ class RWorkerProcess(collections.abc.MutableMapping):
         elif isinstance(value, collections.abc.Mapping) and all([isinstance(v, datetime.datetime) or isinstance(v, (list, tuple)) and len(v) == 1 and isinstance(v[0], datetime.datetime) for k, v in value.items()]):
             value = {**value, **{'RWorkerProcess_IsDatetimeList': True}}
 
-        # Now serialize the value with _MongoDateTimeEncoder. It has to be
+        # If it is an atomic float that is NaN, Inf, or -Inf, our encoder will
+        # use the strings "NaN", "Inf", or "-Inf", respectively. R's jsonlite
+        # will parse those as Nan, Inf, or -Inf, but not if they appear as
+        # atomic values; in that case, it will parse them as strings. To work
+        # around this, enclose them in a list. R will then parse them as
+        # desired, and in R an atomic value is the same as a length 1 vector.
+
+        elif isinstance(value, float) and (math.isnan(value) or math.isinf(value)):
+            value = [value]
+
+        # If it's a dict, recurse down through its values and replace atomic
+        # NaN/Inf/-Inf as immediately above.
+
+        elif isinstance(value, collections.abc.Mapping):
+            value = self._PrepareDictForJSON(value)
+
+        # If it's a list or tuple, recurse into it and process dicts as
+        # immediately above.
+
+        elif isinstance(value, (list, tuple)):
+            value = self._PrepareListForJSON(value)
+
+        # Now serialize the value with _CustomJSONEncoder. It has to be
         # inside a dict with the key 'value' so that plumber will use it for
         # the value parameter of the "set" function in PlumberAPI.R.
 
-        return json.dumps({'value': value}, cls=functools.partial(_MongoDateTimeEncoder, default_tzinfo=self._TZInfo))
+        return json.dumps({'value': value}, cls=functools.partial(_CustomJSONEncoder, default_tzinfo=self._TZInfo))
+
+    def _PrepareDictForJSON(self, d):
+        return {k: [v] if isinstance(v, float) and (math.isnan(v) or math.isinf(v)) else \
+                   self._PrepareDictForJSON(v) if isinstance(v, collections.abc.Mapping) else \
+                   self._PrepareListForJSON(v) if isinstance(v, (list, tuple)) else \
+                   v for k, v in d.items()}
+
+    def _PrepareListForJSON(self, lst):
+        return [self._PrepareDictForJSON(item) if isinstance(item, collections.abc.Mapping) else \
+                self._PrepareListForJSON(item) if isinstance(item, (list, tuple)) else \
+                item for item in lst]
 
     def __len__(self):
         return(len(self._GetVariableNames()))
