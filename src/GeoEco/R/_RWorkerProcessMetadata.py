@@ -42,20 +42,26 @@ rpy2 and has several important differences in how it is implemented:
    interprocess communication. :class:`~GeoEco.R.RWorkerProcess` implements
    this with the R `plumber <https://www.rplumber.io/>`__ package, which
    allows R functions to be exposed as HTTP endpoints. This mechanism is also
-   less secure than that used by rpy2. The HTTP endpoints are only accessible
-   by processes running on the local machine (IPv4 address 127.0.0.1), use a
-   randomly-selected TCP point, and require callers to provide a
-   randomly-generated token that only the Python process knows, but a
-   malicious party who can run processes on the local machine could still
-   mount a denial of service attack on the Python/R interface by flooding the
-   HTTP endpoints with bogus requests.
+   less secure than that used by rpy2; see **Security** below.
 
-2. :class:`~GeoEco.R.RWorkerProcess` does not need to be compiled against a
+2. :class:`~GeoEco.R.RWorkerProcess` does not allow as full a range of data
+   types to be exchanged between Python and R as rpy2. With
+   :class:`~GeoEco.R.RWorkerProcess`, the communication between Python and R
+   uses `JSON <https://www.json.org/json-en.html>`__ for exchanging basic
+   types and `Apache feather
+   <https://arrow.apache.org/docs/python/feather.html>`__ for exchanging data
+   frames. These choices simplified implementation but placed some limitations
+   on what can be exchanged. Most notably, Python numpy arrays cannot be
+   translated to R matrices (although support for this could be added in the
+   future). By contrast, rpy2 calls R's C API directly and has implemented
+   translation code for more data types, including numpy arrays to R matrices.
+
+3. :class:`~GeoEco.R.RWorkerProcess` does not need to be compiled against a
    specific version of R, and can therefore work with any version of R that
    you have installed, while rpy2 must be recompiled for the R version you
    have, whenever you change it.
 
-3. :class:`~GeoEco.R.RWorkerProcess` supports Microsoft Windows, while rpy2
+4. :class:`~GeoEco.R.RWorkerProcess` supports Microsoft Windows, while rpy2
    historically has lacked a Windows maintainer. While it can be possible to
    get rpy2 working on Windows, there are usually no binary distributions
    (Python wheels) for Windows on the `Python Package Index
@@ -76,25 +82,51 @@ some of the issues mentioned above affect you,
 :class:`~GeoEco.R.RWorkerProcess` represents the child R process. When you
 instantiate :class:`~GeoEco.R.RWorkerProcess`, nothing happens at first. The
 child process is started automatically when you start using the
-:class:`~GeoEco.R.RWorkerProcess` instance to interact with R. If desired, you
-can call :func:`~GeoEco.R.RWorkerProcess.Start` to start it manually or
-:func:`~GeoEco.R.RWorkerProcess.Stop` to stop it. We recommend you use the
-``with`` statement to automatically control the child process's lifetime:
+:class:`~GeoEco.R.RWorkerProcess` instance to interact with R. We recommend
+you use the ``with`` statement to automatically control the child
+process's lifetime:
 
 .. code-block:: python
 
     from GeoEco.R import RWorkerProcess
     with RWorkerProcess() as r:
-        # do stuff with the r instance
+        ...
+        x = r.Eval('1+1')       # Worker process started here, at the first use of the RWorkerProcess instance
+        ...
+    print(x)                    # Worker process stopped before this line is executed, after the block above exits
 
 This will start the child process when it is first needed and automatically
-stop it when the ``with`` block is exited, even if an exception is raised. If
-the Python process dies without Python exiting properly, the operating system
-will stop the child process automatically.
+stop it when the ``with`` block is exited, even if an exception is raised. 
+
+If desired, you can call :func:`~GeoEco.R.RWorkerProcess.Start` to start it
+manually or :func:`~GeoEco.R.RWorkerProcess.Stop` to stop it. We recommend
+you use a ``try``/``finally`` block to do it:
+
+.. code-block:: python
+
+    r = RWorkerProcess()
+    r.Start()                   # Worker process started here
+    try:
+        ...
+    finally:
+        r.Stop()                # Worker process stopped here
+
+Regardless of which style you use, if the R child process is still running
+when the Python process exits, the operating system will stop the child
+process, even if Python dies without exiting properly.
+
+.. Warning::
+    :class:`~GeoEco.R.RWorkerProcess` must install the R plumber package the
+    first time it interacts with R, unless the package is already installed.
+    Plumber depends on a number of R packages. Installing plumber and its
+    dependencies may take several minutes on Windows. On Linux, where R
+    package installations typically requiring from C source code, it can take
+    20 minutes or more. After this has been done for the first time, it will
+    not be necessary to do again, unless you uninstall plumber.
 
 **Evaluating R expressions from Python**
 
-func:`~GeoEco.R.RWorkerProcess.Eval` accepts a string representing an R
+:func:`~GeoEco.R.RWorkerProcess.Eval` accepts a string representing an R
 expression, passes it to the R interpreter for evaluation, and returns the
 result, translating R types into suitable Python types. You can supply
 multiple expressions in a single call, separated by newline characters or
@@ -107,7 +139,7 @@ semicolons. The last value of the last expression will be returned:
     >>> r.Eval('x <- 6; y <- 7; x * y')
     42      
 
-A limited number of R types can be translated into Python types. The rules of
+A variety of R types can be translated into Python types. The rules of
 translation are governed by the serialization formats used to marshal data
 between Python and R. For most types, JSON is used as the serialization
 format, with the `requests <https://pypi.org/project/requests/>`__ package
@@ -118,30 +150,308 @@ follows:
 * R vectors of length 1, sometimes known as atomic values, with the type
   ``logical``, ``integer``, ``double``, or ``character`` are returned as
   Python :py:class:`bool`, :py:class:`int`, :py:class:`float`, and
-  :py:class:`str`, respectively.
-
-* R vectors of length 2 or more are returned as Python :py:class:`list`.
-
-* R lists are returned as Python :py:class:`dict`.
-
-* If all of the elements of an R ``double`` vector happen to be integers,
-  Python :py:class:`int`\\s will be returned rather than :py:class:`float`\\s.
+  :py:class:`str`, respectively:
 
   .. code-block:: python
 
-      >>> r.Eval('typeof(2)')     # R's interpreter parses double, even if mathematically it is an integer
-      'double'
-      >>> type(r.Eval('2'))       # R does not include a decimal point when serializing to JSON, so Python deserializes an integer
-      <class 'int'>
-      >>> r.Eval('typeof(2.5)')   # This one includes a decimal
-      'double'
-      >>> type(r.Eval('2.5'))     # The JSON includes the decimal point, so now a float is returned
-      <class 'float'>
-      >>> 
-      >>> r.Eval('c(1,2,3.7)')
-      [1, 2, 3.7]
-      >>> [type(x) for x in r.Eval('c(1,2,3.7)')]
-      [<class 'int'>, <class 'int'>, <class 'float'>]
+    >>> r.Eval('TRUE')
+    True
+    >>> r.Eval('123')
+    123
+    >>> r.Eval('pi')
+    3.141592653589793
+    >>> r.Eval('"Hello, world"')
+    'Hello, world'
+
+  Those atomic types are also returned even if you use R's ``c()`` function to
+  create a length 1 vector. (It does not matter how you construct it; if the
+  vector has length 1, the atomic types are returned.)
+
+    >>> r.Eval('c(TRUE)')
+    True
+    >>> r.Eval('c(123)')
+    123
+    >>> r.Eval('c(pi)')
+    3.141592653589793
+    >>> r.Eval('c("Hello, world")')
+    'Hello, world'
+
+* R vectors of length 2 or more are returned as a Python :py:class:`list`:
+
+  .. code-block:: python
+
+    >>> r.Eval('c(1,2,3)')
+    [1, 2, 3]
+
+* R unnamed lists are also returned as a :py:class:`list`. In this case, a
+  list of length 1 is *not* returned as an atomic type, but as a
+  :py:class:`list` with one item:
+
+  .. code-block:: python
+
+    >>> r.Eval('list(1)')
+    [1]
+    >>> r.Eval('list(1,2,3)')
+    [1, 2, 3]
+    >>> r.Eval('list(c(1, 2, 3))')
+    [[1, 2, 3]]
+    >>> r.Eval('list(c(1,2,3), c("A", "B", "C"))')
+    [[1, 2, 3], ['A', 'B', 'C']]
+
+* R vectors and lists of length 0 are returned as an empty :py:class:`list`:
+
+  .. code-block:: python
+
+    >>> r.Eval('logical(0)')
+    []
+    >>> r.Eval('integer(0)')
+    []
+    >>> r.Eval('numeric(0)')
+    []
+    >>> r.Eval('character(0)')
+    []
+    >>> r.Eval('list()')
+    []
+
+* R named lists are returned as a Python :py:class:`dict`:
+
+  .. code-block:: python
+
+    >>> r.Eval('list(a=1, b=2, c=3)')
+    {'a': 1, 'b': 2, 'c': 3}
+    >>> r.Eval('list(a=c(1,2,3), b=4, c=c("A", "B", "C"))')
+    {'a': [1, 2, 3], 'b': 4, 'c': ['A', 'B', 'C']}
+
+* R vectors of ``POSIXt`` (i.e. ``POSIXct`` or ``POSIXlt``) are returned as
+  Python :py:class:`~datetime.datetime` instances:
+
+  .. code-block:: python
+
+    >>> r.Eval('Sys.time()')
+    datetime.datetime(2025, 2, 5, 15, 13, 47, 641000, tzinfo=zoneinfo.ZoneInfo(key='America/New_York'))
+
+  Time values obtained from R will have millisecond precision, even if R
+  itself has higher precision. The millisecond limitation results from the
+  format used by the R plumber package to represent times in JSON.
+
+  The `defaultTZ` parameter of the :class:`~GeoEco.R.RWorkerProcess`
+  constructor determines the time zone that all ``POSIXt`` objects will be
+  converted to when they are returned to Python. By default, it is the time
+  zone of the Python process, as returned by ``get_localzone()`` from the
+  `tzlocal <https://pypi.org/project/tzlocal/>`__ package. To specify a
+  different timezone, provide it to the :class:`~GeoEco.R.RWorkerProcess`
+  constructor:
+
+  .. code-block:: python
+
+    >>> r = RWorkerProcess(defaultTZ='America/Los_Angeles')
+    >>> r.Eval('Sys.time()')
+    datetime.datetime(2025, 2, 5, 12, 13, 47, 641000, tzinfo=zoneinfo.ZoneInfo(key='America/Los_Angeles'))
+
+  See the documentation for `defaultTZ` for more information.
+
+* R ``NA`` is returned as a Python :py:data:`None`:
+
+  .. code-block:: python
+
+    >>> r.Eval('NA') is None
+    True
+    >>> r.Eval('c(1, 2, NA, 3)')
+    [1, 2, None, 3]
+
+* R data frames are returned as Python pandas DataFrames:
+
+  .. code-block:: python
+
+    >>> df = r.Eval('iris')
+    >>> df.info()
+    <class 'pandas.core.frame.DataFrame'>
+    RangeIndex: 150 entries, 0 to 149
+    Data columns (total 5 columns):
+     #   Column        Non-Null Count  Dtype   
+    ---  ------        --------------  -----   
+     0   Sepal.Length  150 non-null    float64 
+     1   Sepal.Width   150 non-null    float64 
+     2   Petal.Length  150 non-null    float64 
+     3   Petal.Width   150 non-null    float64 
+     4   Species       150 non-null    category
+    dtypes: category(1), float64(4)
+    memory usage: 5.1 KB
+    >>> df.head()
+       Sepal.Length  Sepal.Width  Petal.Length  Petal.Width Species
+    0           5.1          3.5           1.4          0.2  setosa
+    1           4.9          3.0           1.4          0.2  setosa
+    2           4.7          3.2           1.3          0.2  setosa
+    3           4.6          3.1           1.5          0.2  setosa
+    4           5.0          3.6           1.4          0.2  setosa
+
+* Arbitrary R objects not covered above are usually converted to an R list
+  with R's ``unclass()`` and then returned as Python :py:class:`dict`\\ s: 
+
+  .. code-block:: python
+
+    >>> model = r.Eval('lm(dist ~ speed, data = cars)')
+    >>> from pprint import pprint
+    >>> pprint(model, width=150, compact=True)
+    {'assign': [0, 1],
+     'call': {},
+     'coefficients': [-17.579094890510934, 3.932408759124087],
+     'df.residual': 48,
+     'effects': [-303.9144945539781, 145.55225504575705, -8.115439504379111, 9.884560495620892, 0.194114676507422, -9.49633114260605, -5.186776961719519,
+                 2.8132230382804804, 10.81322303828048, -9.87722278083299, 1.1227772191670096, -16.56766859994646, -10.56766859994646, -6.56766859994646,
+                 -2.5676685999464604, -8.25811441905993, -0.2581144190599315, -0.2581144190599315, 11.74188558094007, -11.948560238173402,
+                 -1.948560238173402, 22.0514397618266, 42.05143976182659, -21.63900605728687, -15.639006057286872, 12.360993942713128,
+                 -13.329451876400343, -5.329451876400342, -17.019897695513812, -9.019897695513812, 0.9801023044861885, -10.710343514627283,
+                 3.2896564853727175, 23.289656485372713, 31.289656485372713, -20.400789333740754, -10.400789333740754, 11.599210666259246,
+                 -28.091235152854225, -12.091235152854225, -8.091235152854225, -4.091235152854224, 3.908764847145776, -1.4721267910811655,
+                 -17.162572610194637, -4.853018429308115, 17.146981570691885, 18.146981570691885, 45.146981570691885, 6.456535751578421],
+     'fitted.values': [-1.8494598540146354, -1.8494598540145883, 9.94776642335767, 9.947766423357667, 13.880175182481754, 17.81258394160584,
+                       21.74499270072993, 21.74499270072993, 21.74499270072993, 25.677401459854018, 25.677401459854018, 29.609810218978105,
+                       29.6098102189781, 29.609810218978105, 29.609810218978105, 33.54221897810219, 33.54221897810219, 33.54221897810219,
+                       33.54221897810219, 37.47462773722628, 37.47462773722628, 37.47462773722627, 37.474627737226285, 41.40703649635036,
+                       41.407036496350365, 41.407036496350365, 45.33944525547445, 45.33944525547445, 49.27185401459854, 49.27185401459854,
+                       49.27185401459854, 53.204262773722625, 53.204262773722625, 53.20426277372263, 53.20426277372263, 57.13667153284671,
+                       57.13667153284671, 57.13667153284671, 61.0690802919708, 61.0690802919708, 61.0690802919708, 61.0690802919708, 61.0690802919708,
+                       68.93389781021898, 72.86630656934307, 76.79871532846715, 76.79871532846715, 76.79871532846715, 76.79871532846715,
+                       80.73112408759124],
+     'model': [{'dist': 2, 'speed': 4}, {'dist': 10, 'speed': 4}, {'dist': 4, 'speed': 7}, {'dist': 22, 'speed': 7}, {'dist': 16, 'speed': 8},
+               {'dist': 10, 'speed': 9}, {'dist': 18, 'speed': 10}, {'dist': 26, 'speed': 10}, {'dist': 34, 'speed': 10}, {'dist': 17, 'speed': 11},
+               {'dist': 28, 'speed': 11}, {'dist': 14, 'speed': 12}, {'dist': 20, 'speed': 12}, {'dist': 24, 'speed': 12}, {'dist': 28, 'speed': 12},
+               {'dist': 26, 'speed': 13}, {'dist': 34, 'speed': 13}, {'dist': 34, 'speed': 13}, {'dist': 46, 'speed': 13}, {'dist': 26, 'speed': 14},
+               {'dist': 36, 'speed': 14}, {'dist': 60, 'speed': 14}, {'dist': 80, 'speed': 14}, {'dist': 20, 'speed': 15}, {'dist': 26, 'speed': 15},
+               {'dist': 54, 'speed': 15}, {'dist': 32, 'speed': 16}, {'dist': 40, 'speed': 16}, {'dist': 32, 'speed': 17}, {'dist': 40, 'speed': 17},
+               {'dist': 50, 'speed': 17}, {'dist': 42, 'speed': 18}, {'dist': 56, 'speed': 18}, {'dist': 76, 'speed': 18}, {'dist': 84, 'speed': 18},
+               {'dist': 36, 'speed': 19}, {'dist': 46, 'speed': 19}, {'dist': 68, 'speed': 19}, {'dist': 32, 'speed': 20}, {'dist': 48, 'speed': 20},
+               {'dist': 52, 'speed': 20}, {'dist': 56, 'speed': 20}, {'dist': 64, 'speed': 20}, {'dist': 66, 'speed': 22}, {'dist': 54, 'speed': 23},
+               {'dist': 70, 'speed': 24}, {'dist': 92, 'speed': 24}, {'dist': 93, 'speed': 24}, {'dist': 120, 'speed': 24}, {'dist': 85, 'speed': 25}],
+     'qr': {'pivot': [1, 2],
+            'qr': [[-7.0710678118654755, -108.8944443027283], [0.1414213562373095, 37.0135110466435], [0.1414213562373095, 0.18878369792756214],
+                   [0.1414213562373095, 0.18878369792756214], [0.1414213562373095, 0.16176653657964718], [0.1414213562373095, 0.13474937523173222],
+                   [0.1414213562373095, 0.10773221388381726], [0.1414213562373095, 0.10773221388381726], [0.1414213562373095, 0.10773221388381726],
+                   [0.1414213562373095, 0.0807150525359023], [0.1414213562373095, 0.0807150525359023], [0.1414213562373095, 0.05369789118798735],
+                   [0.1414213562373095, 0.05369789118798735], [0.1414213562373095, 0.05369789118798735], [0.1414213562373095, 0.05369789118798735],
+                   [0.1414213562373095, 0.026680729840072397], [0.1414213562373095, 0.026680729840072397], [0.1414213562373095, 0.026680729840072397],
+                   [0.1414213562373095, 0.026680729840072397], [0.1414213562373095, -0.00033643150784255907],
+                   [0.1414213562373095, -0.00033643150784255907], [0.1414213562373095, -0.00033643150784255907],
+                   [0.1414213562373095, -0.00033643150784255907], [0.1414213562373095, -0.027353592855757516],
+                   [0.1414213562373095, -0.027353592855757516], [0.1414213562373095, -0.027353592855757516], [0.1414213562373095, -0.05437075420367247],
+                   [0.1414213562373095, -0.05437075420367247], [0.1414213562373095, -0.08138791555158742], [0.1414213562373095, -0.08138791555158742],
+                   [0.1414213562373095, -0.08138791555158742], [0.1414213562373095, -0.10840507689950238], [0.1414213562373095, -0.10840507689950238],
+                   [0.1414213562373095, -0.10840507689950238], [0.1414213562373095, -0.10840507689950238], [0.1414213562373095, -0.13542223824741734],
+                   [0.1414213562373095, -0.13542223824741734], [0.1414213562373095, -0.13542223824741734], [0.1414213562373095, -0.1624393995953323],
+                   [0.1414213562373095, -0.1624393995953323], [0.1414213562373095, -0.1624393995953323], [0.1414213562373095, -0.1624393995953323],
+                   [0.1414213562373095, -0.1624393995953323], [0.1414213562373095, -0.2164737222911622], [0.1414213562373095, -0.24349088363907717],
+                   [0.1414213562373095, -0.27050804498699216], [0.1414213562373095, -0.27050804498699216], [0.1414213562373095, -0.27050804498699216],
+                   [0.1414213562373095, -0.27050804498699216], [0.1414213562373095, -0.2975252063349071]],
+            'qraux': [1.1414213562373094, 1.269835181971307],
+            'rank': 2,
+            'tol': 1e-07},
+     'rank': 2,
+     'residuals': [3.8494598540146354, 11.849459854014588, -5.94776642335767, 12.052233576642333, 2.119824817518246, -7.812583941605841,
+                   -3.744992700729929, 4.255007299270071, 12.255007299270071, -8.677401459854016, 2.3225985401459837, -15.609810218978105,
+                   -9.609810218978101, -5.609810218978103, -1.609810218978103, -7.54221897810219, 0.4577810218978093, 0.4577810218978093,
+                   12.45778102189781, -11.474627737226276, -1.474627737226278, 22.525372262773725, 42.525372262773715, -21.40703649635036,
+                   -15.407036496350365, 12.592963503649635, -13.339445255474452, -5.339445255474452, -17.27185401459854, -9.271854014598537,
+                   0.7281459854014627, -11.204262773722625, 2.795737226277375, 22.79573722627737, 30.79573722627737, -21.136671532846712,
+                   -11.136671532846712, 10.863328467153288, -29.0690802919708, -13.0690802919708, -9.0690802919708, -5.0690802919708, 2.9309197080292,
+                   -2.933897810218975, -18.866306569343063, -6.798715328467158, 15.201284671532843, 16.201284671532843, 43.20128467153284,
+                   4.268875912408762],
+     'terms': {},
+     'xlevels': {}}
+
+* When an R expression evaluates to ``NULL`` in R, a :py:data:`None` is
+  returned. Note that this includes the R expression ``c()``:
+
+  .. code-block:: python
+
+    >>> r.Eval('NULL') is None
+    True
+    >>> r.Eval('c()') is None
+    True
+
+  However, the usual R rules about how ``NULL`` is handled by R still apply.
+  For example, R removes ``NULL`` elements from R vectors. This can yield
+  results that may be unexpected by Python developers:
+
+  .. code-block:: python
+
+    >>> r.Eval('c(1, 2)')
+    [1, 2]
+    >>> r.Eval('c(1, NULL)')
+    1
+    >>> r.Eval('c(1, NULL, NULL)')
+    1
+    >>> r.Eval('c(1, NULL, NULL, 2)')
+    [1, 2]
+    >>> r.Eval('c(NULL, NULL, NULL, NULL)') is None
+    True
+
+  But R does not remove ``NULL`` from R lists, and it will be translated to
+  :py:data:`None`:
+
+  .. code-block:: python
+
+    >>> r.Eval('list(NULL)')
+    [None]
+    >>> r.Eval('list(NULL, NULL, NULL)')
+    [None, None, None]
+    >>> r.Eval('list(a=NULL, b=NULL, c=NULL)')
+    {'a': None, 'b': None, 'c': None}
+
+**Getting and setting R variables from Python**
+
+You can get and set variables in the R interpreter through the dictionary
+interface of the :class:`~GeoEco.R.RWorkerProcess` instance:
+
+.. code-block:: python
+
+    >>> r['my_variable'] = 42     # Set my_variable to 42 in the R interpreter
+    >>> print(r['my_variable'])   # Get back the value of my_variable and print it
+    42
+    >>> print(list(r.keys()))     # Print a list of the variables defined in the R interpreter
+    ['my_variable']
+    >>> del r['my_variable']      # Delete my_variable from the R interpreter
+
+Python types will be automatically translated to and from R types as described
+above.
+
+**Unexpected behaviors**
+
+Because of differences between R and Python and the imperfectness of JSON and
+feather as data marshaling formats, there some unexpected behaviors,
+including:
+
+* In an R ``double`` vector, any value that happens to be an integer is
+  returned to Python as an :py:class:`int`:
+
+  .. code-block:: python
+
+    >>> r.Eval('typeof(1.0)')
+    'double'
+    >>> type(r.Eval('1.0'))
+    <class 'int'>
+    >>> r.Eval('typeof(c(1,2,3.3))')
+    'double'
+    >>> [type(x) for x in r.Eval('c(1,2,3.3)')]
+    [<class 'int'>, <class 'int'>, <class 'float'>]
+
+* If you set an R variable to a Python :py:class:`list` that has a length of 1
+  and then get it back from R, it will no longer be a :py:class:`list`:
+
+  .. code-block:: python
+
+    >>> r['x'] = [1]
+    >>> r['x']
+    1
+
+  This is because in R, atomic values are actually stored as length 1 vectors,
+  while Python distinguishes between the two. When returning a length 1 vector
+  to Python, we can't determine if it would be best represented as an atomic
+  value (e.g. :py:class:`int`) or as a :py:class:`list` with a single value in
+  it. We judged that an atomic value would be appropriate more of the time,
+  and lacking any way to determine otherwise, we designed
+  :class:`~GeoEco.R.RWorkerProcess` to always translate length 1 vectors into
+  atomic values.
 
 * R ``complex`` is not supported (because JSON does not support complex
   numbers) and is returned as Python :py:class:`str`:
@@ -151,70 +461,95 @@ follows:
       >>> r.Eval('c(1+2i, 3-5i, 6)')
       ['1+2i', '3-5i', '6+0i']
 
-* R ``NA`` and R ``NULL`` are often returned as Python :py:data:`None`, but
-  not always, owing to there being no perfect way to handle ``NA`` and
-  ``NULL`` with JSON serialization (e.g. `see here
-  <https://github.com/jeroen/jsonlite/issues/70>`__). You should not make any
-  assumptions about how ``NA`` or ``NULL`` will be returned in Python, and
-  should always test your specific scenario. Here are some illustrative
-  examples:
+**Character encoding**
 
-  .. code-block:: python
-
-      >>> from GeoEco.R import RWorkerProcess
-      >>> r = RWorkerProcess()
-
-**Getting and setting R variables from Python**
-
-You can get and set variables in the R interpreter through the dictionary
-interface of the :class:`~GeoEco.R.RWorkerProcess` instance:
+Data are exchanged with R in UTF-8:
 
 .. code-block:: python
 
-    from GeoEco.R import RWorkerProcess
-    with RWorkerProcess() as r:
-        r['my_variable'] = 42     # Set my_variable to 42 in the R interpreter
-        print(r['my_variable'])   # Get back the value of my_variable and print it
-        print(dir(r))             # Print a list of the variables defined in the R interpreter
-        del r['my_variable']      # Delete my_variable from the R interpreter
+    >>> r.Eval('"Café, résumé, naïve, jalapeño"')
+    'Café, résumé, naïve, jalapeño'
+    >>> r.Eval('"Python 🐍 is awesome! 你好! Привет!"')
+    'Python 🐍 is awesome! 你好! Привет!'
 
-Python types will be automatically translated to and from R types. A limited
-number of types are supported. For types other than data frames, JSON is
-exchanged between Python and R, and the rules of translation are governed by
-the JSON serializers used in each environment (in Python, the serializer used
-by the `requests <https://pypi.org/project/requests/>`__ package; in R, the
-serializer used by the `plumber <https://www.rplumber.io/>`__ package). For
-data frames, the feather format is exchanged.
+**Logging and error handling**
 
-In general:
+Messages written by R to R's stdout pipe, e.g. with the the R ``cat()``
+function, are logged to the Python ``GeoEco.R`` logger as INFO messages.
+Messages written by R to its stderr pipe, e.g. with the R ``message()``
+function, are logged to the ``GeoEco.R`` logger as WARNING messages.
 
-* Python :py:class:`bool`, :py:class:`int`, :py:class:`float`, and
-  :py:class:`str` are translated to/from R length 1 vectors of the type
-  ``logical``, ``integer``, ``double``, and ``character``, respectively.
+  .. code-block:: python
 
-* A Python :py:class:`list` of length two or more of the types above will be
-  translated to/from an R vector of the same length. If the items in the
-  Python :py:class:`list` are all the same type, the R vector will be the
-  corresponding type. If the Python :py:class:`list` contains a mix of types,
-  they will all be coerced into ``integer``, ``double``, or ``character`` as
-  appropriate so that an R vector can be constructed.
+    >>> from GeoEco.Logging import Logger
+    >>> Logger.Initialize()
+    >>> from GeoEco.R import RWorkerProcess
+    >>> r = RWorkerProcess()
+    >>> x = r.Eval('print(pi)')
+    2025-02-05 16:19:09.213 INFO [1] 3.141593
+    >>> r.Eval('cat("Hello, world!\\n")')
+    2025-02-05 16:19:56.232 INFO Hello, world!
+    >>> r.Eval('message("Something might be wrong")')
+    2025-02-05 16:20:19.721 WARNING Something might be wrong
 
-  .. note::
-      When R returns ``logical``, ``integer``, ``double``, and ``character``
-      vectors that have a length of 1, they are translated to Python
-      :py:class:`bool`, :py:class:`int`, :py:class:`float`, and
-      :py:class:`str` instances, not to a :py:class:`list` with a single
-      instance of those types within it.
+If an error is signaled in R and not caught before the signal propagates back
+up to the plumber API, it is sent back to Python and :exc:`RuntimeError` will
+be raised:
 
-* Python :py:data:`None` is often translated to/from an R ``NA`` if it is
-  contained in a list, but not always. This is a consequence of R supporting
-  ``NA`` and ``NULL`` as distinct concepts, while Python supports just
-  :py:data:`None` and JSON just ``null``.
+  .. code-block:: python
 
+    >>> r.Eval('stop("There is a problem!")')
+    Traceback (most recent call last):
+      File "<stdin>", line 1, in <module>
+      File "/home/jason/Development/MGET/src/GeoEco/R/_RWorkerProcess.py", line 994, in Eval
+        return(self._ProcessResponse(resp, parseReturnValue=True))
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+      File "/home/jason/Development/MGET/src/GeoEco/R/_RWorkerProcess.py", line 745, in _ProcessResponse
+        raise RuntimeError(f'From R: {respJSON["message"]}')
+    RuntimeError: From R: Error in eval(parsedExpr, envir = clientEnv, enclos = baseenv()): There is a problem!
+
+You can get a detailed view of the exchange of data between Python and R by
+turning on DEBUG logging for the `GeoEco.R` logger, either programmatically as
+shown below or by configuring GeoEco's logging configuration file (see
+:func:`GeoEco.Logging.Logger.Initialize`).
+
+  .. code-block:: python
+
+    >>> from GeoEco.Logging import Logger
+    >>> Logger.Initialize()
+    >>> import logging
+    >>> logging.getLogger('GeoEco.R').setLevel(logging.DEBUG)
+    >>> from GeoEco.R import RWorkerProcess
+    >>> r = RWorkerProcess()
+    >>> r['x'] = [1,2,3,4,5]
+    2025-02-05 16:55:14.946 DEBUG R: SET: x <- length 5 integer:
+    2025-02-05 16:55:14.946 DEBUG R:   [1] 1 2 3 4 5
+    >>> r.Eval('x*2')
+    2025-02-05 16:55:31.475 DEBUG R: EVAL: x*2
+    2025-02-05 16:55:31.475 DEBUG R: RESULT: length 5 numeric:
+    2025-02-05 16:55:31.475 DEBUG R:           [1]  2  4  6  8 10
+    [2, 4, 6, 8, 10]
+    >>> df = r.Eval('iris')
+    2025-02-05 17:00:02.296 DEBUG R: EVAL: iris
+    2025-02-05 17:00:02.296 DEBUG R: RESULT: data.frame with 150 rows, 5 columns
+
+**Security**
+
+As noted, communication between Python and R occurs over HTTP over TCP/IP.
+This raises the possibility of a malicious party exploiting the communication
+channel. To mitigate this, R listens on the loopback interface (IPv4 address
+127.0.0.1), which is only accessible to processes running on the local
+machine, and uses a randomly-selected TCP port. If a local process does
+discover the port (e.g. via scanning all local ports) and tries to invoke the
+REST APIs exposed by R, to succeed it must guess a 512-bit randomly-generated
+token, which is extremely improbable. However, a malicious local process could
+still mount a denial of service attack on the R interface by flooding it with
+bogus requests. Because R is single-threaded, such an attack might starve
+Python of the opportunity to place its own calls. It would also maximize
+utilization of one processor.
+
+**Constructor**
 """))
-
-# TODO: document the issue with None being translated to JSON null and then R NULL
-# See https://github.com/jeroen/jsonlite/issues/70
 
 # Constructor
 
@@ -232,36 +567,29 @@ AddArgumentMetadata(RWorkerProcess.__init__, 'self',
 AddArgumentMetadata(RWorkerProcess.__init__, 'rInstallDir',
     typeMetadata=DirectoryTypeMetadata(mustExist=True, canBeNone=True),
     description=_(
-"""On Windows: the path to the directory where R is installed, if do not want
-R's installation directory to be discovered automatically. You can determine
-the installation directory from within R by executing the function 
-``R.home()``. On other operating systems: this parameter is ignored, and R's
-executables are expected to be available through via the PATH environment
-variable.
+"""On Windows: the path to the directory where R is installed, if you do not
+want R's installation directory to be discovered automatically. You can
+determine the installation directory from within R by executing the function
+``R.home()``. If this parameter is not provided, the installation directory
+will be located automatically. Three methods will be tried, in this order:
 
-If this parameter is not provided, the installation directory will be located
-automatically (on Windows). Three methods will be tried, in this order:
+1. If the R_HOME environment variable has been set, it will be used. The
+   program Rscript.exe must exist in the ``bin\\x64`` subdirectory of R_HOME
+   or a :exc:`FileNotFoundError` exception will be raised.
 
-1. If the R_HOME environment variable has been set, it will be used. The 
-   program Rscript.exe must exist in the `bin\\x64` subdirectory of R_HOME or
-   a :exc:`FileNotFoundError`: exception will be raised.
+2. Otherwise (R_HOME has not been set), the Registry will be checked, starting
+   with the ``HKEY_CURRENT_USER\\Software\\R-core`` key and falling back to
+   ``HKEY_LOCAL_MACHINE\\Software\\R-core`` only if the former does not exist.
+   For whichever exists, the value of ``R64\\InstallPath`` will be used. The
+   program Rscript.exe must exist in the ``bin\\x64`` subdirectory of that
+   directory or a :exc:`FileNotFoundError` exception will be raised.
 
-2. Otherwise, if R_HOME has not been set, the Registry will be checked,
-   starting with the ``HKEY_CURRENT_USER\\Software\\R-core`` key and falling
-   back to ``HKEY_LOCAL_MACHINE\\Software\\R-core`` only if the former does
-   not exist. For whichever exists, the value of ``R64\\InstallPath`` will be
-   used. The program Rscript.exe must exist in the `bin\\x64` subdirectory of
-   that directory or a :exc:`FileNotFoundError`: exception will be raised.
+3. Otherwise (neither of those registry keys exist), the PATH environment
+   variable will be checked for the program Rscript.exe. If it does not exist,
+   :exc:`FileNotFoundError` exception will be raised.
 
-3. Otherwise, if neither of those registry keys exist, the PATH environment
-   variable will be checked for the program Rscript.exe. If it does not
-   exist, :exc:`FileNotFoundError`: exception will be raised.
-
-Raises:
-    :exc:`FileNotFoundError`: The R executable files were not found at the
-        specified/expected location.
-
-"""),
+On other operating systems: this parameter is ignored, and R's executables are
+expected to be available through via the PATH environment variable."""),
     arcGISDisplayName=_('R home directory'))
 
 AddArgumentMetadata(RWorkerProcess.__init__, 'rLibDir',
@@ -269,9 +597,8 @@ AddArgumentMetadata(RWorkerProcess.__init__, 'rLibDir',
     description=_(
 """Path to the R library directory where R packages should be stored. When a
 package is needed, it will be loaded from this directory if it exists there,
-and downloaded there it does not exist.
-
-If not provided, R's default will be used. See the `R documentation
+and downloaded there it does not exist. If not provided, R's default will be
+used. See the `R documentation
 <https://cran.r-project.org/doc/manuals/r-release/R-admin.html#Managing-libraries>`__
 for details.
 
@@ -332,16 +659,18 @@ AddArgumentMetadata(RWorkerProcess.__init__, 'startupTimeout',
     description=_(
 """Maximum amount of time, in seconds, that R is allowed to take to initialize
 itself and begin servicing requests. If all necessary R packages are already
-installed, this time may be only a second or two. But if packages must be
-installed, as occurs the first time you use MGET to interact with R, or if
-you request that R packages be updated automatically, then this can take many
-seconds. For this reason, the default is set to 300 seconds. If this time
-elapses without the R process indicating that it is ready, an error will be
-raised.
+installed, this time may be only a second or two, but can be longer if the
+machine is busy. Because of this, the default is set to 15 seconds. If the
+timeout elapses without the R process indicating that it is ready, an error
+will be raised.
+
+If packages must be installed or updated, as usually occurs the first time you
+use MGET to interact with R, the delay is automatically extended to allow
+package installation to complete.
 
 .. Warning::
-    If you set `timeout` to :py:data:`None` and R never responds, your Python
-    program will be blocked forever. Use :py:data:`None` with caution.
+    If you set `startupTimeout` to :py:data:`None` and R never responds, your
+    Python program will be blocked forever. Use :py:data:`None` with caution.
 
 """), 
     arcGISDisplayName=_('Startup timeout'))
@@ -351,12 +680,16 @@ AddArgumentMetadata(RWorkerProcess.__init__, 'defaultTZ',
     description=_(
 """Name of the time zone to use when 1) setting R variables from time-zone
 naive :py:class:`~datetime.datetime` instances, 2) getting the values of R
-variables that return :py:class:`~datetime.datetime` instances, and 3) 
-returning :py:class:`~datetime.datetime` instances from :py:func:`Eval`.
-This time zone only applies when dealing with data types other than data
-frames. 
+variables that return :py:class:`~datetime.datetime` instances, and 3)
+returning :py:class:`~datetime.datetime` instances from :py:func:`Eval`. This
+time zone only applies when dealing with data types other than data frames.
 
-**Setting R variables using naive :py:class:`~datetime.datetime` instances**
+The time zone names are those from the `IANA Time Zone Database
+<https://www.iana.org/time-zones>`__. At the time of this writing, many of the
+names were `conveniently listed in Wikipedia
+<https://en.wikipedia.org/wiki/List_of_tz_database_time_zones>`__
+
+**Setting R variables using naive datetime instances**
 
 When a :py:class:`~datetime.datetime` instance is sent to R, it is converted
 to an R ``POSIXct`` object, which represents time as the number of seconds
@@ -382,11 +715,11 @@ local time zone using the Python `tzlocal
 UTC times to send to R.
 
 If `defaultTZ` is a string, a :py:class:`~zoneinfo.ZoneInfo` will be
-instantiated and used instead. For example, if you want all naive 
+instantiated from it and used instead. For example, if you want all naive
 :py:class:`~datetime.datetime` instances to be treated as UTC, provide
-``"UTC"`` for `defaultTZ`.
+``'UTC'`` for `defaultTZ`.
 
-**Getting :py:class:`~datetime.datetime` instances back from R**
+**Getting datetime instances back from R**
 
 For consistency with the behavior described above, if `defaultTZ`
 is :py:data:`None` (the default), :class:`~GeoEco.R.RWorkerProcess` will look
@@ -470,9 +803,9 @@ AddMethodMetadata(RWorkerProcess.Eval,
     longDescription=_(
 """The expression can be anything that may be evaluated by the R ``eval``
 function. Multiple expressions can be separated by semicolons or newlines.
-The value of the last expression is returned.
-
-TODO: Write warning about what kinds of objects can be returned."""))
+The value of the last expression is returned. Please see the
+:class:`~GeoEco.R.RWorkerProcess` class documentation for details on how R
+data types are translated into Python data types."""))
 
 CopyArgumentMetadata(RWorkerProcess.__init__, 'self', RWorkerProcess.Eval, 'self')
 
