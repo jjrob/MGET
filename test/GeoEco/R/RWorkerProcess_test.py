@@ -15,6 +15,7 @@ import os
 import sys
 import zoneinfo
 
+import pandas
 import pytest
 import tzlocal
 
@@ -201,6 +202,24 @@ class TestRWorkerProcess():
                 assert r['x'].tzinfo is not None and r['x'].tzinfo != now.tzinfo
                 assert r['x'] == now.astimezone(r['x'].tzinfo)
 
+    def test_DataFrames(self, rWorkerProcess):
+        df = pandas.DataFrame({'BoolCol': [True, False, None, False, True, True, False, False, False],
+                               'IntCol': [0, -1, 1, 10, 0-2**31+1, 2**31-1, 1000, 2000, 3000],
+                               'Int64Col': [0, -1, 1, 10, 0-2**63+1, 2**63-1, 1000, 2000, 3000],
+                               'FloatCol': [0., 1.1, float('nan'), float('inf'), float('-inf'), sys.float_info.min, sys.float_info.max, 4.9406564584124654e-324, 4.9406564584124654e-324 * -1],
+                               'StrCol': ['a', 'b', 'c', None, 'd', '', '[abc]', 'résumé', 'e'],
+                               })
+
+        rWorkerProcess['df'] = df
+        assert rWorkerProcess.Eval('sapply(df, class)') == ['logical', 'integer', 'integer64', 'numeric', 'character']
+
+        def isEqualNaN(x, y):
+            return x == y or math.isnan(x) and math.isnan(y)
+
+        df2 = rWorkerProcess['df']
+        assert all(df.columns == df2.columns)
+        assert all([all([isEqualNaN(df.at[i,c], df2.at[i,c]) for i in range(len(df))]) for c in df.columns])
+
     def test_AuthenticationToken(self, rWorkerProcess):
         # Change Python's copy of the authentication token and verify that R
         # rejects our calls.
@@ -221,11 +240,9 @@ class TestRWorkerProcess():
         # Verify that it works again if we use the original token.
 
         rWorkerProcess._AuthenticationToken = originalAuthToken
+        rWorkerProcess.Eval('rm(list=ls())')
         rWorkerProcess['x'] = 2
         assert rWorkerProcess['x'] == 2
         assert len(rWorkerProcess) == 1
         del rWorkerProcess['x']
         assert rWorkerProcess.Eval('1+1') == 2
-
-    # def test_PythonToRJSONTypes(self, capsys):
-    #     Logger.Initialize()   # Do not remove this from here, even though it is already called at module scope. If it is not here, capsys will not work.
