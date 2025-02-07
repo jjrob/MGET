@@ -590,7 +590,8 @@ will be located automatically. Three methods will be tried, in this order:
 
 On other operating systems: this parameter is ignored, and R's executables are
 expected to be available through via the PATH environment variable."""),
-    arcGISDisplayName=_('R home directory'))
+    arcGISDisplayName=_('R home directory'),
+    arcGISCategory=_('R options'))
 
 AddArgumentMetadata(RWorkerProcess.__init__, 'rLibDir',
     typeMetadata=DirectoryTypeMetadata(canBeNone=True),
@@ -607,14 +608,16 @@ of R packages, rather than those you use when running R yourself. For
 example, when running MGET, you may want to use only packages that have been
 released to CRAN, while when running R yourself, you may want to use newer or
 experimental versions that you obtained elsewhere."""),
-    arcGISDisplayName=_('R package library directory'))
+    arcGISDisplayName=_('R package library directory'),
+    arcGISCategory=_('R options'))
 
 AddArgumentMetadata(RWorkerProcess.__init__, 'rRepository',
     typeMetadata=UnicodeStringTypeMetadata(minLength=1, canBeNone=True),
     description=_(
 """R repository to use when downloading packages. If not provided,
 https://cloud.r-project.org will be used."""), 
-    arcGISDisplayName=_('R repository for downloading packages'))
+    arcGISDisplayName=_('R repository for downloading packages'),
+    arcGISCategory=_('R options'))
 
 AddArgumentMetadata(RWorkerProcess.__init__, 'updateRPackages',
     typeMetadata=BooleanTypeMetadata(),
@@ -629,14 +632,16 @@ date. It is set to False by default to prevent MGET from updating your
 already-installed packages without your explicit permission. However, even if
 this option is set to False, MGET will still automatically install any
 packages that it needs that are missing."""), 
-    arcGISDisplayName=_('Update packages automatically'))
+    arcGISDisplayName=_('Update R packages automatically'),
+    arcGISCategory=_('R options'))
 
 AddArgumentMetadata(RWorkerProcess.__init__, 'port',
     typeMetadata=IntegerTypeMetadata(minValue=1, canBeNone=True),
     description=_(
 """TCP port to use for communicating with R via the R plumber package. If not
 specified, an unused port will be selected automatically."""), 
-    arcGISDisplayName=_('Port'))
+    arcGISDisplayName=_('Port'),
+    arcGISCategory=_('R options'))
 
 AddArgumentMetadata(RWorkerProcess.__init__, 'timeout',
     typeMetadata=FloatTypeMetadata(mustBeGreaterThan=0., canBeNone=True),
@@ -648,11 +653,12 @@ response, an error will be raised. In general, a very short value such as 5
 seconds is appropriate here.
 
 .. Warning::
-    If you set `timeout` to :py:data:`None` and R never responds, your Python
+    If you set `timeout` to :py:data:`None` and R never responds, your
     program will be blocked forever. Use :py:data:`None` with caution.
 
 """), 
-    arcGISDisplayName=_('Timeout'))
+    arcGISDisplayName=_('Timeout'),
+    arcGISCategory=_('R options'))
 
 AddArgumentMetadata(RWorkerProcess.__init__, 'startupTimeout',
     typeMetadata=FloatTypeMetadata(mustBeGreaterThan=0., canBeNone=True),
@@ -670,23 +676,20 @@ package installation to complete.
 
 .. Warning::
     If you set `startupTimeout` to :py:data:`None` and R never responds, your
-    Python program will be blocked forever. Use :py:data:`None` with caution.
+    program will be blocked forever. Use :py:data:`None` with caution.
 
 """), 
-    arcGISDisplayName=_('Startup timeout'))
+    arcGISDisplayName=_('Startup timeout'),
+    arcGISCategory=_('R options'))
 
 AddArgumentMetadata(RWorkerProcess.__init__, 'defaultTZ',
     typeMetadata=UnicodeStringTypeMetadata(minLength=1, canBeNone=True),
     description=_(
 """Name of the time zone to use when 1) setting R variables from time-zone
-naive :py:class:`~datetime.datetime` instances, 2) getting the values of R
-variables that return :py:class:`~datetime.datetime` instances, and 3)
-returning :py:class:`~datetime.datetime` instances from :py:func:`Eval`. This
-time zone only applies when dealing with data types other than data frames.
-
-The time zone names are those from the `IANA Time Zone Database
-<https://www.iana.org/time-zones>`__. At the time of this writing, many of the
-names were `conveniently listed in Wikipedia
+naive :py:class:`~datetime.datetime` instances, 2) returning
+:py:class:`~datetime.datetime` instances from R. The time zone names are those
+from the `IANA Time Zone Database <https://www.iana.org/time-zones>`__. At the
+time of this writing, many of the names were `conveniently listed in Wikipedia
 <https://en.wikipedia.org/wiki/List_of_tz_database_time_zones>`__
 
 **Setting R variables using naive datetime instances**
@@ -694,25 +697,22 @@ names were `conveniently listed in Wikipedia
 When a :py:class:`~datetime.datetime` instance is sent to R, it is converted
 to an R ``POSIXct`` object, which represents time as the number of seconds
 since the UNIX epoch, which is defined as 1970-01-01 00:00:00 UTC. Because of
-this, :class:`~GeoEco.R.RWorkerProcess` needs to know which time zone
-the :py:class:`~datetime.datetime` instance is in so that it can be converted
-to UTC for R.
+this, MGET needs to know which time zone the :py:class:`~datetime.datetime`
+instance is in so that it can be converted to UTC for R.
 
 If a :py:class:`~datetime.datetime` instance has a time zone defined (meaning
-that its `tzinfo` attribute is not :py:data:`None`), then
-:class:`~GeoEco.R.RWorkerProcess` will apply that time zone when computing UTC
-times to send to R. But if it does not have a time zone defined, it is known
-as a "naive" :py:class:`~datetime.datetime`. In this case, the `defaultTZ`
-parameter determines the time zone to use, as follows:
+that its `tzinfo` attribute is not :py:data:`None`), then MGET will apply that
+time zone when computing UTC times to send to R. But if it does not have a
+time zone defined, it is known as a "naive" :py:class:`~datetime.datetime`. In
+this case, the `defaultTZ` parameter determines the time zone to use, as
+follows:
 
-If `defaultTZ` is :py:data:`None` (the default), 
-:class:`~GeoEco.R.RWorkerProcess` will assume that naive 
+If `defaultTZ` is :py:data:`None` (the default), MGET will assume that naive
 :py:class:`~datetime.datetime` instances are in the local time zone,
 consistent with how many of the Python :py:class:`~datetime.datetime` methods
-treat naive instances. :class:`~GeoEco.R.RWorkerProcess` will then look up the
-local time zone using the Python `tzlocal
-<https://pypi.org/project/tzlocal/>`__ package and apply it when computing
-UTC times to send to R.
+treat naive instances. MGET will then look up the local time zone using the
+Python `tzlocal <https://pypi.org/project/tzlocal/>`__ package and apply it
+when computing UTC times to send to R.
 
 If `defaultTZ` is a string, a :py:class:`~zoneinfo.ZoneInfo` will be
 instantiated from it and used instead. For example, if you want all naive
@@ -721,16 +721,17 @@ instantiated from it and used instead. For example, if you want all naive
 
 **Getting datetime instances back from R**
 
-For consistency with the behavior described above, if `defaultTZ`
-is :py:data:`None` (the default), :class:`~GeoEco.R.RWorkerProcess` will look
-up the local time zone using the Python `tzlocal
-<https://pypi.org/project/tzlocal/>`__ package and convert all 
+For consistency with the behavior described above, if `defaultTZ` is
+:py:data:`None` (the default), MGET will look up the local time zone using the
+Python `tzlocal <https://pypi.org/project/tzlocal/>`__ package and convert all
 :py:class:`~datetime.datetime` instances to that time zone before returning
 them. The returned instances will have that time zone defined (they will not
 be naive).
 
 If `defaultTZ` is a string, a :py:class:`~zoneinfo.ZoneInfo` will be
-instantiated and used instead."""))
+instantiated and used instead."""), 
+    arcGISDisplayName=_('Default time zone'),
+    arcGISCategory=_('R options'))
 
 AddResultMetadata(RWorkerProcess.__init__, 'obj',
     typeMetadata=ClassInstanceTypeMetadata(cls=RWorkerProcess),
@@ -779,6 +780,8 @@ no longer needed.
 
 """))
 
+CopyArgumentMetadata(RWorkerProcess.__init__, 'self', RWorkerProcess.Stop, 'self')
+
 AddArgumentMetadata(RWorkerProcess.Stop, 'timeout',
     typeMetadata=FloatTypeMetadata(mustBeGreaterThan=0., canBeNone=True),
     description=_(
@@ -788,13 +791,11 @@ with R are blocking, so R should be idle when this function is called.
 
 .. Warning::
     If you set `timeout` to :py:data:`None` and your R expression never
-    completes, your Python program will be blocked forever.
-    Use :py:data:`None` with caution.
+    completes, your program will be blocked forever. Use :py:data:`None` with
+    caution.
 
 """), 
     arcGISDisplayName=_('Timeout')) 
-
-CopyArgumentMetadata(RWorkerProcess.__init__, 'self', RWorkerProcess.Stop, 'self')
 
 # Public method: Eval
 
@@ -831,11 +832,63 @@ which allows an infinite amount of time.
 
 .. Warning::
     If you set `timeout` to :py:data:`None` and your R expression never
-    completes, your Python program will be blocked forever.
-    Use :py:data:`None` with caution.
+    completes, your program will be blocked forever. Use :py:data:`None` with
+    caution.
 
 """), 
     arcGISDisplayName=_('Timeout'))
+
+# Public method: ExecuteRAndEvaluateExpressions
+
+AddMethodMetadata(RWorkerProcess.ExecuteRAndEvaluateExpressions,
+    shortDescription=_('Start R, evaluate one or more R expressions, stop R, and optionally return the result of the last expression.'),
+    longDescription=_(
+"""The Rscript program from R will be started as a child worker process with
+no visible user interface and MGET will communicate through it with HTTP over
+TCP/IP. Rscript will listen on the loopback interface (IPv4 address
+127.0.0.1), and therefore will only be accessible to processes running on the
+local machine. To prevent anything other than the intended parent process from
+interacting with the Rscript worker process, it requires all callers to
+provide a randomly-generated 512 bit token only known by the parent process.
+After the final expression is executed, Rscript will be shut down.
+
+For more information about how this works, please see the documentation for
+the :class:`~GeoEco.R.RWorkerProcess` class in MGET's documentation."""))
+
+AddArgumentMetadata(RWorkerProcess.ExecuteRAndEvaluateExpressions, 'cls',
+    typeMetadata=ClassOrClassInstanceTypeMetadata(cls=RWorkerProcess),
+    description=_(':class:`%s` or an instance of it.') % RWorkerProcess.__name__)
+
+AddArgumentMetadata(RWorkerProcess.ExecuteRAndEvaluateExpressions, 'expressions',
+    typeMetadata=ListTypeMetadata(elementType=UnicodeStringTypeMetadata(minLength=1), minLength=1),
+    description=_(
+"""List of R expressions to evaluate. Each expression can be anything that may
+be evaluated by the R ``eval`` function."""),
+    arcGISDisplayName=_('R expressions'))
+
+AddArgumentMetadata(RWorkerProcess.ExecuteRAndEvaluateExpressions, 'returnResult',
+    typeMetadata=BooleanTypeMetadata(),
+    description=_(
+"""If True, the value of the last expression will be returned. If False, the
+default, a Python :py:data:`None` will be returned, regardless of what the
+last expression evaluated to."""))
+
+CopyArgumentMetadata(RWorkerProcess.Eval, 'timeout', RWorkerProcess.ExecuteRAndEvaluateExpressions, 'timeout')
+CopyArgumentMetadata(RWorkerProcess.__init__, 'rInstallDir', RWorkerProcess.ExecuteRAndEvaluateExpressions, 'rInstallDir')
+CopyArgumentMetadata(RWorkerProcess.__init__, 'rLibDir', RWorkerProcess.ExecuteRAndEvaluateExpressions, 'rLibDir')
+CopyArgumentMetadata(RWorkerProcess.__init__, 'rRepository', RWorkerProcess.ExecuteRAndEvaluateExpressions, 'rRepository')
+CopyArgumentMetadata(RWorkerProcess.__init__, 'updateRPackages', RWorkerProcess.ExecuteRAndEvaluateExpressions, 'updateRPackages')
+CopyArgumentMetadata(RWorkerProcess.__init__, 'port', RWorkerProcess.ExecuteRAndEvaluateExpressions, 'port')
+CopyArgumentMetadata(RWorkerProcess.__init__, 'startupTimeout', RWorkerProcess.ExecuteRAndEvaluateExpressions, 'startupTimeout')
+CopyArgumentMetadata(RWorkerProcess.__init__, 'defaultTZ', RWorkerProcess.ExecuteRAndEvaluateExpressions, 'defaultTZ')
+
+AddResultMetadata(RWorkerProcess.ExecuteRAndEvaluateExpressions, 'result',
+    typeMetadata=AnyObjectTypeMetadata(canBeNone=True),
+    description=_(
+"""Result returned from the R interpreter. If the evaluated R code contained
+multiple expressions, the value of the last expressions is returned. The type
+of the returned value depends on the expressions that is evaluated."""),
+    arcGISDisplayName=_('Last expression result'))
 
 
 ############################################################################

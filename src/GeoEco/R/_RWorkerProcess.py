@@ -993,6 +993,17 @@ class RWorkerProcess(collections.abc.MutableMapping):
 
             return(self._ProcessResponse(resp, parseReturnValue=True))
 
+    @classmethod
+    def ExecuteRAndEvaluateExpressions(cls, expressions, returnResult=False, timeout=60., rInstallDir=None, rLibDir=None, rRepository='https://cloud.r-project.org', updateRPackages=False, port=None, startupTimeout=15., defaultTZ=None):
+        with RWorkerProcess(rInstallDir=rInstallDir, rLibDir=rLibDir, rRepository=rRepository, updateRPackages=updateRPackages, port=port, startupTimeout=startupTimeout, defaultTZ=defaultTZ) as r:
+            result = None
+            for i, statement in enumerate(expressions):
+                if returnResult and i == len(expressions) - 1:
+                    result = r.Eval(satement, timeout=timeout)
+                else:
+                    r.Eval(satement + '; NULL', timeout=timeout)
+            return result
+
 
 #################################################################################
 # This module is not meant to be imported directly. Import GeoEco.R instead.
