@@ -575,18 +575,18 @@ will be located automatically. Three methods will be tried, in this order:
 
 1. If the R_HOME environment variable has been set, it will be used. The
    program Rscript.exe must exist in the ``bin\\x64`` subdirectory of R_HOME
-   or a :exc:`FileNotFoundError` exception will be raised.
+   or a :py:exc:`FileNotFoundError` exception will be raised.
 
 2. Otherwise (R_HOME has not been set), the Registry will be checked, starting
    with the ``HKEY_CURRENT_USER\\Software\\R-core`` key and falling back to
    ``HKEY_LOCAL_MACHINE\\Software\\R-core`` only if the former does not exist.
    For whichever exists, the value of ``R64\\InstallPath`` will be used. The
    program Rscript.exe must exist in the ``bin\\x64`` subdirectory of that
-   directory or a :exc:`FileNotFoundError` exception will be raised.
+   directory or a :py:exc:`FileNotFoundError` exception will be raised.
 
 3. Otherwise (neither of those registry keys exist), the PATH environment
    variable will be checked for the program Rscript.exe. If it does not exist,
-   :exc:`FileNotFoundError` exception will be raised.
+   :py:exc:`FileNotFoundError` exception will be raised.
 
 On other operating systems: this parameter is ignored, and R's executables are
 expected to be available through via the PATH environment variable."""),
@@ -650,11 +650,13 @@ AddArgumentMetadata(RWorkerProcess.__init__, 'timeout',
 to start responding when getting, setting, or deleting variable values. If
 this time elapses without the R worker process beginning to send its
 response, an error will be raised. In general, a very short value such as 5
-seconds is appropriate here.
+seconds is appropriate here. To allow an infinite amount of time, provide 
+:py:data:`None` from Python or delete all text from this text box in the
+ArcGIS user interface.
 
 .. Warning::
-    If you set `timeout` to :py:data:`None` and R never responds, your
-    program will be blocked forever. Use :py:data:`None` with caution.
+    If you allow an infinite amount of time and R never responds, your program
+    will be blocked forever. Use caution.
 
 """), 
     arcGISDisplayName=_('Timeout'),
@@ -668,15 +670,17 @@ itself and begin servicing requests. If all necessary R packages are already
 installed, this time may be only a second or two, but can be longer if the
 machine is busy. Because of this, the default is set to 15 seconds. If the
 timeout elapses without the R process indicating that it is ready, an error
-will be raised.
+will be raised. To allow an infinite amount of time, provide :py:data:`None`
+from Python or delete all text from this text box in the ArcGIS user
+interface.
 
 If packages must be installed or updated, as usually occurs the first time you
 use MGET to interact with R, the delay is automatically extended to allow
 package installation to complete.
 
 .. Warning::
-    If you set `startupTimeout` to :py:data:`None` and R never responds, your
-    program will be blocked forever. Use :py:data:`None` with caution.
+    If you allow an infinite amount of time and R never responds, your program
+    will be blocked forever. Use caution.
 
 """), 
     arcGISDisplayName=_('Startup timeout'),
@@ -704,8 +708,8 @@ If a :py:class:`~datetime.datetime` instance has a time zone defined (meaning
 that its `tzinfo` attribute is not :py:data:`None`), then MGET will apply that
 time zone when computing UTC times to send to R. But if it does not have a
 time zone defined, it is known as a "naive" :py:class:`~datetime.datetime`. In
-this case, the `defaultTZ` parameter determines the time zone to use, as
-follows:
+this case, this default time zone parameter (`defaultTZ`) determines the time
+zone to use, as follows:
 
 If `defaultTZ` is :py:data:`None` (the default), MGET will assume that naive
 :py:class:`~datetime.datetime` instances are in the local time zone,
@@ -787,12 +791,13 @@ AddArgumentMetadata(RWorkerProcess.Stop, 'timeout',
     description=_(
 """Maximum amount of time, in seconds, to wait for R to shut down. In
 general, R should shut down quickly. During normal operation, all interactions
-with R are blocking, so R should be idle when this function is called.
+with R are blocking, so R should be idle when this function is called. To
+allow an infinite amount of time, provide :py:data:`None` from Python or
+delete all text from this text box in the ArcGIS user interface.
 
 .. Warning::
-    If you set `timeout` to :py:data:`None` and your R expression never
-    completes, your program will be blocked forever. Use :py:data:`None` with
-    caution.
+    If you allow an infinite amount of time and R never stops, your program
+    will be blocked forever. Use caution.
 
 """), 
     arcGISDisplayName=_('Timeout')) 
@@ -827,13 +832,13 @@ its response, an error will be raised.
 
 The default timeout was selected to allow all but the most time consuming
 expressions to complete. You should increase it for very long running jobs.
-If you're unsure how long it will take, you may set it to :py:data:`None`,
-which allows an infinite amount of time.
+If you're unsure how long it will take, you may allow an infinite amount of
+time by providing :py:data:`None` from Python or deleting all text from this
+text box in the ArcGIS user interface.
 
 .. Warning::
-    If you set `timeout` to :py:data:`None` and your R expression never
-    completes, your program will be blocked forever. Use :py:data:`None` with
-    caution.
+    If you allow an infinite amount of time and your R expression never
+    completes, your program will be blocked forever. Use caution.
 
 """), 
     arcGISDisplayName=_('Timeout'))
@@ -843,7 +848,10 @@ which allows an infinite amount of time.
 AddMethodMetadata(RWorkerProcess.ExecuteRAndEvaluateExpressions,
     shortDescription=_('Start R, evaluate one or more R expressions, stop R, and optionally return the result of the last expression.'),
     longDescription=_(
-"""The Rscript program from R will be started as a child worker process with
+"""The R statistics program version 3.3 or later must be installed. R can be
+downloaded from https://cran.r-project.org/.
+
+The Rscript program from R will be started as a child worker process with
 no visible user interface and MGET will communicate through it with HTTP over
 TCP/IP. Rscript will listen on the loopback interface (IPv4 address
 127.0.0.1), and therefore will only be accessible to processes running on the
@@ -853,7 +861,10 @@ provide a randomly-generated 512 bit token only known by the parent process.
 After the final expression is executed, Rscript will be shut down.
 
 For more information about how this works, please see the documentation for
-the :class:`~GeoEco.R.RWorkerProcess` class in MGET's documentation."""))
+the RWorkerProcess class in MGET's documentation."""),
+    isExposedAsArcGISTool=True,
+    arcGISDisplayName=_('Evaluate R Expressions'),
+    arcGISToolCategory=_('Statistics'))
 
 AddArgumentMetadata(RWorkerProcess.ExecuteRAndEvaluateExpressions, 'cls',
     typeMetadata=ClassOrClassInstanceTypeMetadata(cls=RWorkerProcess),
@@ -863,7 +874,8 @@ AddArgumentMetadata(RWorkerProcess.ExecuteRAndEvaluateExpressions, 'expressions'
     typeMetadata=ListTypeMetadata(elementType=UnicodeStringTypeMetadata(minLength=1), minLength=1),
     description=_(
 """List of R expressions to evaluate. Each expression can be anything that may
-be evaluated by the R ``eval`` function."""),
+be evaluated by the R ``eval`` function. Empty strings or strings composed
+only of whitespace characters are not allowed."""),
     arcGISDisplayName=_('R expressions'))
 
 AddArgumentMetadata(RWorkerProcess.ExecuteRAndEvaluateExpressions, 'returnResult',
@@ -871,7 +883,8 @@ AddArgumentMetadata(RWorkerProcess.ExecuteRAndEvaluateExpressions, 'returnResult
     description=_(
 """If True, the value of the last expression will be returned. If False, the
 default, a Python :py:data:`None` will be returned, regardless of what the
-last expression evaluated to."""))
+last expression evaluated to."""),
+    arcGISDisplayName=_('Return result'))
 
 CopyArgumentMetadata(RWorkerProcess.Eval, 'timeout', RWorkerProcess.ExecuteRAndEvaluateExpressions, 'timeout')
 CopyArgumentMetadata(RWorkerProcess.__init__, 'rInstallDir', RWorkerProcess.ExecuteRAndEvaluateExpressions, 'rInstallDir')

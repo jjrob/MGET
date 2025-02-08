@@ -214,6 +214,11 @@ class AnyObjectTypeMetadata(TypeMetadata):
                                                     canBeArcGISOutputParameter=True,
                                                     sphinxMarkup=':py:class:`object`')
 
+    def _GetArcGISDataTypeDict(self):
+        return {'type': 'GPType'}
+
+    ArcGISDataTypeDict = property(_GetArcGISDataTypeDict, doc=DynamicDocString())
+
 
 class NoneTypeMetadata(TypeMetadata):
     __doc__ = DynamicDocString()

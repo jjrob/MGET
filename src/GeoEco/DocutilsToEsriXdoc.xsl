@@ -44,7 +44,7 @@
         </pre>
     </xsl:template>
 
-    <xsl:template match="paragraph">
+    <xsl:template match="paragraph[not(parent::warning)]">
         <p>
             <xsl:apply-templates/>
         </p>
@@ -72,6 +72,17 @@
         <b>
             <xsl:apply-templates/>
         </b>
+    </xsl:template>
+
+    <xsl:template match="warning">
+        <note type="warning"/>
+        <xsl:apply-templates/>
+    </xsl:template>
+
+    <xsl:template match="warning/paragraph">
+        <p group="warning">
+            <xsl:apply-templates/>
+        </p>
     </xsl:template>
 
     <!-- Table-related elements -->

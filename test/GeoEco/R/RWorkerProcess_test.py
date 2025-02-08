@@ -246,3 +246,16 @@ class TestRWorkerProcess():
         assert len(rWorkerProcess) == 1
         del rWorkerProcess['x']
         assert rWorkerProcess.Eval('1+1') == 2
+
+    def test_ExecuteRAndEvaluateExpressions(self):
+        x = RWorkerProcess.ExecuteRAndEvaluateExpressions(['1+1'], returnResult=True)
+        assert x == 2
+
+        x = RWorkerProcess.ExecuteRAndEvaluateExpressions(['1+1', '9'], returnResult=True)
+        assert x == 9
+
+        x = RWorkerProcess.ExecuteRAndEvaluateExpressions(['1+1'], returnResult=False)
+        assert x is None
+
+        with pytest.raises(Exception, match='.*timeout.*'):
+            RWorkerProcess.ExecuteRAndEvaluateExpressions(['1+1'], timeout=0.01)

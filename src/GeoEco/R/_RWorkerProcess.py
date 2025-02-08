@@ -568,7 +568,14 @@ class RWorkerProcess(collections.abc.MutableMapping):
 
             # Start the child process.
 
-            creationFlags = subprocess.CREATE_BREAKAWAY_FROM_JOB if needToCreateJob else 0
+            startupInfo = subprocess.STARTUPINFO()
+            startupInfo.dwFlags = subprocess.STARTF_USESHOWWINDOW
+            startupInfo.wShowWindow = subprocess.SW_HIDE
+
+            creationFlags = subprocess.CREATE_NO_WINDOW
+            if needToCreateJob:
+                creationFlags += subprocess.CREATE_BREAKAWAY_FROM_JOB
+
             argsStr = subprocess.list2cmdline(args)
             Logger.Debug(f'{self.__class__.__name__} 0x{id(self):016X}: Starting worker process with creation flags 0x{creationFlags:08X}: {argsStr}')
 
@@ -577,6 +584,7 @@ class RWorkerProcess(collections.abc.MutableMapping):
                                                        stdin=subprocess.DEVNULL,
                                                        stdout=subprocess.PIPE,
                                                        stderr=subprocess.PIPE,
+                                                       startupinfo=startupInfo,
                                                        creationflags=creationFlags)
             except Exception as e:
                 Logger.Error(_('MGET failed to start an Rscript worker process with creation flags 0x%(creationFlags)08X and the command line: %(argsStr)s') % {'creationFlags': creationFlags, 'argsStr': argsStr})
@@ -995,13 +1003,15 @@ class RWorkerProcess(collections.abc.MutableMapping):
 
     @classmethod
     def ExecuteRAndEvaluateExpressions(cls, expressions, returnResult=False, timeout=60., rInstallDir=None, rLibDir=None, rRepository='https://cloud.r-project.org', updateRPackages=False, port=None, startupTimeout=15., defaultTZ=None):
+        cls.__doc__.Obj.ValidateMethodInvocation()
+
         with RWorkerProcess(rInstallDir=rInstallDir, rLibDir=rLibDir, rRepository=rRepository, updateRPackages=updateRPackages, port=port, startupTimeout=startupTimeout, defaultTZ=defaultTZ) as r:
             result = None
-            for i, statement in enumerate(expressions):
+            for i, expr in enumerate(expressions):
                 if returnResult and i == len(expressions) - 1:
-                    result = r.Eval(satement, timeout=timeout)
+                    result = r.Eval(expr, timeout=timeout)
                 else:
-                    r.Eval(satement + '; NULL', timeout=timeout)
+                    r.Eval(expr + '; NULL', timeout=timeout)
             return result
 
 
