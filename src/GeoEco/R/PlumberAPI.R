@@ -27,6 +27,7 @@ captureTraceback <- function(expr) {
       if (is.null(attr(e, "cst", exact = TRUE))) {
         cst <- rlang::trace_back()
         attr(e, "cst") <- capture.output(print(cst, simplify = "none"))
+        cat("API_CALL_DONE\n"); message("API_CALL_DONE")
         signalCondition(e)
       }
     }
@@ -107,6 +108,7 @@ clientEnv <- new.env()
 #* @get /echo
 #* @param msg The string to return.
 function(msg = "") {
+  cat("API_CALL_DONE\n"); message("API_CALL_DONE")
   msg
 }
 
@@ -118,6 +120,8 @@ function(msg = "") {
     msg <- paste0(msg, "\n")
   }
   cat(msg)
+  cat("API_CALL_DONE\n"); message("API_CALL_DONE")
+  return()
 }
 
 #* Log a warning message. Calls message() to write it to stderr.
@@ -125,11 +129,14 @@ function(msg = "") {
 #* @param msg The string to log.
 function(msg = "") {
   message(msg)   # message() automatically adds a newline, so we don't need to
+  cat("API_CALL_DONE\n"); message("API_CALL_DONE")
+  return()
 }
 
 #* Shut down the R child process.
 #* @post /shutdown
 function() {
+  cat("API_CALL_DONE\n"); message("API_CALL_DONE")
   quit(save = "no", status = 0)
 }
 
@@ -145,6 +152,7 @@ function() {
       cat("DEBUG:", line)
     }
 
+    cat("API_CALL_DONE\n"); message("API_CALL_DONE")
     value
   })
 }
@@ -196,6 +204,7 @@ function(name, value) {
     # Assign the variable in clientEnv.
 
     assign(name, value, envir=clientEnv)
+    cat("API_CALL_DONE\n"); message("API_CALL_DONE")
     return()
   })
 }
@@ -242,6 +251,7 @@ function(name, res) {
        res$serializer <- serializers$json
     }
 
+    cat("API_CALL_DONE\n"); message("API_CALL_DONE")
     value
   })
 }
@@ -267,6 +277,7 @@ function(name) {
 
     cat(sprintf("DEBUG: DELETE: %s\n", name))
     rm(list=name, envir=clientEnv)
+    cat("API_CALL_DONE\n"); message("API_CALL_DONE")
     return()
   })
 }
@@ -316,6 +327,7 @@ function(expr, res) {
        res$serializer <- serializers$json
     }
 
+    cat("API_CALL_DONE\n"); message("API_CALL_DONE")
     value
   })
 }

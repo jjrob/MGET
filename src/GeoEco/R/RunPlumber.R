@@ -91,7 +91,7 @@ loggedInstallDir <- FALSE
 if (updateRPackages == "true") {
   cat("Updating R packages...\n")
   cat(paste0("R packages will be installed to ", .libPaths()[1], "\n", sep=""))
-  cat(paste0("INSTALLING_R_PACKAGES\n", sep=""))
+  cat("INSTALLING_R_PACKAGES\n")
   loggedInstallDir <- TRUE
 
   # Unless the caller has root/administrator access, packages cannot be
@@ -107,6 +107,7 @@ if (updateRPackages == "true") {
 
   sink(stdout(), type="message")  # Redirect message() to stdout, so it results in INFO rather than WARNING messages
   update.packages(instlib=.libPaths()[1], ask=FALSE, quiet=quietInstall)
+  sink(stderr(), type="message")  # Redirect message() back to stderr
 }
 
 # Install required packages and load plumber. (The others will be loaded later
@@ -120,11 +121,16 @@ for (pkg in requiredPackages) {
     if (!loggedInstallDir) {
       cat(paste0("R packages will be installed to ", .libPaths()[1], "\n", sep=""))
       loggedInstallDir <- TRUE
-      cat(paste0("INSTALLING_R_PACKAGES\n", sep=""))
+      cat("INSTALLING_R_PACKAGES\n")
     }
     sink(stdout(), type="message")  # Redirect message() to stdout, so it results in INFO rather than WARNING messages
     install.packages(pkg, quiet=quietInstall)
+    sink(stderr(), type="message")  # Redirect message() back to stderr
   }
+}
+
+if (loggedInstallDir) {
+  cat("DONE_INSTALLING_R_PACKAGES\n")
 }
 
 library(plumber)

@@ -18,6 +18,7 @@ import json
 import logging
 import math
 import os
+import queue
 import secrets
 import shutil
 import socket
@@ -166,8 +167,13 @@ class RWorkerProcess(collections.abc.MutableMapping):
         self._WorkerProcess = None
         self._Session = None
         self._Lock = threading.RLock()
-        self._WorkerProcessIsReady = threading.Event()
-        self._WorkerProcessIsInstallingRPackages = threading.Event()
+        self._MainThreadQueue = None
+        self._StdoutThread = None
+        self._StderrThread = None
+        self._HTTPThread = None
+        self._HTTPThreadQueue = None
+        self._RLogger = logging.getLogger('GeoEco.R')
+        self._LogWaitLoop = False
 
         if defaultTZ is None:
             import tzlocal
@@ -258,94 +264,117 @@ class RWorkerProcess(collections.abc.MutableMapping):
                 else:
                     raise NotImplementedError(_('RWorkerProcess is only supported on the "%(plat)s" platform, only on win32 and linux.') % {'plat': sys.platform})
 
-                # Create threads to log the stdout pipe as informational messages
-                # and the stderr pipe as warning messages.
+                # Allocate self._MainThreadQueue, which we will use to receive
+                # messages from the threads we start below, and
+                # self._HTTPThreadQueue, which we will use to send messages
+                # to the HTTP thread that places HTTP requets.
 
-                stdoutThread = None
-                stderrThread = None
+                self._MainThreadQueue = queue.SimpleQueue()
+                self._HTTPThreadQueue = queue.SimpleQueue()
 
-                try:
-                    def _LogStream(lock, stream, streamName, logger, level):
-                        Logger.Debug(f'{self.__class__.__name__} 0x{id(self):016X}: _LogStream {streamName} thread: started.')
-                        try:
-                            for line in iter(stream.readline, b''):
-                                line = line.decode('utf-8').rstrip()
-                                if line.startswith("Running plumber API at"):
-                                    self._WorkerProcessIsInstallingRPackages.clear()
-                                    self._WorkerProcessIsReady.set()
-                                elif line.startswith("INSTALLING_R_PACKAGES"):
-                                    self._WorkerProcessIsInstallingRPackages.set()
-                                elif line.startswith("Running swagger Docs at"):
-                                    pass
-                                elif line.startswith("DEBUG:"):
-                                    logger.log(logging.DEBUG, 'R:' + line[6:])
-                                else:
-                                    logger.log(level, line)
-                        except Exception as e:
-                            Logger.Debug(f'{self.__class__.__name__} 0x{id(self):016X}: _LogStream {streamName} thread: exception raised: {e.__class__.__name__}: {e}')
+                # Start the threads that monitor the stdout and stderr streams
+                # of the child process and post lines of output back to the
+                # main thread.
+
+                self._StdoutThread = threading.Thread(target=RWorkerProcess._StreamThreadEntryPoint, args=(self._WorkerProcess.stdout, 'StdoutThread', self._MainThreadQueue), daemon=True)
+                self._StderrThread = threading.Thread(target=RWorkerProcess._StreamThreadEntryPoint, args=(self._WorkerProcess.stderr, 'StderrThread', self._MainThreadQueue), daemon=True)
+                self._StdoutThread.start()
+                self._StderrThread.start()
+
+                # Start the HTTP thread.
+
+                self._HTTPThread = threading.Thread(target=RWorkerProcess._HTTPThreadEntryPoint, args=(self._Session, self._HTTPThreadQueue, self._MainThreadQueue), daemon=True)
+                self._HTTPThread.start()
+
+                # Process messages we receive on self._MainThreadQueue,
+                # waiting for R plumber to write a line to stdout saying that
+                # it has started. 
+
+                waitingStarted = datetime.datetime.now()
+                installingRPackages = False
+
+                while True:
+                    elapsed = (datetime.datetime.now() - waitingStarted).total_seconds()
+                    timeout = None if installingRPackages else max(0.1, self._StartupTimeout - elapsed)
+                    try:
+                        msg = self._MainThreadQueue.get(timeout=timeout)
+                    except queue.Empty:
+                        raise RuntimeError(_('%(startupTimeout)s seconds have elapsed after starting MGET\'s R worker process without the process indicating it is ready. Please check preceding log messages to determine if there is a problem with R. If not, consider increasing the Startup Timeout to allow R more time to initialize.') % {'startupTimeout': self._StartupTimeout})
+
+                    if msg[1] == 'started':
+                        Logger.Debug(f'{self.__class__.__name__} 0x{id(self):016X}: {msg[0]} started.')
+
+                    elif msg[1] == 'exited':
+                        Logger.Debug(f'{self.__class__.__name__} 0x{id(self):016X}: {msg[0]} exited.')   # This should not happen under normal operation
+
+                    elif msg[0] in ['StdoutThread', 'StderrThread']:
+                        assert msg[1] == 'log'
+                        if msg[2].startswith('INSTALLING_R_PACKAGES'):
+                            installingRPackages = True
+
+                        elif msg[2].startswith('DONE_INSTALLING_R_PACKAGES'):
+                            installingRPackages = False
+                            waitingStarted = datetime.datetime.now()   # Restart the wait now that packages have been installed
+
+                        elif msg[2].startswith('Running plumber API at'):
+                            break   # R plumber is ready
+
+                        elif msg[2].startswith('Running swagger Docs at'):
+                            pass    # This usually is reported after "Running plumber API at", but swallow it here if we get it first
+
+                        elif msg[2].startswith('DEBUG:'):
+                            self._RLogger.debug(msg[2][6:])
+
+                        elif msg[0] == 'StdoutThread':
+                            self._RLogger.info(msg[2])
+
                         else:
-                            Logger.Debug(f'{self.__class__.__name__} 0x{id(self):016X}: _LogStream {streamName} thread: no more data.')
-                        try:
-                            stream.close()
-                        except:
-                            pass
-                        try:
-                            self._WorkerProcessIsInstallingRPackages.clear()
-                        except:
-                            pass
-                        Logger.Debug(f'{self.__class__.__name__} 0x{id(self):016X}: _LogStream {streamName} thread: exiting.')
+                            self._RLogger.warning(msg[2])
 
-                    logger = logging.getLogger('GeoEco.R')
-
-                    stdoutThread = threading.Thread(target=_LogStream, args=(self._Lock, self._WorkerProcess.stdout, 'stdout', logger, logging.INFO), daemon=True)
-                    try:
-                        stdoutThread.start()
-                    except:
-                        stdoutThread = None
-                        Logger.Debug(f'{self.__class__.__name__} 0x{id(self):016X}: Failed to start _LogStream stdout thread.')
-                        raise
-                    Logger.Debug(f'{self.__class__.__name__} 0x{id(self):016X}: Started _LogStream stdout thread.')
-
-                    stderrThread = threading.Thread(target=_LogStream, args=(self._Lock, self._WorkerProcess.stderr, 'stderr', logger, logging.WARNING), daemon=True)
-                    try:
-                        stderrThread.start()
-                    except:
-                        stderrThread = None
-                        Logger.Debug(f'{self.__class__.__name__} 0x{id(self):016X}: Failed to start _LogStream stderr thread.')
-                        raise
-                    Logger.Debug(f'{self.__class__.__name__} 0x{id(self):016X}: Started _LogStream stderr thread.')
-
-                # If we couldn't start one or both of the logging threads,
-                # close the worker process stream handles before reraising
-                # the exception. This should be a very rare situation, that
-                # should only occur if the system is unstable. Do not kill
-                # the worker process, so it has the best chance of
-                # initializing successfully. Once its done, it will remain
-                # idle. We'll kill it automatically when our process exits.
-
-                except:
-                    Logger.Debug('An exception was raised creating the logging threads. Stopping the worker process and reraising the exception.')
-                    try:
-                        self.Stop()
-                    except:
-                        pass
-                    try:
-                        if stdoutThread is None:
-                            self._WorkerProcess.stdout.close()
-                    except:
-                        pass
-                    try:
-                        if stderrThread is None:
-                            self._WorkerProcess.stderr.close()
-                    except:
-                        pass
-                    self._WorkerProcess = None
-                    raise
-
-            # If we raised an exception trying to start R, close the
-            # requests.Session.
+            # If we raised an exception after allocating the session, close
+            # the various objects that were opened.
 
             except:
+                Logger.Debug(f'{self.__class__.__name__} 0x{id(self):016X}: An exception was raised during one of the steps of starting the Rscript worker process.')
+
+                if self._WorkerProcess is not None:
+                    Logger.Debug(f'{self.__class__.__name__} 0x{id(self):016X}: The worker process was actually started but a subsequent step did not complete successfully. Killing the worker process.')
+                    try:
+                        self._WorkerProcess.kill()
+                    except Exception as e:
+                        Logger.Warning(_('MGET\'s Rscript worker process was started successfully (PID = %(pid)s), but a subsequent problem occurred. We tried to stop worker process but that failed. The process may still be running and need to be stopped manually. The error we encountered stopping the process was: %(error)s: %(msg)s') % {'pid': self._WorkerProcess.pid, 'error': e.__class__.__name__, 'msg': e})
+                    else:
+                        Logger.Debug(f'{self.__class__.__name__} 0x{id(self):016X}: Stopped the worker process.')
+                    self._WorkerProcess = None
+
+                if self._HTTPThread is not None:
+                    if self._HTTPThread.is_alive():
+                        try:
+                            self._HTTPThreadQueue.put(('stop',), timeout=1)
+                            self._HTTPThread.join(timeout=1)
+                        except:
+                            pass
+                    self._HTTPThread = None
+
+                if self._StdoutThread is not None:
+                    if self._StdoutThread.is_alive():
+                        try:
+                            self._StdoutThread.join(timeout=1)
+                        except:
+                            pass
+                    self._StdoutThread = None
+
+                if self._StderrThread is not None:
+                    if self._StderrThread.is_alive():
+                        try:
+                            self._StderrThread.join(timeout=1)
+                        except:
+                            pass
+                    self._StderrThread = None
+
+                self._MainThreadQueue = None
+                self._HTTPThreadQueue = None
+
                 try:
                     self._Session.close()
                 except:
@@ -353,19 +382,7 @@ class RWorkerProcess(collections.abc.MutableMapping):
                 self._Session = None
                 raise
 
-        # If we got to here, we successfully configured a request.Session and
-        # started R. Wait for self._WorkerProcessIsReady event to be set. (We
-        # do this outside of self._Lock, although it is not necessary to do
-        # so.) If it expired, raise a RuntimeError, except if the child
-        # process signalled that it is installing R packages, which can take
-        # long time (10s of minutes on Linux, which requires C compilation).
-
-        while not self._WorkerProcessIsReady.is_set():
-            if not self._WorkerProcessIsReady.wait(timeout=self._StartupTimeout):
-                if not self._WorkerProcessIsInstallingRPackages.is_set():
-                    raise RuntimeError(_('%(startupTimeout)s seconds have elapsed after starting MGET\'s R worker process without the process indicating it is ready. Please check preceding log messages to determine if there is a problem with R. If not, consider increasing the Startup Timeout to allow R more time to initialize.') % {'startupTimeout': self._StartupTimeout})
-
-        Logger.Debug(f'{self.__class__.__name__} 0x{id(self):016X}: R plumber reported that it is ready to receive requests.')
+        Logger.Debug(f'{self.__class__.__name__} 0x{id(self):016X}: R plumber reported that it is ready.')
 
         # On Linux, it seems that if we now immediately issue a request to
         # plumber, it usually fails with "connection refused" for the first
@@ -585,7 +602,9 @@ class RWorkerProcess(collections.abc.MutableMapping):
                                                        stdout=subprocess.PIPE,
                                                        stderr=subprocess.PIPE,
                                                        startupinfo=startupInfo,
-                                                       creationflags=creationFlags)
+                                                       creationflags=creationFlags,
+                                                       encoding='utf-8',
+                                                       text=True)
             except Exception as e:
                 Logger.Error(_('MGET failed to start an Rscript worker process with creation flags 0x%(creationFlags)08X and the command line: %(argsStr)s') % {'creationFlags': creationFlags, 'argsStr': argsStr})
                 raise
@@ -652,12 +671,138 @@ class RWorkerProcess(collections.abc.MutableMapping):
                                                    stdin=subprocess.DEVNULL,
                                                    stdout=subprocess.PIPE,
                                                    stderr=subprocess.PIPE,
-                                                   preexec_fn=setDeathSignal)
+                                                   preexec_fn=setDeathSignal,
+                                                   encoding='utf-8',
+                                                   text=True)
         except Exception as e:
             Logger.Error(_('MGET failed to start an Rscript worker process with the command line: %(argsStr)s') % {'argsStr': argsStr})
             raise
 
         Logger.Debug(f'{self.__class__.__name__} 0x{id(self):016X}: Worker process {self._WorkerProcess.pid} started.')
+
+    @staticmethod
+    def _StreamThreadEntryPoint(stream, threadName, outputQueue):
+        outputQueue.put((threadName, 'started'))
+        try:
+            for line in iter(stream.readline, ''):
+                outputQueue.put((threadName, 'log', line.rstrip()))
+        finally:
+            stream.close()
+            outputQueue.put((threadName, 'exited'))
+
+    @staticmethod
+    def _HTTPThreadEntryPoint(session, inputQueue, outputQueue):
+        outputQueue.put(('HTTPThread', 'started'))
+        try:
+            while True:
+                msg = inputQueue.get()
+                if msg[0] == 'stop':
+                    return
+                else:
+                    assert msg[0] == 'request'
+                    try:
+                        response = getattr(session, msg[1])(**msg[2])
+                    except Exception as e:
+                        outputQueue.put(('HTTPThread', 'exception', e))
+                    else:
+                        outputQueue.put(('HTTPThread', 'response', response))
+        finally:
+            outputQueue.put(('HTTPThread', 'exited'))
+
+    def _SendHTTPRequest(self, method, args):
+
+        # Send the request to the HTTP thread.
+
+        if self._LogWaitLoop:
+            Logger.Debug(f'{self.__class__.__name__} 0x{id(self):016X}: Issuing the request from the HTTPThread.')
+
+        self._HTTPThreadQueue.put(('request', method, args), timeout=5)
+
+        # Loop, processing outputs from the stream threads and the response
+        # from the HTTP thread. Exit the loop when all three have signalled
+        # they are done.
+
+        if self._LogWaitLoop:
+            Logger.Debug(f'{self.__class__.__name__} 0x{id(self):016X}: Waiting for the HTTPThread and stdout and stderr of the child process all to be done.')
+
+        httpThreadDone = False
+        stdoutDone = False
+        stderrDone = False
+        response = None
+
+        while not (httpThreadDone and stdoutDone and stderrDone):
+            try:
+                msg = self._MainThreadQueue.get(timeout=None if not httpThreadDone else 10.)
+            except queue.Empty:
+                raise RuntimeError(_('In RWorkerProcess, the MainThreadQueue timed out after 10 seconds, even though the HTTPThread was done. This is an unexpected error. Please contact the MGET development team for assistance.'))
+
+            if msg[1] == 'started':
+                Logger.Debug(f'{self.__class__.__name__} 0x{id(self):016X}: {msg[0]} started.')  # This should not happen under normal operation
+                stdoutDone = True
+
+            elif msg[1] == 'exited':
+                Logger.Debug(f'{self.__class__.__name__} 0x{id(self):016X}: {msg[0]} exited.')   # This should not happen under normal operation
+                stderrDone = True
+
+            elif msg[0] in ['StdoutThread', 'StderrThread']:
+                assert msg[1] == 'log'
+
+                if msg[2].startswith('Running swagger Docs at'):
+                    pass
+
+                elif msg[2].startswith('API_CALL_DONE'):
+                    if self._LogWaitLoop:
+                        Logger.Debug(f'{self.__class__.__name__} 0x{id(self):016X}: {msg[0][:6]} is done for this HTTP request.')
+                    if msg[0][:6] == 'Stdout':
+                        stdoutDone = True
+                    else:
+                        stderrDone = True
+
+                elif msg[2].startswith('DEBUG:'):
+                    self._RLogger.debug(msg[2][6:])
+
+                elif msg[0] == 'StdoutThread':
+                    self._RLogger.info(msg[2])
+
+                else:
+                    self._RLogger.warning(msg[2])
+
+            else:
+                assert msg[1] in ['response', 'exception']
+                assert not httpThreadDone
+
+                # If we got an exception here, it means we failed to even make
+                # the HTTP request, or the request timed out. It does not
+                # mean that the request completed with HTTP status code 500
+                # (meaning an error from plumber or R). Therefore, we should
+                # not wait around for API_CALL_DONE on the streams, because
+                # it's most likely not going to come. Just raise the
+                # exception immediately.
+
+                if msg[1] == 'exception':
+                    raise msg[2]
+
+                # Otherwise, save the response but continue waiting for
+                # API_CALL_DONE on the streams, as needed.
+
+                response = msg[2]
+                httpThreadDone = True
+
+                # As a special case, if HTTP status code 401 (Unauthorized) was
+
+                # returned, nothing will be logged to stdout or stderr. This
+                # will only happen if we present the wrong authentication
+                # token, which is basically impossible. But to allow an
+                # authentication exception to be raised rather than timing
+                # out, set stdoutDone and stderrDone to True.
+
+                if response.status_code == 401:
+                    stdoutDone = True
+                    stderrDone = True
+
+        # Return the response.
+
+        return response
 
     def Stop(self, timeout=5.):
         with self._Lock:
@@ -673,10 +818,10 @@ class RWorkerProcess(collections.abc.MutableMapping):
             url = f'http://127.0.0.1:{self._Port}/shutdown'
             Logger.Debug(f'{self.__class__.__name__} 0x{id(self):016X}: Sending POST to {url}')
             try:
-                resp = self._Session.post(url, 
-                                          headers={'Authentication-Token': self._AuthenticationToken},
-                                          allow_redirects=False, 
-                                          timeout=timeout)
+                self._SendHTTPRequest('post', {'url': url, 
+                                               'headers': {'Authentication-Token': self._AuthenticationToken},
+                                               'allow_redirects': False, 
+                                               'timeout': timeout})
             except:
                 pass
 
@@ -704,14 +849,43 @@ class RWorkerProcess(collections.abc.MutableMapping):
 
             self._WorkerProcess = None
 
-            # Close the requests.Session.
+            # Close the other stuff we opened.
 
-            Logger.Debug(f'{self.__class__.__name__} 0x{id(self):016X}: Closed requests.Session 0x{id(self._Session):016X}.')
+            if self._HTTPThread is not None:
+                if self._HTTPThread.is_alive():
+                    try:
+                        self._HTTPThreadQueue.put(('stop',), timeout=1)
+                        self._HTTPThread.join(timeout=1)
+                    except:
+                        pass
+                self._HTTPThread = None
+
+            if self._StdoutThread is not None:
+                if self._StdoutThread.is_alive():
+                    try:
+                        self._StdoutThread.join(timeout=1)
+                    except:
+                        pass
+                self._StdoutThread = None
+
+            if self._StderrThread is not None:
+                if self._StderrThread.is_alive():
+                    try:
+                        self._StderrThread.join(timeout=1)
+                    except:
+                        pass
+                self._StderrThread = None
+
+            self._MainThreadQueue = None
+            self._HTTPThreadQueue = None
+
             try:
                 self._Session.close()
             except:
                 pass
             self._Session = None
+
+            Logger.Debug(f'{self.__class__.__name__} 0x{id(self):016X}: Closed requests.Session 0x{id(self._Session):016X}.')
 
     def __enter__(self):
         return self
@@ -815,10 +989,10 @@ class RWorkerProcess(collections.abc.MutableMapping):
             url = f'http://127.0.0.1:{self._Port}/list'
             Logger.Debug(f'{self.__class__.__name__} 0x{id(self):016X}: Sending POST to {url}')
 
-            resp = self._Session.post(url, 
-                                      headers={'Authentication-Token': self._AuthenticationToken},
-                                      allow_redirects=False, 
-                                      timeout=self._Timeout)
+            resp = self._SendHTTPRequest('post', {'url': url, 
+                                                  'headers': {'Authentication-Token': self._AuthenticationToken},
+                                                  'allow_redirects': False, 
+                                                  'timeout': self._Timeout})
 
             return(self._ProcessResponse(resp, parseReturnValue=True))
 
@@ -919,11 +1093,11 @@ class RWorkerProcess(collections.abc.MutableMapping):
             url = f'http://127.0.0.1:{self._Port}/get'
             Logger.Debug(f'{self.__class__.__name__} 0x{id(self):016X}: Sending POST to {url}')
 
-            resp = self._Session.post(url, 
-                                      params={'name': key.strip()}, 
-                                      headers={'Authentication-Token': self._AuthenticationToken},
-                                      allow_redirects=False, 
-                                      timeout=self._Timeout)
+            resp = self._SendHTTPRequest('post', {'url': url, 
+                                                  'params': {'name': key.strip()},
+                                                  'headers': {'Authentication-Token': self._AuthenticationToken},
+                                                  'allow_redirects': False, 
+                                                  'timeout': self._Timeout})
 
             return(self._ProcessResponse(resp, parseReturnValue=True))
 
@@ -948,23 +1122,23 @@ class RWorkerProcess(collections.abc.MutableMapping):
                 buffer = io.BytesIO()
                 pyarrow.feather.write_feather(value, buffer)
                 buffer.seek(0)
-                resp = self._Session.put(url, 
-                                         params={'name': key.strip()}, 
-                                         files={'value': (None, buffer, 'application/vnd.apache.arrow.file')},
-                                         headers={'Authentication-Token': self._AuthenticationToken},
-                                         allow_redirects=False, 
-                                         timeout=self._Timeout)
+                resp = self._SendHTTPRequest('put', {'url': url, 
+                                                     'params': {'name': key.strip()},
+                                                     'files': {'value': (None, buffer, 'application/vnd.apache.arrow.file')},
+                                                     'headers': {'Authentication-Token': self._AuthenticationToken},
+                                                     'allow_redirects': False, 
+                                                     'timeout': self._Timeout})
 
             # Otherwise serialize it to JSON.
 
             else:
                 Logger.Debug(f'{self.__class__.__name__} 0x{id(self):016X}: Sending PUT to {url} with JSON.')
-                resp = self._Session.put(url, 
-                                         params={'name': key.strip()}, 
-                                         data=self._SerializeValueToJSON({'value': value}),
-                                         headers={'Content-Type': 'application/json', 'Authentication-Token': self._AuthenticationToken},
-                                         allow_redirects=False, 
-                                         timeout=self._Timeout)
+                resp = self._SendHTTPRequest('put', {'url': url, 
+                                                     'params': {'name': key.strip()},
+                                                     'data': self._SerializeValueToJSON({'value': value}),
+                                                     'headers': {'Authentication-Token': self._AuthenticationToken},
+                                                     'allow_redirects': False, 
+                                                     'timeout': self._Timeout})
             
             self._ProcessResponse(resp)
 
@@ -977,11 +1151,11 @@ class RWorkerProcess(collections.abc.MutableMapping):
             url = f'http://127.0.0.1:{self._Port}/delete'
             Logger.Debug(f'{self.__class__.__name__} 0x{id(self):016X}: Sending DELETE to {url}')
 
-            resp = self._Session.delete(url, 
-                                        params={'name': key.strip()}, 
-                                        headers={'Authentication-Token': self._AuthenticationToken},
-                                        allow_redirects=False, 
-                                        timeout=self._Timeout)
+            resp = self._SendHTTPRequest('delete', {'url': url, 
+                                                    'params': {'name': key.strip()},
+                                                    'headers': {'Authentication-Token': self._AuthenticationToken},
+                                                    'allow_redirects': False, 
+                                                    'timeout': self._Timeout})
 
             self._ProcessResponse(resp)
 
@@ -993,11 +1167,11 @@ class RWorkerProcess(collections.abc.MutableMapping):
             url = f'http://127.0.0.1:{self._Port}/eval'
             Logger.Debug(f'{self.__class__.__name__} 0x{id(self):016X}: Sending POST to {url}')
 
-            resp = self._Session.post(url, 
-                                      json={'expr': expr}, 
-                                      headers={'Authentication-Token': self._AuthenticationToken},
-                                      allow_redirects=False, 
-                                      timeout=timeout)
+            resp = self._SendHTTPRequest('post', {'url': url, 
+                                                  'json': {'expr': expr}, 
+                                                  'headers': {'Authentication-Token': self._AuthenticationToken},
+                                                  'allow_redirects': False, 
+                                                  'timeout': timeout})
 
             return(self._ProcessResponse(resp, parseReturnValue=True))
 
