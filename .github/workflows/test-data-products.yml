@@ -151,16 +151,17 @@ jobs:
         uses: actions/cache@v4
         with:
           path: GDAL_wheels
-          key: cache-GDAL-3.9.2-win_amd64-wheels
+          key: cache-GDAL-3.10.1-win_amd64-wheels
 
       - name: Download GDAL wheels from cgohlke/geospatial-wheels
         if: steps.cache-GDAL-wheels.outputs.cache-hit != 'true'
         run: |
           mkdir GDAL_wheels
           curl -L -o GDAL_wheels\\GDAL-3.9.2-cp39-cp39-win_amd64.whl https://github.com/cgohlke/geospatial-wheels/releases/download/v2024.9.22/GDAL-3.9.2-cp39-cp39-win_amd64.whl
-          curl -L -o GDAL_wheels\\GDAL-3.9.2-cp310-cp310-win_amd64.whl https://github.com/cgohlke/geospatial-wheels/releases/download/v2024.9.22/GDAL-3.9.2-cp310-cp310-win_amd64.whl
-          curl -L -o GDAL_wheels\\GDAL-3.9.2-cp311-cp311-win_amd64.whl https://github.com/cgohlke/geospatial-wheels/releases/download/v2024.9.22/GDAL-3.9.2-cp311-cp311-win_amd64.whl
-          curl -L -o GDAL_wheels\\GDAL-3.9.2-cp312-cp312-win_amd64.whl https://github.com/cgohlke/geospatial-wheels/releases/download/v2024.9.22/GDAL-3.9.2-cp312-cp312-win_amd64.whl
+          curl -L -o GDAL_wheels\\GDAL-3.10.1-cp310-cp310-win_amd64.whl https://github.com/cgohlke/geospatial-wheels/releases/download/v2025.1.20/GDAL-3.10.1-cp310-cp310-win_amd64.whl
+          curl -L -o GDAL_wheels\\GDAL-3.10.1-cp311-cp311-win_amd64.whl https://github.com/cgohlke/geospatial-wheels/releases/download/v2025.1.20/GDAL-3.10.1-cp311-cp311-win_amd64.whl
+          curl -L -o GDAL_wheels\\GDAL-3.10.1-cp312-cp312-win_amd64.whl https://github.com/cgohlke/geospatial-wheels/releases/download/v2025.1.20/GDAL-3.10.1-cp312-cp312-win_amd64.whl
+          curl -L -o GDAL_wheels\\GDAL-3.10.1-cp313-cp313-win_amd64.whl https://github.com/cgohlke/geospatial-wheels/releases/download/v2025.1.20/GDAL-3.10.1-cp313-cp313-win_amd64.whl
 
       - name: Install GDAL wheel
         run: |
