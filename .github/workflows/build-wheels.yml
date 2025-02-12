@@ -249,6 +249,7 @@ jobs:
           curl -L -o GDAL_wheels\\GDAL-3.10.1-cp310-cp310-win_amd64.whl https://github.com/cgohlke/geospatial-wheels/releases/download/v2025.1.20/GDAL-3.10.1-cp310-cp310-win_amd64.whl
           curl -L -o GDAL_wheels\\GDAL-3.10.1-cp311-cp311-win_amd64.whl https://github.com/cgohlke/geospatial-wheels/releases/download/v2025.1.20/GDAL-3.10.1-cp311-cp311-win_amd64.whl
           curl -L -o GDAL_wheels\\GDAL-3.10.1-cp312-cp312-win_amd64.whl https://github.com/cgohlke/geospatial-wheels/releases/download/v2025.1.20/GDAL-3.10.1-cp312-cp312-win_amd64.whl
+          curl -L -o GDAL_wheels\\GDAL-3.10.1-cp313-cp313-win_amd64.whl https://github.com/cgohlke/geospatial-wheels/releases/download/v2025.1.20/GDAL-3.10.1-cp313-cp313-win_amd64.whl
 
       - name: Install GDAL wheel
         shell: bash   # Yes, bash on Windows
