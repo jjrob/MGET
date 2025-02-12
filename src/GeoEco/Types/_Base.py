@@ -219,6 +219,11 @@ class AnyObjectTypeMetadata(TypeMetadata):
 
     ArcGISDataTypeDict = property(_GetArcGISDataTypeDict, doc=DynamicDocString())
 
+    def _GetArcGISDomainDict(self):
+        return None     
+
+    ArcGISDomainDict = property(_GetArcGISDomainDict, doc=DynamicDocString())
+
 
 class NoneTypeMetadata(TypeMetadata):
     __doc__ = DynamicDocString()
