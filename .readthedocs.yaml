@@ -9,7 +9,7 @@ version: 2
 build:
   os: ubuntu-22.04
   tools:
-    python: "3.12"
+    python: "3.13"
 
   # To build the documentation, our package (GeoEco) must be installed.
   # But we don't want to install all of its dependencies, and we want.
