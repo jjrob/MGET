@@ -193,7 +193,7 @@ jobs:
           NASA_EARTHDATA_USERNAME: ${{ secrets.NASA_EARTHDATA_USERNAME }}
           NASA_EARTHDATA_PASSWORD: ${{ secrets.NASA_EARTHDATA_PASSWORD }}
         run: |
-          python -m pytest ./test/GeoEco/
+          python -m pytest -rs ./test/GeoEco/
 
   test_wheels_windows:
     name: Test wheel on ${{ matrix.os }} Python ${{ matrix.python-version }}
@@ -314,4 +314,4 @@ jobs:
           NASA_EARTHDATA_USERNAME: ${{ secrets.NASA_EARTHDATA_USERNAME }}
           NASA_EARTHDATA_PASSWORD: ${{ secrets.NASA_EARTHDATA_PASSWORD }}
         run: |
-          python -m pytest test\\GeoEco
+          python -m pytest -rs test\\GeoEco
