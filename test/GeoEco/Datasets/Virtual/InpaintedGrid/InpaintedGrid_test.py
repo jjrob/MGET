@@ -18,16 +18,9 @@ from GeoEco.Datasets.GDAL import GDALDataset
 from GeoEco.Datasets.Virtual import InpaintedGrid
 from GeoEco.Matlab import MatlabDependency
 
+from ....Matlab.Matlab_test import isMatlabInstalled
+
 Logger.Initialize()
-
-
-def isMatlabInstalled():
-    d = MatlabDependency()
-    try:
-        d.Initialize()
-    except:
-        return False
-    return True
 
 
 @pytest.fixture

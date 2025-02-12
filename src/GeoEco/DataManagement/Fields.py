@@ -8,6 +8,8 @@
 # root of this project or https://opensource.org/license/bsd-3-clause for the
 # full license text.
 
+import sys
+
 from ..Datasets.ArcGIS import ArcGISTable
 from ..DynamicDocString import DynamicDocString
 from ..Internationalization import _
@@ -48,7 +50,7 @@ class Field(object):
                 for m in modulesToImport:
                     Logger.Debug(_('Importing module %s.'), m)
                     try:
-                        exec('import ' + str(m))
+                        exec('import ' + str(m), globals(), sys._getframe().f_locals)
                     except:
                         Logger.LogExceptionAsError(_('Could not import Python module "%s".') % m)
                         raise
@@ -58,7 +60,7 @@ class Field(object):
             if statementsToExecFirst is not None:
                 for statement in statementsToExecFirst:
                     try:
-                        exec(statement)
+                        exec(statement, globals(), sys._getframe().f_locals)
                     except:
                         Logger.LogExceptionAsError(_('Could not exec Python statement "%s".') % statement)
                         raise
@@ -80,13 +82,13 @@ class Field(object):
                         if statementsToExecPerRow is not None:
                             for statement in statementsToExecPerRow:
                                 try:
-                                    exec(statement)
+                                    exec(statement, globals(), sys._getframe().f_locals)
                                 except:
                                     Logger.LogExceptionAsError(_('Could not exec Python statement "%s".') % statement)
                                     raise
                         for i in range(len(fields)):
                             try:
-                                value = eval(pythonExpressions[i])
+                                value = eval(pythonExpressions[i], globals(), sys._getframe().f_locals)
                             except:
                                 Logger.LogExceptionAsError(_('Could not eval Python statement "%s".') % pythonExpressions[i])
                                 raise

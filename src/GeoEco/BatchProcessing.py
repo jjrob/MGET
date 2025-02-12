@@ -11,6 +11,7 @@
 import copy
 import inspect
 import os
+import sys
 import types
 
 from .ArcGIS import ArcGISDependency
@@ -2021,8 +2022,8 @@ workspace containing the table will be prepended instead."""),
 
         Logger.Debug(_('Invoking %s(%s)...'), findMethodMetadata.Object, args)
 
-        exec('from %s import %s' % (findMethodMetadata.Class.Module.Name, findMethodMetadata.Class.Name))
-        eval('%s.%s(%s)' % (findMethodMetadata.Class.Name, findMethodMetadata.Name, args))
+        exec('from %s import %s' % (findMethodMetadata.Class.Module.Name, findMethodMetadata.Class.Name), globals(), sys._getframe().f_locals)
+        eval('%s.%s(%s)' % (findMethodMetadata.Class.Name, findMethodMetadata.Name, args), globals(), sys._getframe().f_locals)
 
         # Add fields for the outputs and calculate them by calling the calculate
         # field method.
@@ -2046,8 +2047,8 @@ workspace containing the table will be prepended instead."""),
 
                     Logger.Debug(_('Invoking %s(%s)...'), calculateFieldMethodMetadata.Object, args)
 
-                    exec('from %s import %s' % (calculateFieldMethodMetadata.Class.Module.Name, calculateFieldMethodMetadata.Class.Name))
-                    eval('%s.%s(%s)' % (calculateFieldMethodMetadata.Class.Name, calculateFieldMethodMetadata.Name, args))
+                    exec('from %s import %s' % (calculateFieldMethodMetadata.Class.Module.Name, calculateFieldMethodMetadata.Class.Name), globals(), sys._getframe().f_locals)
+                    eval('%s.%s(%s)' % (calculateFieldMethodMetadata.Class.Name, calculateFieldMethodMetadata.Name, args), globals(), sys._getframe().f_locals)
 
         # Call the "process table" method to do the processing.
 

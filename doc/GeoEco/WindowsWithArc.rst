@@ -118,14 +118,7 @@ Step 3. Install MGET
    with ``conda`` if you did not install micromamba in step 1 and want to try
    the conda that comes with ArcGIS Pro (we don't recommend this)::
 
-      micromamba install --channel conda-forge --yes mget3 copernicusmarine==1.3.0 aiohttp==3.9.5
-
-MGET uses ``copernicusmarine`` to access `Copernicus Marine Service
-<https://marine.copernicus.eu/>`__, and it depends on ``aiohttp``. The reason
-for pinning these packages to specific versions rather omitting them and
-allowing conda to install the latest versions is that later versions will not
-work with the packages that ArcGIS preinstalls and freezes into its
-``arcgispro-py3-mget`` environment.
+      micromamba install --channel conda-forge --yes mget3
 
 
 Step 4. Add the MGET toolbox to ArcGIS Pro

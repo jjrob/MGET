@@ -19,16 +19,9 @@ from GeoEco.DataManagement.ArcGISRasters import ArcGISRaster
 from GeoEco.Datasets.ArcGIS import ArcGISRaster as ArcGISRaster2
 from GeoEco.Matlab import MatlabDependency
 
+from ...Matlab.Matlab_test import isMatlabInstalled
+
 Logger.Initialize()
-
-
-def isMatlabInstalled():
-    d = MatlabDependency()
-    try:
-        d.Initialize()
-    except:
-        return False
-    return True
 
 
 def isArcPyInstalled():

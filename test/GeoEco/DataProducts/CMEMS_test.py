@@ -23,6 +23,8 @@ from GeoEco.Datasets.GDAL import GDALDataset
 from GeoEco.Matlab import MatlabDependency
 from GeoEco.Types import UnicodeStringTypeMetadata
 
+from ..Matlab.Matlab_test import isMatlabInstalled
+
 Logger.Initialize()
 
 
@@ -33,15 +35,6 @@ def getCMEMSCredentials():
         return (os.getenv('CMEMS_USERNAME'), os.getenv('CMEMS_PASSWORD'))
     except:
         return None, None
-
-
-def isMatlabInstalled():
-    d = MatlabDependency()
-    try:
-        d.Initialize()
-    except:
-        return False
-    return True
 
 
 def isArcPyInstalled():

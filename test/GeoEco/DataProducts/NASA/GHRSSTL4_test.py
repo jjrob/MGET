@@ -24,6 +24,7 @@ from GeoEco.DataProducts.NASA.PODAAC import GHRSSTLevel4Granules, GHRSSTLevel4
 from GeoEco.Matlab import MatlabDependency
 from GeoEco.Types import UnicodeStringTypeMetadata
 
+from ...Matlab.Matlab_test import isMatlabInstalled
 
 Logger.Initialize()
 
@@ -35,15 +36,6 @@ def getEarthdataCredentials():
         return (os.getenv('NASA_EARTHDATA_USERNAME'), os.getenv('NASA_EARTHDATA_PASSWORD'))
     except:
         return None, None
-
-
-def isMatlabInstalled():
-    d = MatlabDependency()
-    try:
-        d.Initialize()
-    except:
-        return False
-    return True
 
 
 def isArcPyInstalled():
