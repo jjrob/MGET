@@ -12,6 +12,7 @@ import datetime
 import os
 from pathlib import Path
 import re
+import sys
 
 import numpy
 import pytest
@@ -23,8 +24,6 @@ from GeoEco.Logging import Logger
 from GeoEco.DataProducts.NASA.PODAAC import GHRSSTLevel4Granules, GHRSSTLevel4
 from GeoEco.Matlab import MatlabDependency
 from GeoEco.Types import UnicodeStringTypeMetadata
-
-from ...Matlab.Matlab_test import isMatlabInstalled
 
 Logger.Initialize()
 
@@ -41,6 +40,23 @@ def getEarthdataCredentials():
 def isArcPyInstalled():
     try:
         import arcpy
+    except:
+        return False
+    return True
+
+
+def isMatlabInstalled():
+
+    # Currently, we only support MGET's MATLAB functionality on Python 3.12 or
+    # lower, because the MATLAB Compiler only supports that, and we can only
+    # execute MATLAB code packaged by it on Python versions it supports.
+
+    if sys.version_info.minor > 12:
+        return False
+
+    d = MatlabDependency()
+    try:
+        d.Initialize()
     except:
         return False
     return True

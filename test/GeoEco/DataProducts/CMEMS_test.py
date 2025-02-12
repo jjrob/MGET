@@ -10,6 +10,7 @@
 import datetime
 import os
 from pathlib import Path
+import sys
 
 import numpy
 import pytest
@@ -22,8 +23,6 @@ from GeoEco.DataProducts.CMEMS import CMEMSARCOArray
 from GeoEco.Datasets.GDAL import GDALDataset
 from GeoEco.Matlab import MatlabDependency
 from GeoEco.Types import UnicodeStringTypeMetadata
-
-from ..Matlab.Matlab_test import isMatlabInstalled
 
 Logger.Initialize()
 
@@ -43,6 +42,31 @@ def isArcPyInstalled():
     except:
         return False
     return True
+
+
+def isMatlabInstalled():
+
+    # Currently, we only support MGET's MATLAB functionality on Python 3.12 or
+    # lower, because the MATLAB Compiler only supports that, and we can only
+    # execute MATLAB code packaged by it on Python versions it supports.
+
+    if sys.version_info.minor > 12:
+        return False
+
+    d = MatlabDependency()
+    try:
+        d.Initialize()
+    except:
+        return False
+    return True
+
+
+def isCopernicus1Installed():
+    try:
+        import copernicusmarine
+        return copernicusmarine.__version__.startswith('1') or copernicusmarine.__version__.startswith('0')
+    except:
+        return False
 
 
 @pytest.mark.skipif(None in getCMEMSCredentials(), reason='CMEMS_USERNAME or CMEMS_PASSWORD environment variables not defined')
@@ -148,6 +172,7 @@ class TestCMEMSARCOArray():
 
 
 @pytest.mark.skipif(None in getCMEMSCredentials(), reason='CMEMS_USERNAME or CMEMS_PASSWORD environment variables not defined')
+@pytest.mark.skipif(isCopernicus1Installed(), reason='copernicusmarine is not installed' if 'copernicusmarine' not in sys.modules else 'copernicusmarine ' + sys.modules['copernicusmarine'].__version__ + ' is installed, but the buggy tyx problem is not fixed until version 2.0.0')
 @pytest.mark.parametrize('datasetID,variableShortName', [
     ('cmems_mod_glo_phy_my_0.083deg_P1D-m', 'bottomT'),
     ('cmems_mod_glo_phy_my_0.083deg_P1D-m', 'mlotst'),
