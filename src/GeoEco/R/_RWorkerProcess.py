@@ -32,6 +32,7 @@ from ..Dependencies import SoftwareNotInstalledError
 from ..DynamicDocString import DynamicDocString
 from ..Internationalization import _
 from ..Logging import Logger
+from ..Types import DateTimeTypeMetadata, FloatTypeMetadata
 
 
 # The R plumber package uses jsonlite for deserialization. jsonlite will
@@ -1176,10 +1177,67 @@ class RWorkerProcess(collections.abc.MutableMapping):
             return(self._ProcessResponse(resp, parseReturnValue=True))
 
     @classmethod
-    def ExecuteRAndEvaluateExpressions(cls, expressions, returnResult=False, timeout=60., rInstallDir=None, rLibDir=None, rRepository='https://cloud.r-project.org', updateRPackages=False, port=None, startupTimeout=15., defaultTZ=None):
+    def ExecuteRAndEvaluateExpressions(cls, expressions, returnResult=False, timeout=60., rInstallDir=None, rLibDir=None, rRepository='https://cloud.r-project.org', updateRPackages=False, port=None, startupTimeout=15., defaultTZ=None, variableNames=None, variableValues=None):
         cls.__doc__.Obj.ValidateMethodInvocation()
 
+        # Perform additional validation.
+
+        if variableNames is not None and variableValues is None or variableNames is None and variableValues is not None:
+            Logger.RaiseException(ValueError(_('The variableNames and variableValues parameters must both be provided, or neither must be provided.')))
+
+        uniqueNames = {}
+        if variableNames is not None:
+            for name in variableNames:
+                if name in uniqueNames:
+                    Logger.RaiseException(ValueError(_('The name "%(name)s" appears more than once in the list of variable names to define in the R interpreter. This is not allowed. Please rename or remove the duplicates.') % {'name': name}))
+                uniqueNames[name] = None
+
+        # If the caller provided variable values, parse strings into None,
+        # boolean, integer, float, and datetime, so that ArcGIS users can pass
+        # in these types (instead of just being able to pass in strings).
+
+        if variableNames is not None:
+            for i in range(len(variableValues)):
+                if isinstance(variableValues[i], str):
+                    if len(variableValues[i]) <= 0:
+                        variableValues[i] = None
+                    else:
+                        oldValue = variableValues[i].strip().lower()
+                        if oldValue == 'true':
+                            variableValues[i] = True
+                        elif oldValue == 'false':
+                            variableValues[i] = False
+                        else:
+                            newValue = None
+                            try:
+                                newValue = int(oldValue)
+                            except:
+                                try:
+                                    newValue = FloatTypeMetadata.ParseFromArcGISString(oldValue)
+                                except:
+                                    try:
+                                        newValue = DateTimeTypeMetadata.ParseDatetimeFromString(variableValues[i].strip())
+                                    except:
+                                        pass
+                            if newValue is not None:
+                                variableValues[i] = newValue
+
+        # Instantiate RWorkerProcess using the caller's parameters.
+
         with RWorkerProcess(rInstallDir=rInstallDir, rLibDir=rLibDir, rRepository=rRepository, updateRPackages=updateRPackages, port=port, startupTimeout=startupTimeout, defaultTZ=defaultTZ) as r:
+
+            # If the caller passed us variables to assign, assign them now.
+
+            if variableNames is not None:
+                for i in range(len(variableNames)):
+                    if isinstance(variableValues[i], datetime.datetime) and variableValues[i].tzinfo is None:
+                        r[variableNames[i]] = variableValues[i].replace(tzinfo=r._TZInfo)
+                    else:
+                        r[variableNames[i]] = variableValues[i]
+
+            # Iterate through the lines, evaluate each one, and return the
+            # result of the last one.
+
             result = None
             for i, expr in enumerate(expressions):
                 if returnResult and i == len(expressions) - 1:

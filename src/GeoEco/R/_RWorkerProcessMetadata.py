@@ -895,6 +895,81 @@ CopyArgumentMetadata(RWorkerProcess.__init__, 'port', RWorkerProcess.ExecuteRAnd
 CopyArgumentMetadata(RWorkerProcess.__init__, 'startupTimeout', RWorkerProcess.ExecuteRAndEvaluateExpressions, 'startupTimeout')
 CopyArgumentMetadata(RWorkerProcess.__init__, 'defaultTZ', RWorkerProcess.ExecuteRAndEvaluateExpressions, 'defaultTZ')
 
+AddArgumentMetadata(RWorkerProcess.ExecuteRAndEvaluateExpressions, 'variableNames',
+    typeMetadata=ListTypeMetadata(elementType=UnicodeStringTypeMetadata(minLength=1), canBeNone=True),
+    description=_(
+"""A list of names of variables to define in the R interpreter before the R
+expressions are evaluated.
+
+This list must have the same number of entries as the Variable Values
+parameter. This list specifies the names of the variables that will be defined
+and that list specifies their values.
+
+These two parameters are useful when you need to pass input data that will be
+used in your R expressions. You can initialize variables to values you
+specify, and then refer to the variables in the R expressions. For example,
+you might define a variable named ``inputCSVFile`` and then include the
+following R expressions to read the table and print a summary::
+
+    x = read.csv(inputCSVFile)
+    print(summary(x))
+
+"""),
+    arcGISDisplayName=_('Variable names'),
+    arcGISCategory=_('R variables to define'))
+
+AddArgumentMetadata(RWorkerProcess.ExecuteRAndEvaluateExpressions, 'variableValues',
+    typeMetadata=ListTypeMetadata(elementType=AnyObjectTypeMetadata(canBeNone=True), canBeNone=True, mustBeSameLengthAsArgument='variableNames'),
+    description=_(
+"""A list of values of variables to define in the R interpreter before the R
+expressions are evaluated.
+
+This list must have the same number of entries as the Variable Names
+parameter. That list specifies the names of the variables that will be
+defined and this list specifies their values.
+
+The values you provide are automatically converted to the most appropriate R
+data types. Please see the MGET documentation for the RWorkerProcess class for
+details. However, because this function is intended to be invoked as an ArcGIS
+geoprocessing tool, it handles strings differently that described in that
+documentation.
+
+The reason this is necessary is because the ArcGIS geoprocessing framework
+passes all parameters to Python tools (such as this one) as strings, making it
+impossible to determine the original data type of each parameter simply from
+its value. For example, given the string "123", it is impossible to determine
+if it was supposed to represent the string "123", the integer 123, or the
+floating point number 123.0.
+
+To address this limitation, this function attempts to parse strings into
+booleans, integers, floating point numbers, and datetimes, in that order. If a
+parsing attempt succeeds, the parsed value is used. If all parsing attempts
+fail, it is converted to a string as normal. If a string is empty (it has a
+length of zero), it is converted to ``NA`` in R. (If a string contains one or
+more whitespace characters, it is not considered empty.)
+
+For example:
+
+* "True" is converted to an R ``logical``
+* "5" is converted to an R ``integer``
+* "1.05" is converted to an R ``double``
+* "2007-12-31 12:34:56" is converted to an R ``POSIXct``.
+* "1.05 days" is converted to an R ``character``
+* "" is converted to R ``NA``
+
+This tool parses booleans as "true" or "false" (case insensitive). It attempts
+to parse dates using a large number of formats, starting with what appears to
+be the appropriate formats for the operating system's current locale. If no
+time zone is included in the string itself, the time zone is specified by the
+`defaultTZ` parameter.
+
+This special parsing logic only applies to atomic string values. It does NOT
+apply to collections of strings, such as lists or dictionaries of strings. (It
+is only possible to provide such collections when calling this function from
+Python; it cannot be done from ArcGIS geoprocessing.)"""),
+    arcGISDisplayName=_('Variable values'),
+    arcGISCategory=_('R variables to define'))
+
 AddResultMetadata(RWorkerProcess.ExecuteRAndEvaluateExpressions, 'result',
     typeMetadata=AnyObjectTypeMetadata(canBeNone=True),
     description=_(

@@ -259,3 +259,22 @@ class TestRWorkerProcess():
 
         with pytest.raises(Exception, match='.*timeout.*'):
             RWorkerProcess.ExecuteRAndEvaluateExpressions(['1+1'], timeout=0.01)
+
+    @pytest.mark.parametrize('expr,result', [
+        ('a', None),
+        ('b', True),
+        ('c', False),
+        ('d', 123),
+        ('e', 123.45),
+        ('f', 'Hello'),
+        ('g', ' '),
+        ('h', datetime.datetime(2010,12,31, 1,23,45, tzinfo=zoneinfo.ZoneInfo(key='America/Los_Angeles'))),
+        ('i', datetime.datetime(2010,12,31, 1,23,45, tzinfo=zoneinfo.ZoneInfo(key='America/Los_Angeles'))),
+    ])
+    def test_ExecuteRAndEvaluateExpressions_WithVariables(self, expr, result):
+        x = RWorkerProcess.ExecuteRAndEvaluateExpressions([expr], 
+                                                          returnResult=True, 
+                                                          variableNames=['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i'],
+                                                          variableValues=['', 'True', 'False', '123', '123.45', 'Hello', ' ', '2010-12-31 01:23:45-08:00', '2010-12-31 01:23:45'],
+                                                          defaultTZ='America/Los_Angeles')
+        assert x == result

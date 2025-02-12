@@ -12,6 +12,7 @@ the :doc:`Internal API <InternalAPI>`, mainly to configure logging.
    :maxdepth: 1
 
    PythonExamples/PythonDownloadingCMEMSRasters
+   PythonExamples/PythonInvokingR
 
 .. Note::
     We will incorporate additional examples as we continue to port MGET to

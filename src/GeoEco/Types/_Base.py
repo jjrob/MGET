@@ -484,129 +484,30 @@ class DateTimeTypeMetadata(TypeMetadata):
         # format. I verified this on Windows by switching the Regional and
         # Language Options from English (United States) to German (Germany) and
         # observing the datetime string being passed in a different format.
-        #
         # This means we have to try to parse the string in the locale-specific
-        # format. Sadly Python does not give us much help here. The
-        # time.strptime function does have some support for parsing
-        # locale-specific formats (%x and %X) but it does not seem to work on
-        # Windows (ArcGIS passes dates as mm/dd/YYYY but the function expects
-        # mm/dd/yy). As a result, we have to exhaustively try to parse different
-        # formats. This is really annoying. We could take a dependency on
-        # mxDateTime but their licensing model is not compatible with ours, and
-        # it would be a shame to take the dependency just to parse a datetime.
+        # format. The ParseDatetimeFromString function tries to do this.
 
-        t = self.ParseDatetimeFromString(s)
-
-        if t is None:
-            _RaiseException(ValueError(_('Failed to parse a date/time value from the string "%(string)s" provided for the %(paramName)s parameter (parameter number %(paramIndex)i). Please provide a value in a supported date/time format. If you provide a date but omit the time, midnight is assumed. You may not provide a time without a date.') % {'string' : s, 'paramName' : paramDisplayName, 'paramIndex' : paramIndex}))
-
-        return t
+        try:
+            return self.ParseDatetimeFromString(s)
+        except Exception as e:
+            _RaiseException(ValueError(_('Failed to parse a date/time value from the string "%(string)s" provided for the %(paramName)s parameter (parameter number %(paramIndex)i). Please provide a value in a supported date/time format. You may not provide a time without a date. Error details: %(e)s: %(msg)s') % {'string' : s, 'paramName' : paramDisplayName, 'paramIndex' : paramIndex, 'e': e.__class__.__name__, 'msg': e}))
 
     @classmethod
-    def ParseDatetimeFromString(cls, s):
+    def ParseDatetimeFromString(cls, s, ignoreTZ=False):
 
-        # Order the parsing formats that we will attempt according to whether
-        # the year, month, or day comes first in the current locale-specific
-        # date format.
+        # If we haven't done so yet for this instance (or the class itself)
+        # whether the locale-specific date format lists the year first or
+        # last, or whether the day comes before the month, do it now.
 
-        yearFirstFormats = ['%Y/%m/%d',
-                            '%Y-%m-%d',
-                            '%Y-.%m-.%d',
-                            '%y/%m/%d',
-                            '%y-%m-%d',
-                            '%y-.%m-.%d',
-                            '%Y/%m/%d %I:%M:%S %p',
-                            '%Y-%m-%d %I:%M:%S %p',
-                            '%Y.%m.%d %I:%M:%S %p',
-                            '%y/%m/%d %I:%M:%S %p',
-                            '%y-%m-%d %I:%M:%S %p',
-                            '%y.%m.%d %I:%M:%S %p',
-                            '%Y/%m/%d %H:%M:%S',
-                            '%Y-%m-%d %H:%M:%S',
-                            '%Y.%m.%d %H:%M:%S',
-                            '%y/%m/%d %H:%M:%S',
-                            '%y-%m-%d %H:%M:%S',
-                            '%y.%m.%d %H:%M:%S']
+        if not hasattr(cls, '_YearFirst'):
+            localeTimeStr = time.strftime('%x', (2007, 12, 31, 0, 0, 0, 0, 365, -1))
+            cls._YearFirst = localeTimeStr.startswith('2007') or localeTimeStr.startswith('07') or localeTimeStr.startswith('7')
+            cls._DayFirst = localeTimeStr.startswith('31') or cls._YearFirst and not localeTimeStr.endswith('31')
 
-        dayFirstFormats = ['%d/%m/%Y',
-                           '%d-%m-%Y',
-                           '%d.%m.%Y',
-                           '%d/%m/%y',
-                           '%d-%m-%y',
-                           '%d.%m.%y',
-                           '%d/%m/%Y %I:%M:%S %p',
-                           '%d-%m-%Y %I:%M:%S %p',
-                           '%d.%m.%Y %I:%M:%S %p',
-                           '%d/%m/%y %I:%M:%S %p',
-                           '%d-%m-%y %I:%M:%S %p',
-                           '%d.%m.%y %I:%M:%S %p',
-                           '%d/%m/%Y %H:%M:%S',
-                           '%d-%m-%Y %H:%M:%S',
-                           '%d.%m.%Y %H:%M:%S',
-                           '%d/%m/%y %H:%M:%S',
-                           '%d-%m-%y %H:%M:%S',
-                           '%d.%m.%y %H:%M:%S']
+        # Use dateutil.parser.parse to parse a datetime from the string.
 
-        monthFirstFormats = ['%m/%d/%Y',
-                             '%m-%d-%Y',
-                             '%m.%d.%Y',
-                             '%m/%d/%y',
-                             '%m-%d-%y',
-                             '%m.%d.%y',
-                             '%m/%d/%Y %I:%M:%S %p',
-                             '%m-%d-%Y %I:%M:%S %p',
-                             '%m.%d.%Y %I:%M:%S %p',
-                             '%m/%d/%y %I:%M:%S %p',
-                             '%m-%d-%y %I:%M:%S %p',
-                             '%m.%d.%y %I:%M:%S %p',
-                             '%m/%d/%Y %H:%M:%S',
-                             '%m-%d-%Y %H:%M:%S',
-                             '%m.%d.%Y %H:%M:%S',
-                             '%m/%d/%y %H:%M:%S',
-                             '%m-%d-%y %H:%M:%S',
-                             '%m.%d.%y %H:%M:%S']
-
-        otherFormats = ['%Y.%m.%d.',
-                        '%Y.%m.%d. %H:%M:%S',
-                        '%Y-%m-%d %I:%M:%S.%p',
-                        '%d/%m %Y',
-                        '%d/%m %Y %H:%M:%S',
-                        '%Y/%m/%d/%a',
-                        '%Y/%m/%d/%A',
-                        '%d-%b-%Y',
-                        '%d-%b-%Y %H:%M:%S',
-                        '%d/%b/%Y',
-                        '%d/%b/%Y %H:%M:%S',
-                        '%d-%b-%y',
-                        '%d-%b-%y %H:%M:%S',
-                        '%d/%b/%y',
-                        '%d/%b/%y %H:%M:%S',
-                        '%c',
-                        '%x']
-
-        localeTimeStr = time.strftime('%x', (2007, 12, 31, 0, 0, 0, 0, 365, -1))
-        if localeTimeStr.startswith('2007') or localeTimeStr.startswith('07') or localeTimeStr.startswith('7'):
-            formats = yearFirstFormats + dayFirstFormats + monthFirstFormats + otherFormats
-        elif localeTimeStr.startswith('31'):
-            formats = dayFirstFormats + monthFirstFormats + yearFirstFormats + otherFormats
-        else:
-            formats = monthFirstFormats + yearFirstFormats + dayFirstFormats + otherFormats
-
-        # Parse the string using the list of formats.
-
-        t = None
-        for f in formats:
-            try:
-                t = time.strptime(s, f)
-            except:
-                pass
-            else:
-                break
-
-        if t is not None:
-            return datetime.datetime(*t[0:6])
-        
-        return None
+        import dateutil.parser
+        return dateutil.parser.parse(s, ignoretz=ignoreTZ, dayfirst=cls._DayFirst, yearfirst=cls._YearFirst)
 
     def GetConstraintDescriptionStrings(self):
         constraints = super(DateTimeTypeMetadata, self).GetConstraintDescriptionStrings()
