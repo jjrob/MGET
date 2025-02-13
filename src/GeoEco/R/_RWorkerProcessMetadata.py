@@ -619,6 +619,19 @@ https://cloud.r-project.org will be used."""),
     arcGISDisplayName=_('R repository for downloading packages'),
     arcGISCategory=_('R options'))
 
+AddArgumentMetadata(RWorkerProcess.__init__, 'rPackages',
+    typeMetadata=ListTypeMetadata(elementType=UnicodeStringTypeMetadata(minLength=1, mustMatchRegEx=r'^[a-zA-Z][a-zA-Z0-9_\.]*$'), minLength=1, canBeNone=True),
+    description=_(
+"""List of R packages to ensure are installed. For each package that is
+provided, MGET will check whether it is installed. If it is not, MGET will
+install it. If it is, MGET will do nothing. To update already-installed
+packages, use the `updateRPackages` parameter.
+
+MGET does not automatically "load" the packages given here. If you need to
+load them, make sure the expressions include a call to ``load()``, or
+another suitable function."""),
+    arcGISDisplayName=_('Required R packages'))   # Note that this does not have an arcGISCategory by default
+
 AddArgumentMetadata(RWorkerProcess.__init__, 'updateRPackages',
     typeMetadata=BooleanTypeMetadata(),
     description=_(
@@ -666,13 +679,12 @@ AddArgumentMetadata(RWorkerProcess.__init__, 'startupTimeout',
     typeMetadata=FloatTypeMetadata(mustBeGreaterThan=0., canBeNone=True),
     description=_(
 """Maximum amount of time, in seconds, that R is allowed to take to initialize
-itself and begin servicing requests. If all necessary R packages are already
-installed, this time may be only a second or two, but can be longer if the
-machine is busy. Because of this, the default is set to 15 seconds. If the
-timeout elapses without the R process indicating that it is ready, an error
-will be raised. To allow an infinite amount of time, provide :py:data:`None`
-from Python or delete all text from this text box in the ArcGIS user
-interface.
+itself and begin servicing requests. This time is usually only a second or
+two, but can be longer if the machine is busy. Because of this, the default
+is set to 15 seconds. If the timeout elapses without the R process indicating
+that it is ready, an error will be raised. To allow an infinite amount of
+time, provide :py:data:`None` from Python or delete all text from this text
+box in the ArcGIS user interface.
 
 If packages must be installed or updated, as usually occurs the first time you
 use MGET to interact with R, the delay is automatically extended to allow
@@ -826,9 +838,10 @@ newlines. The value of the last expression is returned."""),
 AddArgumentMetadata(RWorkerProcess.Eval, 'timeout',
     typeMetadata=FloatTypeMetadata(mustBeGreaterThan=0., canBeNone=True),
     description=_(
-"""Maximum amount of time, in seconds, that R is permitted to return a
-result. If this time elapses without the R worker process beginning to send
-its response, an error will be raised.
+"""Maximum amount of time, in seconds, that R is permitted to run while
+evaluating the expressions before it must return a result. If this time
+elapses without the R worker process beginning to send its response, an error
+will be raised.
 
 The default timeout was selected to allow all but the most time consuming
 expressions to complete. You should increase it for very long running jobs.
@@ -886,7 +899,29 @@ default, a Python :py:data:`None` will be returned, regardless of what the
 last expression evaluated to."""),
     arcGISDisplayName=_('Return result'))
 
-CopyArgumentMetadata(RWorkerProcess.Eval, 'timeout', RWorkerProcess.ExecuteRAndEvaluateExpressions, 'timeout')
+AddArgumentMetadata(RWorkerProcess.ExecuteRAndEvaluateExpressions, 'timeout',
+    typeMetadata=FloatTypeMetadata(mustBeGreaterThan=0., canBeNone=True),
+    description=_(
+"""After R has started up and installed any necessary packages, this is the
+maximum amount of time, in seconds, that it is permitted to run while
+evaluating the expressions before it must return a result. If this time
+elapses without the R worker process beginning to send its response, an error
+will be raised.
+
+The default timeout was selected to allow all but the most time consuming
+expressions to complete. You should increase it for very long running jobs.
+If you're unsure how long it will take, you may allow an infinite amount of
+time by providing :py:data:`None` from Python or deleting all text from this
+text box in the ArcGIS user interface.
+
+.. Warning::
+    If you allow an infinite amount of time and your R expression never
+    completes, your program will be blocked forever. Use caution.
+
+"""), 
+    arcGISDisplayName=_('Timeout'))
+
+CopyArgumentMetadata(RWorkerProcess.__init__, 'rPackages', RWorkerProcess.ExecuteRAndEvaluateExpressions, 'rPackages')
 CopyArgumentMetadata(RWorkerProcess.__init__, 'rInstallDir', RWorkerProcess.ExecuteRAndEvaluateExpressions, 'rInstallDir')
 CopyArgumentMetadata(RWorkerProcess.__init__, 'rLibDir', RWorkerProcess.ExecuteRAndEvaluateExpressions, 'rLibDir')
 CopyArgumentMetadata(RWorkerProcess.__init__, 'rRepository', RWorkerProcess.ExecuteRAndEvaluateExpressions, 'rRepository')

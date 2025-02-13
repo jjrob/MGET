@@ -278,3 +278,7 @@ class TestRWorkerProcess():
                                                           variableValues=['', 'True', 'False', '123', '123.45', 'Hello', ' ', '2010-12-31 01:23:45-08:00', '2010-12-31 01:23:45'],
                                                           defaultTZ='America/Los_Angeles')
         assert x == result
+
+    def test_ExecuteRAndEvaluateExpressions_InstallPackages(self, tmp_path):
+        x = RWorkerProcess.ExecuteRAndEvaluateExpressions(['library(glue); 1+1'], rPackages=['glue'], rLibDir=tmp_path, returnResult=True)
+        assert x == 2

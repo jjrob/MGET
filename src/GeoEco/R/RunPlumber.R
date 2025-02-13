@@ -34,15 +34,20 @@ if (length(args) <= 3) {
 }
 rRepository <- trimws(args[4])
 
-if (length(args) <= 4 || (tolower(trimws(args[5])) != "true" && tolower(trimws(args[5])) != "false")) {
-  stop("The value \"True\" or \"False\" must be given as the fifth command line argument, indicating whether all R packages should be updated prior to starting plumber.")
+if (length(args) <= 4) {
+  stop("The fifth command line argument must be the list of R packages that should be installed if not already present, or \"None\" if no such packages are required.")
 }
-updateRPackages <- tolower(trimws(args[5]))
+userPackages <- trimws(args[5])
 
-if (length(args) <= 5) {
-  stop("The authentication token must be given as the sixth command line argument.")
+if (length(args) <= 5 || (tolower(trimws(args[6])) != "true" && tolower(trimws(args[6])) != "false")) {
+  stop("The value \"True\" or \"False\" must be given as the sixth command line argument, indicating whether all R packages should be updated prior to starting plumber.")
 }
-authenticationToken <- trimws(args[6])
+updateRPackages <- tolower(trimws(args[6]))
+
+if (length(args) <= 6) {
+  stop("The authentication token must be given as the seventh command line argument.")
+}
+authenticationToken <- trimws(args[7])
 
 # If an R library directory was not given, check whether any of the current
 # .libPaths() are writable. If not, set rLibrary based on the operating
@@ -110,10 +115,17 @@ if (updateRPackages == "true") {
   sink(stderr(), type="message")  # Redirect message() back to stderr
 }
 
-# Install required packages and load plumber. (The others will be loaded later
-# if needed).
+# Install required packages.
 
 requiredPackages <- c("plumber", "arrow", "tzdb")
+
+if (tolower(userPackages) != "none") {
+  for (pkg in strsplit(userPackages, ",")[[1]]) {
+    if (!(pkg %in% requiredPackages)) {
+      requiredPackages <- c(requiredPackages, pkg)
+    }
+  }
+}
 
 for (pkg in requiredPackages) {
   if (!requireNamespace(pkg, quietly=TRUE)) {
@@ -132,6 +144,8 @@ for (pkg in requiredPackages) {
 if (loggedInstallDir) {
   cat("DONE_INSTALLING_R_PACKAGES\n")
 }
+
+# Load plumber. (The others will be loaded later if needed).
 
 library(plumber)
 

@@ -154,12 +154,13 @@ class _MongoDateTimeDecoder(json.JSONDecoder):
 class RWorkerProcess(collections.abc.MutableMapping):
     __doc__ = DynamicDocString()
 
-    def __init__(self, rInstallDir=None, rLibDir=None, rRepository='https://cloud.r-project.org', updateRPackages=False, port=None, timeout=5., startupTimeout=15., defaultTZ=None):
+    def __init__(self, rInstallDir=None, rLibDir=None, rRepository='https://cloud.r-project.org', rPackages=None, updateRPackages=False, port=None, timeout=5., startupTimeout=15., defaultTZ=None):
         self.__doc__.Obj.ValidateMethodInvocation()
 
         self._RInstallDir = rInstallDir
         self._RLibDir = rLibDir
         self._RRepository = rRepository
+        self._RPackages = None
         self._UpdateRPackages = updateRPackages
         self._RequestedPort = port
         self._Port = None
@@ -252,6 +253,7 @@ class RWorkerProcess(collections.abc.MutableMapping):
                         os.path.join(os.path.dirname(__file__), 'PlumberAPI.R'),
                         str(self._RLibDir),
                         str(self._RRepository),
+                        'None' if self._RPackages is None or len(self._RPackages) <= 0 else ','.join(self._RPackages),
                         str(self._UpdateRPackages),
                         self._AuthenticationToken]
 
@@ -1177,7 +1179,7 @@ class RWorkerProcess(collections.abc.MutableMapping):
             return(self._ProcessResponse(resp, parseReturnValue=True))
 
     @classmethod
-    def ExecuteRAndEvaluateExpressions(cls, expressions, returnResult=False, timeout=60., rInstallDir=None, rLibDir=None, rRepository='https://cloud.r-project.org', updateRPackages=False, port=None, startupTimeout=15., defaultTZ=None, variableNames=None, variableValues=None):
+    def ExecuteRAndEvaluateExpressions(cls, expressions, returnResult=False, timeout=60., rPackages=None, rInstallDir=None, rLibDir=None, rRepository='https://cloud.r-project.org', updateRPackages=False, port=None, startupTimeout=15., defaultTZ=None, variableNames=None, variableValues=None):
         cls.__doc__.Obj.ValidateMethodInvocation()
 
         # Perform additional validation.
@@ -1224,7 +1226,7 @@ class RWorkerProcess(collections.abc.MutableMapping):
 
         # Instantiate RWorkerProcess using the caller's parameters.
 
-        with RWorkerProcess(rInstallDir=rInstallDir, rLibDir=rLibDir, rRepository=rRepository, updateRPackages=updateRPackages, port=port, startupTimeout=startupTimeout, defaultTZ=defaultTZ) as r:
+        with RWorkerProcess(rInstallDir=rInstallDir, rLibDir=rLibDir, rRepository=rRepository, rPackages=rPackages, updateRPackages=updateRPackages, port=port, startupTimeout=startupTimeout, defaultTZ=defaultTZ) as r:
 
             # If the caller passed us variables to assign, assign them now.
 
