@@ -160,7 +160,7 @@ class RWorkerProcess(collections.abc.MutableMapping):
         self._RInstallDir = rInstallDir
         self._RLibDir = rLibDir
         self._RRepository = rRepository
-        self._RPackages = None
+        self._RPackages = rPackages
         self._UpdateRPackages = updateRPackages
         self._RequestedPort = port
         self._Port = None
