@@ -620,26 +620,19 @@ def _ExecuteMethodAsGeoprocessingTool(method):
                 value = getattr(value, attr)
 
         # Otherwise, if the argment is displayed in the ArcGIS user interface,
-        # get the value that the user provided. Unfortunately, we can't easily
-        # use gp.GetParameter(), because it returns an opaque object in most
-        # situations. So we will follow ESRI's examples and use
-        # gp.GetParameterAsText() and parse the result, which is what we've
-        # always done from the beginning of GeoEco. In any case, as above, if
-        # the argument is supposed to be a hidden string, use the unwrapped
-        # geoprocessor so we don't log its value.
+        # get the value that the user provided. As above, if the argument is
+        # supposed to be a hidden string, use the unwrapped geoprocessor so
+        # we don't log its value.
 
         elif am.ArcGISDisplayName is not None:
-            value = gp.GetParameterAsText(pni[am.Name]) if not isinstance(am.Type, UnicodeStringHiddenTypeMetadata) else gpUnwrapped.GetParameterAsText(pni[am.Name])
-
-            if value == '#' or len(value) <= 0:
-                if am.Type.CanBeNone:
+            if isinstance(am.Type, UnicodeStringHiddenTypeMetadata):
+                value = gpUnwrapped.GetParameterAsText(pni[am.Name])
+                if value == '':
                     value = None
-                elif am.HasDefault:
-                    value = am.Default
-                else:
-                    value = None   # This will cause an exception to be raised by the method's validation code when we call the method
+
             else:
-                value = am.Type.ParseValueFromArcGISInputParameterString(value, am.ArcGISDisplayName, pni[am.Name] + 1)
+                param = paramInfo[pni[am.Name]]
+                value = param.values if hasattr(param, 'values') else param.value
 
         # Otherwise, we won't assign a value to this argument and its default
         # value will be used.

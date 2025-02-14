@@ -620,7 +620,7 @@ https://cloud.r-project.org will be used."""),
     arcGISCategory=_('R options'))
 
 AddArgumentMetadata(RWorkerProcess.__init__, 'rPackages',
-    typeMetadata=ListTypeMetadata(elementType=UnicodeStringTypeMetadata(minLength=1, mustMatchRegEx=r'^[a-zA-Z][a-zA-Z0-9_\.]*$'), minLength=1, canBeNone=True),
+    typeMetadata=ListTypeMetadata(elementType=UnicodeStringTypeMetadata(minLength=1, mustMatchRegEx=r'^[a-zA-Z][a-zA-Z0-9_\.]*$'), canBeNone=True),
     description=_(
 """List of R packages to ensure are installed. For each package that is
 provided, MGET will check whether it is installed. If it is not, MGET will
