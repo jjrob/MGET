@@ -634,6 +634,16 @@ def _ExecuteMethodAsGeoprocessingTool(method):
                 param = paramInfo[pni[am.Name]]
                 value = param.values if hasattr(param, 'values') else param.value
 
+                # If value is a list, check whether items within it are
+                # instances of _ArcGISObjectWrapper that have wrapped a
+                # "geoprocessing value object". If so, extract the value
+                # attributes of those objects.
+
+                if isinstance(value, list):
+                    for i, item in enumerate(value):
+                        if isinstance(item, _ArcGISObjectWrapper) and 'geoprocessing value object' in str(type(item._Object)):
+                            value[i] = item.value
+
         # Otherwise, we won't assign a value to this argument and its default
         # value will be used.
 
