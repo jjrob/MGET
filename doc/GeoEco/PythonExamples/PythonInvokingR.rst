@@ -52,7 +52,12 @@ rebuild and reinstall MGET when a new version of R is released.
 In this example, we'll show you the basics of using MGET's
 :class:`~GeoEco.R.RWorkerProcess` class to interact with R from a Python
 command prompt. You can learn a lot more details by reading its class
-documentation (just click on the class in the preceding sentence).
+documentation (just click on the class in the preceding sentence). We also
+have an example showing :ref:`how to invoke R from ArcGIS <arcgis-invoking-r>`
+using MGET's **Evaluate R Statements** geoprocessing tool.
+
+To run this example, you must have R installed. We recommend a relatively
+recent version, but any version from the past few years should work.
 
 
 Getting started
