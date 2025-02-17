@@ -19,7 +19,7 @@ recent version, but any version from the past few years should work.
 Create a project and add MGET
 -----------------------------
 
-1. Start ArcGIS Pro and create a new Map project. I'll call mine MGET_R_Example.
+1. Start ArcGIS Pro and create a new project.
 
 2. Click **Project** and go to the **Package Manager**. Make sure the **Active
    Environment** is set to the one that has MGET installed into it. Note that
@@ -36,8 +36,8 @@ Evaluating R expressions
 
 To give the tool a try without setting up a geoprocessing model:
 
-1. In the geoprocessing pane's *Find Tools* box, seach for the tool named
-   **Create Rasters for CMEMS Dataset** and open it.
+1. In the geoprocessing pane's **Find Tools** box, search for the tool named
+   **Evaluate R Expressions** and open it.
 
 2. In the **R expressions** box, enter ``x <- 6`` and press Enter. Then enter
    a second expression ``y <- 7`` and a third ``print(x*y)``.
@@ -83,12 +83,13 @@ To give the tool a try without setting up a geoprocessing model:
 Running an R script
 -------------------
 
-It can be tedious to type in many expressions into the geoprocessing tool's
-dialog boxes. Also, it is sometimes necessary for expressions to span multiple
-lines, which can't be easily done directly in the tool. Once you need to do
-more than execute a few trivial expressions, you'll want to write a script
-instead with your favorite text editor, and then use the tool to execute the
-script.
+It can be tedious to type many expressions into the geoprocessing tool's
+dialog boxes. Also, it is sometimes convenient for expressions to span
+multiple lines, but this can't be done directly in the tool because each text
+box must contain a complete R expression—it can't contain just part of one.
+Because of these limitations, once you need to do more than execute a few
+trivial expressions, you'll want to write a script instead with your favorite
+text editor, and then use the tool to execute the script.
 
 To illustrate this, I wrote a short script to read a feature class and make a
 plot, then used the tool to execute the script. Here I had a point feature
@@ -106,7 +107,7 @@ Center.
 If you're interested, you can download the original survey data from
 `OBIS-SEAMAP <https://seamap.env.duke.edu/dataset/1288>`__. For this example,
 I already prepared the original data for analysis by splitting the transects
-into 5 km segments, excluding some that had poor survey conditions, computing
+into 5 km segments, excluding segments that had poor survey conditions, computing
 the centroids of the segments, and sampling a selection of oceanographic data.
 Here's part of the attribute table:
 
@@ -179,7 +180,7 @@ R packages**:
     
     MGET executes your R expressions in an isolated environment, rather than
     the global environment, to try to prevent your code from accidentally
-    breaking MGET's R code that interacts with the R plumber package.
+    breaking MGET's R code that manages the communication with Python.
     Unfortunately, the ``source()`` function operates against the global
     environment by default. By specifying ``local=TRUE``, you ensure your code
     operates against the isolated environment that MGET created for you.
@@ -254,7 +255,7 @@ You must put a name there for each entry that appears in **Variable values**.
 
 For example, let's say that after I developed the script above, I wanted to
 run it on several other feature classes in my geodatabase that had the same
-columns, in addition to the original one. I could use the ArcGIS **Iterate
+columns, in addition to the original one. I decided to use the ArcGIS **Iterate
 Feature Classes** iterator like this:
 
 .. image:: images/ArcInvokingR10.png

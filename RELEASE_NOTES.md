@@ -4,9 +4,13 @@
 
 ### Added
 - RWorkerProcess class, for invoking R from Python as a child process
+- Start building MGET for Python 3.13 ([#15](https://github.com/jjrob/MGET/issues/15))
 
 ### Fixed
+- In ArcGIS toolbox, Find and XXXXX tools fail with SyntaxError: invalid syntax (<string>, line 1) and the message: Could not import Python module ""['os.path']"" ([#21](https://github.com/jjrob/MGET/issues/21))
 - NameError raised by ArcGISWorkspace.QueryDatasets() when the workspace is an ArcGIS geodatabase that contains relationship classes ([#23](https://github.com/jjrob/MGET/issues/23))
+- Update build-wheels.yml to use GDAL 3.10.1 from cgholke's geospatial-wheels v2025.1.20, when testing on Windows ([#24](https://github.com/jjrob/MGET/issues/24))
+- Re-enable scikit-fmm dependency on Python 3.12+ for Windows ([#25](https://github.com/jjrob/MGET/issues/25))
 
 ## [v3.1.1](https://github.com/jjrob/MGET/releases/tag/v3.1.1) - 2025-01-11
 
