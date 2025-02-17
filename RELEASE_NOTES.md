@@ -1,6 +1,6 @@
 # MGET Release Notes
 
-## v3.2.0 - 2025-02-16
+## [v3.2.0](https://github.com/jjrob/MGET/releases/tag/v3.2.0) - 2025-02-16
 
 ### Added
 - RWorkerProcess class, for invoking R from Python as a child process
