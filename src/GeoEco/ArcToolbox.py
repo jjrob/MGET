@@ -591,7 +591,7 @@ def _ExecuteMethodAsGeoprocessingTool(method):
 
     # Determine the method's argument values.
 
-    from GeoEco.ArcGIS import GeoprocessorManager
+    from GeoEco.ArcGIS import GeoprocessorManager, _ArcGISObjectWrapper
 
     gp = GeoprocessorManager.GetWrappedGeoprocessor()
     gpUnwrapped = GeoprocessorManager.GetGeoprocessor()
@@ -619,7 +619,7 @@ def _ExecuteMethodAsGeoprocessingTool(method):
             for attr in am.InitializeToArcGISGeoprocessorVariable.split('.'):
                 value = getattr(value, attr)
 
-        # Otherwise, if the argment is displayed in the ArcGIS user interface,
+        # Otherwise, if the argument is displayed in the ArcGIS user interface,
         # get the value that the user provided. As above, if the argument is
         # supposed to be a hidden string, use the unwrapped geoprocessor so
         # we don't log its value.
@@ -630,19 +630,40 @@ def _ExecuteMethodAsGeoprocessingTool(method):
                 if value == '':
                     value = None
 
+            # Otherwise, if this argument's TypeMetadata is an instance of
+            # UnicodeStringTypeMetadata, get it with gp.GetParameterAsText.
+            # Unwrap the _ArcGISObjectWrapper.
+
+            elif isinstance(am.Type, UnicodeStringTypeMetadata):
+                value = gp.GetParameterAsText(pni[am.Name])
+                if isinstance(value, _ArcGISObjectWrapper):
+                    value = value._Object
+                if value == '':
+                    value = None
+
+            # Otherwise, extract the value from the arcpy Parameter object.
+
             else:
                 param = paramInfo[pni[am.Name]]
                 value = param.values if hasattr(param, 'values') else param.value
 
-                # If value is a list, check whether items within it are
-                # instances of _ArcGISObjectWrapper that have wrapped a
-                # "geoprocessing value object". If so, extract the value
-                # attributes of those objects.
+                # If value is an instance of _ArcGISObjectWrapper, unwrap it.
+                # If it is a "geoprocessing value object", extract its value.
+
+                if isinstance(value, _ArcGISObjectWrapper):
+                    value = value._Object
+                if 'geoprocessing value object' in str(type(value)):
+                    value = value.value
+
+                # If value is a list, repeat the steps above on its items.
 
                 if isinstance(value, list):
                     for i, item in enumerate(value):
-                        if isinstance(item, _ArcGISObjectWrapper) and 'geoprocessing value object' in str(type(item._Object)):
-                            value[i] = item.value
+                        if isinstance(item, _ArcGISObjectWrapper):
+                            item = item._Object
+                        if 'geoprocessing value object' in str(type(item)):
+                            item = item.value
+                        value[i] = item
 
         # Otherwise, we won't assign a value to this argument and its default
         # value will be used.
