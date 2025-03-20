@@ -394,8 +394,7 @@ class FileTypeMetadata(StoredObjectTypeMetadata):
 
     @classmethod
     def Exists(cls, name, argMetadata=None, methodLocals=None):
-        from ..DataManagement.Files import File
-        return File.Exists(name)
+        return os.path.exists(name), os.path.isfile(name)
 
     @classmethod
     def Delete(cls, name, argMetadata=None, methodLocals=None):

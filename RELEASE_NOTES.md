@@ -1,5 +1,11 @@
 # MGET Release Notes
 
+## v3.2.1 - Under construction
+
+### Fixed
+- Create Rasters for CMEMS Dataset invoked from ArcGIS fails with `TypeError: The value provided for the outputWorkspace parameter is an instance of <class 'GeoEco.ArcGIS._ArcGISObjectWrapper'>, an invalid type. Please provide an instance of <class 'str'>.` ([#30](https://github.com/jjrob/MGET/issues/30))
+- To improve performance, FileTypeMetadata.Exists() should use base Python rather than DataManagement.Files.File.Exists() ([#31](https://github.com/jjrob/MGET/issues/31))
+
 ## [v3.2.0](https://github.com/jjrob/MGET/releases/tag/v3.2.0) - 2025-02-16
 
 ### Added
