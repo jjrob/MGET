@@ -236,11 +236,19 @@ class RWorkerProcess(collections.abc.MutableMapping):
                 # caller to try again.
 
                 if self._RequestedPort is None:
-                    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
-                        s.bind(('127.0.0.1', 0))
-                        self._Port = int(s.getsockname()[1])
-                else:
-                    self._Port = self._RequestedPort
+                    for i in range(1000):
+                        port = random.randint(1024, 49151)   # R or plumber only supports listening to ports in this range, even if the operation system is willing to issue a port higher than 49151; see https://en.wikipedia.org/wiki/Registered_port 
+                        with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+                            try:
+                                s.bind(('127.0.0.1', port))
+                            except OSError:
+                                port = None
+                                continue
+                            else:
+                                break
+                    if port is None:
+                        raise RuntimeError(_('Could not find an available TCP port for Python/R communication. Please try this operation again. If it continues to fail, please contact the MGET development team for assistance.'))
+                    self._Port = port
 
                 Logger.Debug(f'{self.__class__.__name__} 0x{id(self):016X}: Using TCP port {self._Port}.')
 
