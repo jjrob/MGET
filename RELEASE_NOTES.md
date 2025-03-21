@@ -6,6 +6,7 @@
 - RWorkerProcess.Start fails with WARNING Error in findPort(port) : Port must be an integer in the range of 1024 to 49151 ([#27](https://github.com/jjrob/MGET/issues/27))
 - Create Rasters for CMEMS Dataset invoked from ArcGIS fails with `TypeError: The value provided for the outputWorkspace parameter is an instance of <class 'GeoEco.ArcGIS._ArcGISObjectWrapper'>, an invalid type. Please provide an instance of <class 'str'>.` ([#30](https://github.com/jjrob/MGET/issues/30))
 - To improve performance, FileTypeMetadata.Exists() should use base Python rather than DataManagement.Files.File.Exists() ([#31](https://github.com/jjrob/MGET/issues/31))
+- RuntimeError: Failed to open a variable named "sea_ice_fraction" in netCDF file ... from NASA Earthdata GHRSST GAMSSA_28km-ABOM-L4-GLOB-v01 granules. Detailed error information: KeyError: 'sea_ice_fraction'. ([#32](https://github.com/jjrob/MGET/issues/32))
 
 ## [v3.2.0](https://github.com/jjrob/MGET/releases/tag/v3.2.0) - 2025-02-16
 
