@@ -12,6 +12,7 @@ from ...DynamicDocString import DynamicDocString
 from ...Internationalization import _
 
 from .. import Grid
+from . import GridSlice
 
 
 class FastMarchingDistanceGrid(Grid):
@@ -164,14 +165,10 @@ class FastMarchingDistanceGrid(Grid):
                     # Get the 2D slice data's as 64-bit floats (this is
                     # required by the skfmm module).
 
-                    if len(s) == 2:
-                        sliceData = grid.Data[:, :]
-                    elif len(s) == 3:
-                        sliceData = grid.Data[s[0], :, :]
-                    else:
-                        sliceData = grid.Data[s[0], s[1], :, :]
+                    sliceData = grid.Data[:, :]
+                    assert len(sliceData.shape) == 2
 
-                    phi = numpy.asarray(sliceData, dtype='float64')
+                    phi = sliceData.astype('float64')       # astype always makes a copy
 
                     # Classify the cells as either outside (positive) or
                     # inside (zero or negative) the features of interest.

@@ -66,7 +66,7 @@ class TestFMDG():
 
         # We are now representing land as NoData, which
         # FastMarchingDistanceGrid expects. Now set several cells that are
-        # currently marked as 1 to 0. These new 0 cells represent the feature
+        # currently marked as 1 to -1. These new -1 cells represent the feature
         # we will computing distances to. We know the approximate coordinates
         # of the centers of these cells and use a Grid function to look up
         # their integer indices, and then use those to set the cell values.
