@@ -5,6 +5,7 @@
 ### Added
 - WindFetchGrid: add "maximum distance per direction" and "report progress" parameters ([#33](https://github.com/jjrob/MGET/issues/33))
 - Add gdalWarp option to GDALDataset constructor ([#35](https://github.com/jjrob/MGET/issues/35))
+- Add BlockStatisticsGrid, which partitions an input Grid into non-overlapping blocks of cells and computes a summary statistic for each block, yielding a reduced resolution representation of it
 
 ### Fixed
 - RWorkerProcess.Start fails with WARNING Error in findPort(port) : Port must be an integer in the range of 1024 to 49151 ([#27](https://github.com/jjrob/MGET/issues/27))
