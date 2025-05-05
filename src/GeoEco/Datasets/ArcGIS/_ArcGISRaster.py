@@ -348,7 +348,7 @@ class ArcGISRaster(DatasetCollection):
 
         if not hasattr(ArcGISRaster, '_GDALDataTypeForNumpyDataType'):
             ArcGISRaster._GDALDataTypeForNumpyDataType = {'uint8': gdal.GDT_Byte,
-                                                          'int8': gdal.GDT_Int8,
+                                                          'int8': gdal.GDT_Int8 if hasattr(gdal, 'GDT_Int8') else gdal.GDT_Byte,
                                                           'uint16': gdal.GDT_UInt16,
                                                           'int16': gdal.GDT_Int16,
                                                           'uint32': gdal.GDT_UInt32,

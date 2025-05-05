@@ -750,7 +750,7 @@ class BlockStatisticGrid(Grid):
                     elif self._Statistic == 'median':
                         result = numpy.nanmedian(view, axis=axis)
                     elif self._Statistic == 'standard_deviation':
-                        result = numpy.nanstd(view, axis=axis)
+                        result = numpy.nanstd(view, axis=axis, ddof=1)
                     else:
                         result = numpy.nansum(view, axis=axis)
 

@@ -44,58 +44,61 @@ AddArgumentMetadata(BlockStatisticGrid.__init__, 'grid',
     description=_(
 """:class:`~GeoEco.Datasets.Grid` for which a block statistic should be
 computed. This input grid must have a constant increment in each dimension for
-which summarization is requested. For example, the `zSize` parameter is given,
-indicating that summarization should be performed in the depth dimension, then
-the input grid must have z coordinates that increment by a constant value. If
-it does not, then :class:`BlockStatisticGrid` cannot summarize in the z
-dimension, and `zSize` should be left as :py:data:`None`. In that situation,
-the :class:`BlockStatisticGrid` will have the same number of cells in the z
-direction as the input grid."""))
+which summarization is requested. For example, if the `zSize` parameter is
+given, indicating that summarization should be performed in the depth
+dimension, then the input grid must have ``z`` coordinates that increment by a
+constant value. If it does not, then :class:`BlockStatisticGrid` cannot
+summarize in the ``z`` dimension, and `zSize` should be left as
+:py:data:`None`. In that situation, the :class:`BlockStatisticGrid` will have
+the same number of cells in the ``z`` direction as the input grid."""))
 
 AddArgumentMetadata(BlockStatisticGrid.__init__, 'statistic',
     typeMetadata=UnicodeStringTypeMetadata(allowedValues=['count', 'maximum', 'mean', 'median', 'minimum', 'range', 'standard_deviation', 'sum'], makeLowercase=True),
     description=_(
 """Summary statistic to calculate for each block, one of:
 
-* ``count`` - number of cells in the block had data.
+* ``count`` - number of cells in the block that have data.
 
-* ``maximum`` - value of the maximum cell in the block.
+* ``maximum`` - miniumum value of call cells in the block with data.
 
-* ``mean`` - mean value of all cells in the block.
+* ``mean`` - mean value of all cells in the block with data.
 
-* ``median`` - median value of all cells in the block.
+* ``median`` - median value of all cells in the block with data.
 
-* ``minimum`` - value of the minimum cell in the block.
+* ``minimum`` - miniumum value of all cells in the block with data.
 
-* ``range`` - range for the cell, calculated as the maximum minus the minimum.
+* ``range`` - maximum value minus the minimum value, considering all cells in
+  the block with data.
 
-* ``standard_deviation`` - sample standard deviation for the cell (i.e. the
-  standard deviation estimated using Bessel's correction). In order to
-  calculate this, there must be at least two cells in the block with data.
+* ``standard_deviation`` - sample standard deviation (i.e. the standard
+  deviation estimated using Bessel's correction) of all cells in the block
+  with data. In order to calculate this, there must be at least two cells in
+  the block with data.
 
-* ``sum`` - sum of all cells in the block.
+* ``sum`` - sum of all cells in the block with data.
 
 In all statistics, NoData values are ignored. For example, if a 5 x 5 block
-has 2 cells with NoData, all statistics will be based on the 23 cells that
-have data. If all cells in a block have NoData, the result is NoData."""),    
+has 2 cells with the NoData value, all statistics will be based on the 23
+cells that have data. If no cells in a block have data, i.e., they all have
+the NoData value, the result is the NoData value."""),
     arcGISDisplayName=_('Statistic'))
 
 AddArgumentMetadata(BlockStatisticGrid.__init__, 'xySize',
     typeMetadata=IntegerTypeMetadata(minValue=1, canBeNone=True),
     description=_(
-"""Size of the block in the x and y directions. If not given, 1 will be used,
-and summarization will not be performed for the x or y dimensions. In this
-situation, the block statistic grid will have the same number of cells in the
-x and y directions as the input grid."""))
+"""Size of the block in the ``x`` and ``y`` directions. If not given, 1 will
+be used, and summarization will not be performed for the ``x`` or ``y``
+dimensions. In this situation, the block statistic grid will have the same
+number of cells in the ``x`` and ``y`` directions as the input grid."""))
 
 AddArgumentMetadata(BlockStatisticGrid.__init__, 'zSize',
     typeMetadata=IntegerTypeMetadata(minValue=1, canBeNone=True),
     description=_(
-"""Size of the block in the z (depth) direction. If not given, 1 will be used,
-and summarization will not be performed for the z dimension. In this
+"""Size of the block in the ``z`` (depth) direction. If not given, 1 will be
+used, and summarization will not be performed for the ``z`` dimension. In this
 situation, the block statistic grid will have the same number of cells in the
-z direction as the input grid. This parameter should be omitted if the input
-grid does not have a z dimension."""))
+``z`` direction as the input grid. This parameter should be omitted if the
+input grid does not have a ``z`` dimension."""))
 
 AddArgumentMetadata(BlockStatisticGrid.__init__, 'tSize',
     typeMetadata=IntegerTypeMetadata(minValue=1, canBeNone=True),

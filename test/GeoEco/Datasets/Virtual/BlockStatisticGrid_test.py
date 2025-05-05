@@ -9,6 +9,7 @@
 # full license text.
 
 import datetime
+import functools
 import math
 import warnings
 
@@ -595,7 +596,7 @@ class TestBlockStatisticGrid():
 
                 for statistic, func in [['mean', numpy.nanmean],
                                         ['median', numpy.nanmedian],
-                                        ['standard_deviation', numpy.nanstd],
+                                        ['standard_deviation', functools.partial(numpy.nanstd, ddof=1)],
                                         ['sum', numpy.nansum]]:
 
                     bg = BlockStatisticGrid(grid=grid, statistic=statistic, xySize=5)
@@ -809,7 +810,7 @@ class TestBlockStatisticGrid():
 
                 for statistic, func in [['mean', numpy.nanmean],
                                         ['median', numpy.nanmedian],
-                                        ['standard_deviation', numpy.nanstd],
+                                        ['standard_deviation', functools.partial(numpy.nanstd, ddof=1)],
                                         ['sum', numpy.nansum]]:
 
                     bg = BlockStatisticGrid(grid=grid, statistic=statistic, xySize=5, zSize=2)
@@ -982,7 +983,7 @@ class TestBlockStatisticGrid():
                                                           numpy.where((data3[ti1:ti2,5:10,10:12] == extremum).all(), noDataValue, data3[ti1:ti2,5:10,10:12].min())]]))
                         daysFromStart = ti2
                         i += 1
-                    expectedValues = numpy.stack(evSlices, axis=0)
+                    expectedValues = numpy.stack(evSlices, axis=0, dtype=data.dtype)
 
                     bg = BlockStatisticGrid(grid=grid, statistic='minimum', xySize=5, tSize=tSize, tUnit=tUnit, tStart=tStart, tSemiRegularity=tSemiRegularity)
                     result = bg.Data[:]
@@ -1016,7 +1017,7 @@ class TestBlockStatisticGrid():
                         daysFromStart = ti2
                         i += 1
 
-                    expectedValues = numpy.stack(evSlices, axis=0)
+                    expectedValues = numpy.stack(evSlices, axis=0, dtype=data.dtype)
 
                     bg = BlockStatisticGrid(grid=grid, statistic='maximum', xySize=5, tSize=tSize, tUnit=tUnit, tStart=tStart, tSemiRegularity=tSemiRegularity)
                     result = bg.Data[:]
@@ -1069,7 +1070,7 @@ class TestBlockStatisticGrid():
 
                     for statistic, func in [['mean', numpy.nanmean],
                                             ['median', numpy.nanmedian],
-                                            ['standard_deviation', numpy.nanstd],
+                                            ['standard_deviation', functools.partial(numpy.nanstd, ddof=1)],
                                             ['sum', numpy.nansum]]:
 
                         bg = BlockStatisticGrid(grid=grid, statistic=statistic, xySize=5, tSize=tSize, tUnit=tUnit, tStart=tStart, tSemiRegularity=tSemiRegularity)
