@@ -329,6 +329,7 @@ class ArcGISRaster(DatasetCollection):
 
         useUnscaledData = 'useUnscaledData' in options and options['useUnscaledData']
         calculateStatistics = 'calculateStatistics' not in options or options['calculateStatistics']        # Note that default for calculateStatistics is True.
+        calculateHistogram = 'calculateHistogram' not in options or options['calculateHistogram']           # Note this option is ignored unless we write the dataset with GDAL; also its default is True.
         buildRAT = 'buildRAT' in options and options['buildRAT']
         buildPyramids = 'buildPyramids' in options and options['buildPyramids']
 
@@ -347,7 +348,7 @@ class ArcGISRaster(DatasetCollection):
 
         if not hasattr(ArcGISRaster, '_GDALDataTypeForNumpyDataType'):
             ArcGISRaster._GDALDataTypeForNumpyDataType = {'uint8': gdal.GDT_Byte,
-                                                          'int8': gdal.GDT_Byte,
+                                                          'int8': gdal.GDT_Int8,
                                                           'uint16': gdal.GDT_UInt16,
                                                           'int16': gdal.GDT_Int16,
                                                           'uint32': gdal.GDT_UInt32,
@@ -459,7 +460,7 @@ class ArcGISRaster(DatasetCollection):
 
         if outputIsFile and not outputIsAIG and os.path.splitext(path)[1].lower() not in ['.asc', '.gif', '.j2c', '.j2k', '.jp2', '.jpc', '.jpe', '.jpg', '.jpeg', '.jpx', '.png', '.txt']:
             cls._LogDebug(_('%(class)s: Creating ArcGIS raster "%(path)s" with GDAL.'), {'class': cls.__name__, 'path': path})
-            GDALDataset._ImportDatasetsToPath(path, sourceDatasets, mode, None, {'useArcGISSpatialReference': True, 'useUnscaledData': useUnscaledData, 'calculateStatistics': calculateStatistics, 'blockSize': blockSize})
+            GDALDataset._ImportDatasetsToPath(path, sourceDatasets, mode, None, {'useArcGISSpatialReference': True, 'useUnscaledData': useUnscaledData, 'calculateStatistics': calculateStatistics, 'calculateHistogram': calculateHistogram, 'blockSize': blockSize})
             
         # Otherwise, create a temporary directory, write an IMG file to it
         # with GDAL, and copy the IMG file to the destination path.
@@ -494,7 +495,7 @@ class ArcGISRaster(DatasetCollection):
                 # Write the IMG file to the temporary directory.
 
                 tempRaster = os.path.join(tempDir, 'raster.img')
-                GDALDataset._ImportDatasetsToPath(tempRaster, sourceDatasets, mode, None, {'useArcGISSpatialReference': True, 'useUnscaledData': useUnscaledData, 'calculateStatistics': calculateStatistics, 'blockSize': blockSize})
+                GDALDataset._ImportDatasetsToPath(tempRaster, sourceDatasets, mode, None, {'useArcGISSpatialReference': True, 'useUnscaledData': useUnscaledData, 'calculateStatistics': calculateStatistics, 'calculateHistogram': calculateHistogram, 'blockSize': blockSize})
 
                 # If the destination raster is an ArcInfo ASCII grid,
                 # use the RasterToASCII_conversion tool to create it.

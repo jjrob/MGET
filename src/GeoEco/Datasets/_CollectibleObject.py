@@ -280,7 +280,7 @@ class CollectibleObject(object):
     def _CreateTempDirectory(self):
         import tempfile
         tempDir = tempfile.mkdtemp(prefix='GeoEco_' + self.__class__.__name__ + '_Temp_')
-        self._LogDebug(_('%(class)s 0x%(id)08X: Created temporary directory %(dir)s.'), {'class': self.__class__.__name__, 'id': id(self), 'dir': tempDir})
+        self._LogDebug(_('%(class)s 0x%(id)016X: Created temporary directory %(dir)s.'), {'class': self.__class__.__name__, 'id': id(self), 'dir': tempDir})
         
         if self._TempDirectories is None:
             self._TempDirectories = []

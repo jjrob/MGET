@@ -227,13 +227,17 @@ class ArcGISWorkspace(DatasetCollectionTree, Database):
         # ESRI-specific WKT strings that ArcGIS stores in rasters.
 
         if issubclass(self._DatasetType, ArcGISRaster) and os.path.exists(os.path.join(self.Path, *pathComponents)) and self._TreeDataTypeCache[os.path.join(self.Path, *pathComponents[:-1])].lower() == 'folder':
-            gp = GeoprocessorManager.GetWrappedGeoprocessor()
-            try:
-                sr = gp.CreateSpatialReference_management(gp.Describe(os.path.join(self.Path, *pathComponents)).SpatialReference).getOutput(0).split(';')[0]
-            except:
-                sr = gp.CreateSpatialReference_management(gp.Describe(os.path.join(self.Path, *pathComponents)).SpatialReference).getOutput(0).split(';')[0]     # Sometimes Arc 10 fails randomly with RuntimeError: DescribeData: Method SpatialReference does not exist. Try again.
-            spatialReference = Dataset.ConvertSpatialReference('arcgis', sr, 'obj')
-            return GDALDataset(os.path.join(*pathComponents), parentCollection=self, queryableAttributeValues=attrValues, lazyPropertyValues={'SpatialReference': spatialReference}, cacheDirectory=self.CacheDirectory, **options)
+            if isinstance(options, dict) and not 'warpOptions' in options:
+                gp = GeoprocessorManager.GetWrappedGeoprocessor()
+                try:
+                    sr = gp.CreateSpatialReference_management(gp.Describe(os.path.join(self.Path, *pathComponents)).SpatialReference).getOutput(0).split(';')[0]
+                except:
+                    sr = gp.CreateSpatialReference_management(gp.Describe(os.path.join(self.Path, *pathComponents)).SpatialReference).getOutput(0).split(';')[0]     # Sometimes Arc 10 fails randomly with RuntimeError: DescribeData: Method SpatialReference does not exist. Try again.
+                lazyPropertyValues = {'SpatialReference': Dataset.ConvertSpatialReference('arcgis', sr, 'obj')}
+            else:
+                lazyPropertyValues = None
+
+            return GDALDataset(os.path.join(*pathComponents), parentCollection=self, queryableAttributeValues=attrValues, lazyPropertyValues=lazyPropertyValues, cacheDirectory=self.CacheDirectory, **options)
             
         # Otherwise construct and return an object of the type
         # specified to our own constructor.

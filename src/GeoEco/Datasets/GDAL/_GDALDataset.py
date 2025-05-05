@@ -29,13 +29,20 @@ class GDALDataset(FileDatasetCollection):
 
     IsUpdatable = property(_GetIsUpdatable, doc=DynamicDocString())
 
-    def __init__(self, path, updatable=False, decompressedFileToReturn=None, displayName=None, parentCollection=None, queryableAttributeValues=None, lazyPropertyValues=None, cacheDirectory=None):
+    def __init__(self, path, updatable=False, decompressedFileToReturn=None, displayName=None, parentCollection=None, queryableAttributeValues=None, lazyPropertyValues=None, cacheDirectory=None, warpOptions=None):
         self.__doc__.Obj.ValidateMethodInvocation()
+
+        # Perform additional validation.
+
+        if updatable and warpOptions is not None:
+            raise ValueError(_('updatable cannot be True when warpOptions is not None. You must either set updatable False, or set warpOptions to None.'))
 
         # Initialize our properties.
         
         self._IsUpdatable = updatable
+        self._WarpOptions = warpOptions
         self._GDALDataset = None
+        self._GDALDatasetToWarp = None
         self._OpenedFile = None
         self._GDALRasterBand = None
         self._OpenedBand = None
@@ -145,7 +152,7 @@ class GDALDataset(FileDatasetCollection):
 
         # Log a debug message with the properties of the GDAL dataset.
 
-        self._LogDebug(_('%(class)s 0x%(id)08X: Retrieved lazy properties of %(dn)s: Bands=%(Bands)s, Dimensions=yx, Shape=%(Shape)s, CoordIncrements=%(CoordIncrements)s, CornerCoords=%(CornerCoords)s, PhysicalDimensions=%(PhysicalDimensions)s, PhysicalDimensionsFlipped=%(PhysicalDimensionsFlipped)s, SpatialReference=%(SpatialReference)s.'),
+        self._LogDebug(_('%(class)s 0x%(id)016X: Retrieved lazy properties of %(dn)s: Bands=%(Bands)s, Dimensions=yx, Shape=%(Shape)s, CoordIncrements=%(CoordIncrements)s, CornerCoords=%(CornerCoords)s, PhysicalDimensions=%(PhysicalDimensions)s, PhysicalDimensionsFlipped=%(PhysicalDimensionsFlipped)s, SpatialReference=%(SpatialReference)s.'),
                        {'class': self.__class__.__name__,
                         'id': id(self),
                         'dn': self.DisplayName,
@@ -182,7 +189,7 @@ class GDALDataset(FileDatasetCollection):
                 result = True
 
             if result is None or result:
-                self._LogDebug(_('%(class)s 0x%(id)08X: Query result for band %(band)i: %(result)s'), {'class': self.__class__.__name__, 'id': id(self), 'band': band, 'result': repr(result)})
+                self._LogDebug(_('%(class)s 0x%(id)016X: Query result for band %(band)i: %(result)s'), {'class': self.__class__.__name__, 'id': id(self), 'band': band, 'result': repr(result)})
 
             if result:
                 datasetsFound.append(GDALRasterBand(self, band))
@@ -218,12 +225,12 @@ class GDALDataset(FileDatasetCollection):
             gdalconst = self._gdalconst()
 
             if self.IsUpdatable:
-                self._LogDebug(_('%(class)s 0x%(id)08X: Opening %(dn)s in update mode.'), {'class': self.__class__.__name__, 'id': id(self), 'dn': self._DisplayName})
+                self._LogDebug(_('%(class)s 0x%(id)016X: Opening %(dn)s in update mode.'), {'class': self.__class__.__name__, 'id': id(self), 'dn': self._DisplayName})
             else:
-                self._LogDebug(_('%(class)s 0x%(id)08X: Opening %(dn)s in read-only mode.'), {'class': self.__class__.__name__, 'id': id(self), 'dn': self._DisplayName})
+                self._LogDebug(_('%(class)s 0x%(id)016X: Opening %(dn)s in read-only mode.'), {'class': self.__class__.__name__, 'id': id(self), 'dn': self._DisplayName})
 
             try:
-                self._GDALDataset = gdal.Open(path, {False: gdalconst.GA_ReadOnly, True: gdalconst.GA_Update}[self.IsUpdatable])
+                ds = gdal.Open(path, {False: gdalconst.GA_ReadOnly, True: gdalconst.GA_Update}[self.IsUpdatable])
             except Exception as e:
                 gdal.ErrorReset()
                 if self.IsUpdatable:
@@ -231,29 +238,32 @@ class GDALDataset(FileDatasetCollection):
                 else:
                     raise RuntimeError(_('%(dn)s could not be opened with the Geospatial Data Abstraction Library (GDAL). Verify that the dataset exists, is accessible, and in a format supported by GDAL. For a list of supported formats, see http://www.gdal.org/formats_list.html. If the format is not supported, find a way to convert it to a supported format. If you have trouble deciding which supported format to use, we suggest ERDAS IMAGINE (.img) or GeoTIFF (.tif). Detailed error information: gdal.Open() reported %(e)s: %(msg)s.') % {'dn': self._DisplayName, 'e': e.__class__.__name__, 'msg': e})
 
-            try:
-                self._LogDebug(_('%(class)s 0x%(id)08X: Opened %(dn)s with the GDAL %(driver)s driver.') % {'class': self.__class__.__name__, 'id': id(self), 'dn': self._DisplayName, 'driver': self._GDALDataset.GetDriver().LongName})
-                self._OpenedFile = path
+            self._LogDebug(_('%(class)s 0x%(id)016X: Opened %(dn)s with the GDAL %(driver)s driver.') % {'class': self.__class__.__name__, 'id': id(self), 'dn': self._DisplayName, 'driver': ds.GetDriver().LongName})
 
-                if self._GDALDataset.RasterCount <= 0:
-                    raise ValueError(_('%(dn)s cannot be used because it does not have any bands.') % {'dn': self._DisplayName})
+            if ds.RasterCount <= 0:
+                raise ValueError(_('%(dn)s cannot be used because it does not have any bands.') % {'dn': self._DisplayName})
 
-            except:
-                self.Close()
-                raise
+            if self._WarpOptions is not None:
+                self._LogDebug(_("%(class)s 0x%(id)016X: Invoking gdal.Warp('', ds, format='VRT', options={%(opts)s}).") % {'class': self.__class__.__name__, 'id': id(self), 'opts': [', '.join([repr(k) + ': ' + repr(v) for k, v in self._WarpOptions.items()])]})
+                self._GDALDataset = gdal.Warp('', ds, format='VRT', **self._WarpOptions)
+                self._GDALDatasetToWarp = ds
+            else:
+                self._GDALDataset = ds
+
+            self._OpenedFile = path
 
             self._RegisterForCloseAtExit()
 
     def _OpenBand(self, band):
         if self._GDALRasterBand is None or self._OpenedBand != band:
             if self._GDALRasterBand is not None:
-                self._LogDebug(_('%(class)s 0x%(id)08X: Closing band %(band)i.') % {'class': self.__class__.__name__, 'id': id(self), 'band': self._OpenedBand})
+                self._LogDebug(_('%(class)s 0x%(id)016X: Closing band %(band)i.') % {'class': self.__class__.__name__, 'id': id(self), 'band': self._OpenedBand})
                 self._GDALRasterBand = None
                 self._OpenedBand = None
             else:
                 self._Open()
 
-            self._LogDebug(_('%(class)s 0x%(id)08X: Opening band %(band)i.') % {'class': self.__class__.__name__, 'id': id(self), 'band': band})
+            self._LogDebug(_('%(class)s 0x%(id)016X: Opening band %(band)i.') % {'class': self.__class__.__name__, 'id': id(self), 'band': band})
             try:
                 self._GDALRasterBand = self._GDALDataset.GetRasterBand(band)
             except Exception as e:
@@ -266,11 +276,12 @@ class GDALDataset(FileDatasetCollection):
     def _Close(self):
         if hasattr(self, '_GDALDataset') and self._GDALDataset is not None:
             if self._GDALRasterBand is not None:
-                self._LogDebug(_('%(class)s 0x%(id)08X: Closing band %(band)i.') % {'class': self.__class__.__name__, 'id': id(self), 'band': self._OpenedBand})
+                self._LogDebug(_('%(class)s 0x%(id)016X: Closing band %(band)i.') % {'class': self.__class__.__name__, 'id': id(self), 'band': self._OpenedBand})
                 self._GDALRasterBand = None
                 self._OpenedBand = None
                 
-            self._LogDebug(_('%(class)s 0x%(id)08X: Closing %(dn)s.') % {'class': self.__class__.__name__, 'id': id(self), 'dn': self._DisplayName})
+            self._LogDebug(_('%(class)s 0x%(id)016X: Closing %(dn)s.') % {'class': self.__class__.__name__, 'id': id(self), 'dn': self._DisplayName})
+            self._GDALDatasetToWarp = None
             self._GDALDataset = None
             self._OpenedFile = None
 
@@ -342,6 +353,7 @@ class GDALDataset(FileDatasetCollection):
         useArcGISSpatialReference = 'useArcGISSpatialReference' in options and options['useArcGISSpatialReference']
         useUnscaledData = 'useUnscaledData' in options and options['useUnscaledData']
         calculateStatistics = 'calculateStatistics' not in options or options['calculateStatistics']        # Note that default for calculateStatistics is True
+        calculateHistogram = 'calculateHistogram' not in options or options['calculateHistogram']           # Note that default for calculateHistogram is True
 
         if 'overviewResamplingMethod' in options and 'overviewList' in options:
             overviewResamplingMethod = options['overviewResamplingMethod']
@@ -448,7 +460,7 @@ class GDALDataset(FileDatasetCollection):
 
             if not hasattr(GDALDataset, '_GDALDataTypeForNumpyDataType'):
                 GDALDataset._GDALDataTypeForNumpyDataType = {'uint8': gdal.GDT_Byte,
-                                                             'int8': gdal.GDT_Byte,
+                                                             'int8': gdal.GDT_Int8,
                                                              'uint16': gdal.GDT_UInt16,
                                                              'int16': gdal.GDT_Int16,
                                                              'uint32': gdal.GDT_UInt32,
@@ -648,7 +660,7 @@ class GDALDataset(FileDatasetCollection):
 
                             if noDataValue is not None:
                                 destDataset._OpenBand(i+1)
-                                cls._LogDebug(_('%(class)s 0x%(id)08X: Setting NoData value of band %(band)i to %(nodata)s.') % {'class': cls.__name__, 'id': id(destDataset), 'band': i+1, 'nodata': repr(float(noDataValue))})
+                                cls._LogDebug(_('%(class)s 0x%(id)016X: Setting NoData value of band %(band)i to %(nodata)s.') % {'class': cls.__name__, 'id': id(destDataset), 'band': i+1, 'nodata': repr(float(noDataValue))})
                                 try:
                                     destDataset._GDALRasterBand.SetNoDataValue(float(noDataValue))
                                 except Exception as e:
@@ -685,21 +697,25 @@ class GDALDataset(FileDatasetCollection):
 
                             if calculateStatistics:
                                 if not allNoData:
-                                    cls._LogDebug(_('%(class)s 0x%(id)08X: Calculating statistics and a histogram for band %(band)i.') % {'class': cls.__name__, 'id': id(destDataset), 'band': i+1})
-
+                                    cls._LogDebug(_('%(class)s 0x%(id)016X: Calculating statistics for band %(band)i.') % {'class': cls.__name__, 'id': id(destDataset), 'band': i+1})
                                     try:
                                         statistics = destDataset._GDALRasterBand.GetStatistics(False, True)
                                     except Exception as e:
                                         gdal.ErrorReset()
                                         Logger.LogExceptionAsWarning(_('Failed to calculate the statistics for band %(band)i of Geospatial Data Abstraction Library (GDAL) dataset "%(path)s" (created with the GDAL %(driver)s driver).') % {'band': i+1, 'path': path, 'driver': driver.LongName})
+                                else:
+                                    cls._LogDebug(_('%(class)s 0x%(id)016X: Not calculating statistics for band %(band)i because all of the cells are NoData.') % {'class': cls.__name__, 'id': id(destDataset), 'band': i+1})
 
+                            if calculateHistogram:
+                                if not allNoData:
+                                    cls._LogDebug(_('%(class)s 0x%(id)016X: Calculating a histogram for band %(band)i.') % {'class': cls.__name__, 'id': id(destDataset), 'band': i+1})
                                     try:
                                         destDataset._GDALRasterBand.GetDefaultHistogram()
                                     except Exception as e:
                                         gdal.ErrorReset()
                                         Logger.LogExceptionAsWarning(_('Failed to calculate the histogram for band %(band)i of Geospatial Data Abstraction Library (GDAL) dataset "%(path)s" (created with the GDAL %(driver)s driver).') % {'band': i+1, 'path': path, 'driver': driver.LongName})
                                 else:
-                                    cls._LogDebug(_('%(class)s 0x%(id)08X: Not calculating statistics for band %(band)i because all of the cells are NoData.') % {'class': cls.__name__, 'id': id(destDataset), 'band': i+1})
+                                    cls._LogDebug(_('%(class)s 0x%(id)016X: Not calculating a histogram for band %(band)i because all of the cells are NoData.') % {'class': cls.__name__, 'id': id(destDataset), 'band': i+1})
 
                             # If this is not the last band we're creating,
                             # report progress. We'll report progress for the
@@ -726,7 +742,7 @@ class GDALDataset(FileDatasetCollection):
                         finally:
                             del band
                             if destDataset._OpenedBand is not None:
-                                cls._LogDebug(_('%(class)s 0x%(id)08X: Closing band %(band)i.') % {'class': destDataset.__class__.__name__, 'id': id(destDataset), 'band': destDataset._OpenedBand})
+                                cls._LogDebug(_('%(class)s 0x%(id)016X: Closing band %(band)i.') % {'class': destDataset.__class__.__name__, 'id': id(destDataset), 'band': destDataset._OpenedBand})
                                 destDataset._GDALRasterBand = None
                                 destDataset._OpenedBand = None
 
@@ -735,7 +751,7 @@ class GDALDataset(FileDatasetCollection):
                     # Build overviews.
 
                     if overviewResamplingMethod is not None:
-                        cls._LogDebug(_('%(class)s 0x%(id)08X: Building overviews: resampling="%(resampling)s", levels=%(levels)s.') % {'class': cls.__name__, 'id': id(destDataset), 'resampling': overviewResamplingMethod, 'levels': repr(overviewList)})
+                        cls._LogDebug(_('%(class)s 0x%(id)016X: Building overviews: resampling="%(resampling)s", levels=%(levels)s.') % {'class': cls.__name__, 'id': id(destDataset), 'resampling': overviewResamplingMethod, 'levels': repr(overviewList)})
 
                         try:
                             destDataset._GDALDataset.BuildOverviews(overviewResamplingMethod, overviewList)

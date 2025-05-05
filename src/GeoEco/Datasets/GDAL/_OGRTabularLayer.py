@@ -261,7 +261,7 @@ class OGRTabularLayer(Table):
                 self._DisplayName = _('OGR layer "%(layer)s" of updatable %(driver)s data source "%(ds)s"') % {'layer': self._LayerName, 'driver': self._DriverName, 'ds': self._DataSourceName}
             else:
                 self._DisplayName = _('OGR layer "%(layer)s" of %(driver)s data source "%(ds)s"') % {'layer': self._LayerName, 'driver': self._DriverName, 'ds': self._DataSourceName}
-            self._LogDebug(_('%(class)s 0x%(id)08X: Opening %(dn)s.'), {'class': self.__class__.__name__, 'id': id(self), 'dn': self._DisplayName})
+            self._LogDebug(_('%(class)s 0x%(id)016X: Opening %(dn)s.'), {'class': self.__class__.__name__, 'id': id(self), 'dn': self._DisplayName})
 
             layer = self._GetLayerByName()
 
@@ -352,7 +352,7 @@ class OGRTabularLayer(Table):
         except:
             if self._DataSource is not None:
                 try:
-                    self._LogDebug(_('%(class)s 0x%(id)08X: Closing OGR %(driver)s data source "%(ds)".'), {'class': self.__class__.__name__, 'id': id(self), 'driver': self._DriverName, 'ds': self._DataSourceName})
+                    self._LogDebug(_('%(class)s 0x%(id)016X: Closing OGR %(driver)s data source "%(ds)".'), {'class': self.__class__.__name__, 'id': id(self), 'driver': self._DriverName, 'ds': self._DataSourceName})
                 except:
                     pass
                 self._DataSource = None
@@ -364,7 +364,7 @@ class OGRTabularLayer(Table):
 
         if hasattr(self, '_DataSource') and self._DataSource is not None:
             try:
-                self._LogDebug(_('%(class)s 0x%(id)08X: Closing OGR %(driver)s data source "%(ds)".'), {'class': self.__class__.__name__, 'id': id(self), 'driver': self._DriverName, 'ds': self._DataSourceName})
+                self._LogDebug(_('%(class)s 0x%(id)016X: Closing OGR %(driver)s data source "%(ds)".'), {'class': self.__class__.__name__, 'id': id(self), 'driver': self._DriverName, 'ds': self._DataSourceName})
             except:
                 pass
             self._DataSource = None
@@ -378,7 +378,7 @@ class OGRTabularLayer(Table):
     def _OpenDataSource(cls, dataSourceName, layerName, update, driverName):
         if driverName is not None:
             if isinstance(cls, OGRTabularLayer):
-                cls._LogDebug(_('%(class)s 0x%(id)08X: Opening OGR %(driver)s data source "%(ds)" with update=%(upd)s.'), {'class': cls.__class__.__name__, 'id': id(cls), 'driver': driverName, 'ds': dataSourceName, 'upd': update})
+                cls._LogDebug(_('%(class)s 0x%(id)016X: Opening OGR %(driver)s data source "%(ds)" with update=%(upd)s.'), {'class': cls.__class__.__name__, 'id': id(cls), 'driver': driverName, 'ds': dataSourceName, 'upd': update})
             else:
                 cls._LogDebug(_('%(class)s: Opening OGR %(driver)s data source "%(ds)" with update=%(upd)s.'), {'class': cls.__name__, 'driver': driverName, 'ds': dataSourceName, 'upd': update})
             try:
@@ -389,7 +389,7 @@ class OGRTabularLayer(Table):
                 Logger.RaiseException(RuntimeError(_('Failed to open "%(ds)s" as an OGR %(driver)s data source. OGR reported %(e)s: %(msg)s') % {'ds': dataSourceName, 'driver': driverName, 'e': e.__class__.__name__, 'msg': e}))
         else:
             if isinstance(cls, OGRTabularLayer):
-                cls._LogDebug(_('%(class)s 0x%(id)08X: Opening OGR data source "%(ds)" with update=%(upd)s; OGR will select the driver.'), {'class': cls.__class__.__name__, 'id': id(cls), 'ds': dataSourceName, 'upd': update})
+                cls._LogDebug(_('%(class)s 0x%(id)016X: Opening OGR data source "%(ds)" with update=%(upd)s; OGR will select the driver.'), {'class': cls.__class__.__name__, 'id': id(cls), 'ds': dataSourceName, 'upd': update})
             else:
                 cls._LogDebug(_('%(class)s: Opening OGR data source "%(ds)" with update=%(upd)s; OGR will select the driver.'), {'class': cls.__class__.__name__, 'ds': dataSourceName, 'upd': update})
             try:

@@ -101,6 +101,23 @@ AddArgumentMetadata(GDALDataset.__init__, 'cacheDirectory',
     typeMetadata=FileDatasetCollection.__init__.__doc__.Obj.GetArgumentByName('cacheDirectory').Type,
     description=FileDatasetCollection.__init__.__doc__.Obj.GetArgumentByName('cacheDirectory').Description)
 
+AddArgumentMetadata(GDALDataset.__init__, 'warpOptions',
+    typeMetadata=ClassInstanceTypeMetadata(cls=dict, canBeNone=True),
+    description=_(
+""":py:class:`dict` instance giving options to pass to ``gdal.Warp()``. If
+provided, ``gdal.Warp()`` will be called on the dataset after it is opened and
+used to create a GDAL virtual dataset (VRT), and this :class:`%(cls)s` instance will
+wrap the warped virtual dataset instead.  If :py:data:`None` is provided,
+``gdal.Warp()`` will not be called.
+
+.. Note::
+    Warped cell values will be generated on the fly by GDAL whenever they are
+    retrieved from this :class:`%(cls)s` instance. This can be an expensive
+    operation and no caching will be done. If you plan to access the same
+    cells over and over, consider caching the retrieved values.
+
+""" % {'cls': GDALDataset.__name__}))
+
 AddResultMetadata(GDALDataset.__init__, 'gdalDataset',
     typeMetadata=ClassInstanceTypeMetadata(cls=GDALDataset),
     description=_(':class:`%s` instance.') % GDALDataset.__name__)
@@ -195,11 +212,15 @@ AddArgumentMetadata(GDALDataset.CreateRaster, 'options',
 * ``blockSize`` (:py:class:`int`) - Number of bytes to read at a time from the
   grid and write to the raster. The default is 32*1024*1024 bytes (32 MB).
 
-* ``calculateStatistics`` (:py:class:`bool`) - If True, statistics and a
-  histogram will be calculated using GDAL and written along with the raster in
-  the appropriate format. Depending on the raster's format, the statistics and
-  histogram may be present in the raster file itself, or a "sidecar" file with
-  the extension ``.aux.xml``.
+* ``calculateStatistics`` (:py:class:`bool`) - If True, statistics will be
+  calculated using GDAL and written along with the raster in the appropriate
+  format. Depending on the raster's format, the statistics may be present in
+  the raster file itself, or a "sidecar" file with the extension ``.aux.xml``.
+
+* ``calculateHistogram`` (:py:class:`bool`) - If True, a histogram will be
+  calculated using GDAL and written along with the raster in the appropriate
+  format. Depending on the raster's format, the histogram may be present in
+  the raster file itself, or a "sidecar" file with the extension ``.aux.xml``.
 
 * ``gdalCreateOptions`` (:py:class:`list` of :py:class:`str`) - List of
   options to be passed to :py:meth:`osgeo.gdal.Driver.Create` to create the

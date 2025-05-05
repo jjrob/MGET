@@ -12,7 +12,7 @@ the MGET repo's root directory and then execute::
     make html
 
 Assuming no errors occur, the root page of the documentation will be
-``_build/html/Index.html``. Open it in your browser to view the documentation.
+``_build/html/index.html``. Open it in your browser to view the documentation.
 
 If you make a code change and want to build the documentation again, just run
 ``make html`` again. This should rebuild only the files necessary to account

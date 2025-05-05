@@ -661,7 +661,7 @@ class DatasetCollectionTree(DatasetCollection):
             if reportProgress:
                 self._LogInfo(_('%(existing)i destination datasets already exist. Importing %(new)i datasets.') % {'existing': len(datasets) - datasetsToAdd, 'new': datasetsToAdd})
             else:
-                self._LogDebug(_('%(class)s 0x%(id)08X: %(existing)i destination datasets already exist. Importing %(new)i datasets.') % {'class': self.__class__.__name__, 'id': id(self), 'existing': len(datasets) - datasetsToAdd, 'new': datasetsToAdd})
+                self._LogDebug(_('%(class)s 0x%(id)016X: %(existing)i destination datasets already exist. Importing %(new)i datasets.') % {'class': self.__class__.__name__, 'id': id(self), 'existing': len(datasets) - datasetsToAdd, 'new': datasetsToAdd})
         else:
             datasetsToAdd = len(datasets)
 
