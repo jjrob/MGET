@@ -28,6 +28,9 @@ from . import _TimeSeriesGridStackMetadata
 from ._AggregateGrid import AggregateGrid
 from . import _AggregateGridMetadata
 
+from ._BlockStatisticGrid import BlockStatisticGrid
+from . import _BlockStatisticGridMetadata
+
 from ._CannyEdgeGrid import CannyEdgeGrid, _CannyEdgesOverview
 from . import _CannyEdgeGridMetadata
 
@@ -67,6 +70,7 @@ from . import _WindFetchGridMetadata
 
 __all__ = ['_CannyEdgesOverview',
            'AggregateGrid',
+           'BlockStatisticGrid',
            'CannyEdgeGrid',
            'ClimatologicalGridCollection',
            'ClippedGrid',

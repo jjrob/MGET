@@ -458,7 +458,9 @@ class Grid(Dataset):
 
             else:
                 if self.TSemiRegularity != 'annual':
-                    raise NotImplementedError(_('Programming error in this tool: \'%(sr)s\' semi-regularity has not been implemented. Please contact the author of this tool for assistance.') % {'sr': self.TSemiRegularity})
+                    raise NotImplementedError(_('Programming error in this tool: \'%(sr)s\' semi-regularity has not been implemented. Please contact the MGET development team for assistance.') % {'sr': self.TSemiRegularity})
+                if tCornerCoordType != 'min':
+                    raise NotImplementedError(_('Support for semi-regularity for grids that have a tCornerCoordType other than \'min\' has not been implemented. Please contact the MGET development team for assistance.'))
 
                 # Count backwards from t0 to determine how many time
                 # slices precede it in the starting year.
@@ -520,26 +522,32 @@ class Grid(Dataset):
 
                     # If we got to here, we are on the last time slice
                     # of the year. Usually, this means we have to
-                    # truncate or extend it.
+                    # truncate or extend it. 
                         
                     else:
-                        overrun = datetime.timedelta(0)
-                        if tCornerCoordType == 'min':
-                            if (t + increment).year != currentYear:
-                                overrun = (t + increment) - datetime.datetime(currentYear + 1, 1, 1)
-                        elif tCornerCoordType == 'center':
-                            if (t + increment/2).year != currentYear:
-                                overrun = (t + increment/2) - datetime.datetime(currentYear + 1, 1, 1)
-                        else:
-                            if t.year != currentYear:
-                                overrun = t - datetime.datetime(currentYear + 1, 1, 1)
+
+                        # Because we only support semi-regularity for grids
+                        # with tCornerCoordType == 'min', we know that t
+                        # represents the min coordinate here. If that's want
+                        # the caller requested, just append it.
 
                         if fixedIncrementOffset == -0.5:
-                            tCoords.append(t + offset + deltaFromParsedTime)
-                        elif fixedIncrementOffset == 0.0:
-                            tCoords.append(t + offset - overrun/2 + deltaFromParsedTime)
+                            tCoords.append(t + deltaFromParsedTime)
+
+                        # Otherwise, if they want the max coordinate, append
+                        # midnight January 1 of the next year.
+
+                        elif fixedIncrementOffset == 0.5:
+                            tCoords.append(datetime.datetime(t.year + 1, 1, 1) + deltaFromParsedTime)
+
+                        # Otherwise (they want the center coordinate), append
+                        # the time that is halfway between.
+
                         else:
-                            tCoords.append(t + offset - overrun + deltaFromParsedTime)
+                            deltaHalf = datetime.timedelta(seconds=(datetime.datetime(t.year + 1, 1, 1) - t).total_seconds / 2)
+                            tCoords.append(t + deltaHalf + deltaFromParsedTime)
+
+                        # Reset to the beginning of the next year.
                         
                         yearlyCount = 0
                         currentYear += 1
