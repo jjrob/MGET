@@ -8,10 +8,12 @@
 # root of this project or https://opensource.org/license/bsd-3-clause for the
 # full license text.
 
+import math
 import warnings
 
 from ...DynamicDocString import DynamicDocString
 from ...Internationalization import _
+from ...Logging import ProgressReporter
 
 from .. import Grid
 
@@ -29,7 +31,17 @@ class WindFetchGrid(Grid):
 
     MaxDist = property(_GetMaxDist, doc=DynamicDocString())
 
-    def __init__(self, grid, directions, maxDist=None):
+    def _GetMaxDistPerDir(self):
+        return self._MaxDistPerDir
+
+    MaxDistPerDir = property(_GetMaxDistPerDir, doc=DynamicDocString())
+
+    def _GetPadByMaxDistPerDir(self):
+        return self._PadByMaxDistPerDir
+
+    PadByMaxDistPerDir = property(_GetPadByMaxDistPerDir, doc=DynamicDocString())
+
+    def __init__(self, grid, directions, maxDist=None, maxDistPerDir=None, padByMaxDistPerDir=True, reportProgress=True):
         self.__class__.__doc__.Obj.ValidateMethodInvocation()
 
         # Perform additional validation.
@@ -45,6 +57,9 @@ class WindFetchGrid(Grid):
         self._Grid = grid
         self._Directions = directions
         self._MaxDist = maxDist
+        self._MaxDistPerDir = maxDistPerDir
+        self._PadByMaxDistPerDir = padByMaxDistPerDir
+        self._ReportProgress = reportProgress
         self._CachedSlice = None
         self._CachedSliceIndices = None
 
@@ -172,8 +187,16 @@ class WindFetchGrid(Grid):
                     # Compute fetch and store the resulting numpy array as our
                     # cached slice.
 
-                    self._CachedSlice = self.ComputeFetch(sliceData, grid.NoDataValue, grid.CoordIncrements[-1], self.Directions)
+                    if self._ReportProgress:
+                        self._LogInfo(_('Computing wind fetch in %(dirs)s directions for %(dn)s.') % {'dirs': len(self.Directions), 'dn': grid.DisplayName})
 
+                    self._CachedSlice = self.ComputeFetch(array=sliceData, 
+                                                          landValue=grid.NoDataValue, 
+                                                          cellSize=grid.CoordIncrements[-1], 
+                                                          directions=self.Directions, 
+                                                          maxDistPerDir=self._MaxDistPerDir, 
+                                                          padByMaxDistPerDir=self._PadByMaxDistPerDir,
+                                                          reportProgress=self._ReportProgress)
                     del sliceData
 
                     # Apply max distances, if any.
@@ -209,10 +232,12 @@ class WindFetchGrid(Grid):
     # Thanks to Kenneth Martinsen (@KennthTM) for developing and sharing it.
 
     @classmethod
-    def ComputeFetch(cls, array, landValue, cellSize, directions):
-        #cls.__doc__.Obj.ValidateMethodInvocation()
+    def ComputeFetch(cls, array, landValue, cellSize, directions, maxDistPerDir=None, padByMaxDistPerDir=True, reportProgress=True):
+        cls.__doc__.Obj.ValidateMethodInvocation()
 
         # Define a helper function for calculating fetch in one direction.
+        # This is based on https://github.com/KennethTM/WindFetch. Thanks to
+        # Kenneth Martinsen for developing and sharing it.
 
         import numpy
         import scipy.ndimage
@@ -266,6 +291,15 @@ class WindFetchGrid(Grid):
 
             return(array_inv_pad)
 
+        # If we got a maxDistPerDir and padByMaxDistPerDir is True, then pad
+        # the array on all sides by a value other than landValue, so that the
+        # caller's study area will be effectively surrounded by water.
+
+        if maxDistPerDir is not None and padByMaxDistPerDir:
+            numPaddingCells = math.ceil(maxDistPerDir / cellSize) + 1
+            padValue = 0 if landValue != 0 else 1
+            array = numpy.pad(array, pad_width=numPaddingCells, mode='constant', constant_values=padValue)
+
         # Create an array where water is -1 and land is numpy.nan.
 
         if numpy.isnan(landValue):
@@ -273,18 +307,37 @@ class WindFetchGrid(Grid):
         else:
             landwater = numpy.where(array == landValue, numpy.nan, -1)
 
-        # Calculate a fetch length array for each direction.
+        # Calculate mean fetch using Welford's online algorithm to control
+        # memory usage.
 
-        dirArrays = []
+        if reportProgress:
+            progressReporter = ProgressReporter(progressMessage1=_('Computing wind fetch: %(elapsed)s elapsed, %(opsCompleted)i directions computed, %(perOp)s per direction, %(opsRemaining)i remaining, estimated completion time: %(etc)s.'),
+                                                completionMessage=_('Wind fetch computation complete: %(elapsed)s elapsed, %(opsCompleted)i directions computed, %(perOp)s per direction.'),
+                                                abortedMessage=_('Wind fetch computation stopped before all directions were computed: %(elapsed)s elapsed, %(opsCompleted)i directions computed, %(perOp)s per direction, %(opsIncomplete)i directions not computed.'))
+            progressReporter.Start(len(directions))
+        else:
+            progressReporter = None
+
+        meanFetch = None
+        counts = None
 
         for d in directions:
-            dirArrays.append(fetch_single_dir(landwater, cellSize, d))
+            a = fetch_single_dir(landwater, cellSize, d)
+            if maxDistPerDir is not None:
+                a[a > maxDistPerDir] = maxDistPerDir
 
-        # Compute and return mean fetch across all of the directions.
+            if meanFetch is None:
+                meanFetch = a
+                counts = numpy.zeros_like(a, dtype=int)
 
-        with warnings.catch_warnings():
-            warnings.filterwarnings(action='ignore', message='Mean of empty slice')
-            meanFetch = numpy.nanmean(numpy.stack(dirArrays), axis=0)
+            mask = ~numpy.isnan(a)
+            counts[mask] += 1
+            meanFetch[mask] += (a[mask] - meanFetch[mask]) / counts[mask]
+
+            if reportProgress:
+                progressReporter.ReportProgress()
+
+        meanFetch[counts == 0] = numpy.nan
 
         # The computations above estimate fetch in some of the land cells as
         # well as water. Set the land cells back to nan.
@@ -293,6 +346,12 @@ class WindFetchGrid(Grid):
             meanFetch = numpy.where(numpy.isnan(array), numpy.nan, meanFetch)
         else:
             meanFetch = numpy.where(array == landValue, numpy.nan, meanFetch)
+
+        # If we got a maxDistPerDir and padByMaxDistPerDir is True, remove the
+        # padding from around meanFetch before returning it.
+
+        if maxDistPerDir is not None and padByMaxDistPerDir:
+            meanFetch = meanFetch[numPaddingCells:-numPaddingCells, numPaddingCells:-numPaddingCells]
             
         return(meanFetch)
 

@@ -10,6 +10,7 @@
 
 from ...Dependencies import PythonModuleDependency
 from ...Internationalization import _
+from ...Logging import ProgressReporter
 from ...Metadata import *
 from ...Types import *
 
@@ -33,11 +34,38 @@ https://github.com/KennethTM/WindFetch. Thanks to `Kenneth Martinsen
 
 AddPropertyMetadata(WindFetchGrid.Directions,
     typeMetadata=ListTypeMetadata(elementType=FloatTypeMetadata(minValue=0., maxValue=360.), minLength=1),
-    shortDescription=_('Directions, in degrees, for which wind fetch distance should be computed and averaged. Typically these range from 0 to 360 by a small (but not too small) increment such as 15 degrees, e.g. ``list(range(0, 360, 15))``.'))
+    shortDescription=_(
+"""Directions, in degrees, for which wind fetch distance should be computed
+and averaged. Typically these range from 0 to 360 by a small (but not too
+small) increment such as 15 degrees, e.g. ``list(range(0, 360, 15))``."""))
 
 AddPropertyMetadata(WindFetchGrid.MaxDist,
-    typeMetadata=FloatTypeMetadata(canBeNone=True),
-    shortDescription=_('Maximum allowed mean wind fetch distance. If it is provided, mean distances greater than this will be rounded down to it.'))
+    typeMetadata=FloatTypeMetadata(canBeNone=True, minValue=0.),
+    shortDescription=_(
+"""Maximum allowed mean wind fetch distance. If provided, after the mean
+fetch distance in all directions is computed, it is compared against this maximum
+value. Wherever the mean is larger, it is rounded down to the maximum."""))
+
+AddPropertyMetadata(WindFetchGrid.MaxDistPerDir,
+    typeMetadata=FloatTypeMetadata(canBeNone=True, minValue=0.),
+    shortDescription=_(
+"""Maximum allowed wind fetch distance in each direction. If provided, then
+each time fetch distance is calculated for a specific direction, it is
+compared against this maximum value. Wherever fetch in the calculated
+direction is larger, it will be rounded down to the maximum value. This will
+be done for each direction in turn, prior to averaging all of the directions
+into a mean. Use this parameter to prevent a few extremely long distances from
+dominating the mean."""))
+
+AddPropertyMetadata(WindFetchGrid.PadByMaxDistPerDir,
+    typeMetadata=BooleanTypeMetadata(),
+    shortDescription=_(
+"""If True (the default) and the `MaxDistPerDir` parameter is given, then the
+grid will be automatically padded on all sides by water before fetch is
+computed. Use this option when you want the edges of the grid to be considered
+open ocean rather than land, and you want to prevent fetch from decreasing
+along the edges as if land was there. If False or `MaxDistPerDir` is not
+given, then the edges will be considered land."""))
 
 # Constructor
 
@@ -60,6 +88,18 @@ AddArgumentMetadata(WindFetchGrid.__init__, 'directions',
 AddArgumentMetadata(WindFetchGrid.__init__, 'maxDist',
     typeMetadata=WindFetchGrid.MaxDist.__doc__.Obj.Type,
     description=WindFetchGrid.MaxDist.__doc__.Obj.ShortDescription)
+
+AddArgumentMetadata(WindFetchGrid.__init__, 'maxDistPerDir',
+    typeMetadata=WindFetchGrid.MaxDistPerDir.__doc__.Obj.Type,
+    description=WindFetchGrid.MaxDistPerDir.__doc__.Obj.ShortDescription)
+
+AddArgumentMetadata(WindFetchGrid.__init__, 'padByMaxDistPerDir',
+    typeMetadata=WindFetchGrid.PadByMaxDistPerDir.__doc__.Obj.Type,
+    description=WindFetchGrid.PadByMaxDistPerDir.__doc__.Obj.ShortDescription)
+
+AddArgumentMetadata(WindFetchGrid.__init__, 'reportProgress',
+    typeMetadata=BooleanTypeMetadata(),
+    description=_('If True, progress messages will be logged periodically as the computation proceeds.'))
 
 AddResultMetadata(WindFetchGrid.__init__, 'obj',
     typeMetadata=ClassInstanceTypeMetadata(cls=WindFetchGrid),
@@ -88,6 +128,9 @@ AddArgumentMetadata(WindFetchGrid.ComputeFetch, 'cellSize',
     description=_('Cell size of `array`. Cells are assumed to be square. The cell size is the length or width of the cell.'))
 
 CopyArgumentMetadata(WindFetchGrid.__init__, 'directions', WindFetchGrid.ComputeFetch, 'directions')
+CopyArgumentMetadata(WindFetchGrid.__init__, 'maxDistPerDir', WindFetchGrid.ComputeFetch, 'maxDistPerDir')
+CopyArgumentMetadata(WindFetchGrid.__init__, 'padByMaxDistPerDir', WindFetchGrid.ComputeFetch, 'padByMaxDistPerDir')
+CopyArgumentMetadata(WindFetchGrid.__init__, 'reportProgress', WindFetchGrid.ComputeFetch, 'reportProgress')
 
 AddResultMetadata(WindFetchGrid.ComputeFetch, 'obj',
     typeMetadata=NumPyArrayTypeMetadata(allowedDTypes=['float32']),

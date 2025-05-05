@@ -1,6 +1,9 @@
 # MGET Release Notes
 
-## v3.2.1 - Under construction
+## v3.3 - Under construction
+
+### Added
+- WindFetchGrid: add "maximum distance per direction" and "report progress" parameters ([#33](https://github.com/jjrob/MGET/issues/33))
 
 ### Fixed
 - RWorkerProcess.Start fails with WARNING Error in findPort(port) : Port must be an integer in the range of 1024 to 49151 ([#27](https://github.com/jjrob/MGET/issues/27))
