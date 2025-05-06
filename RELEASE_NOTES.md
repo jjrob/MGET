@@ -1,6 +1,6 @@
 # MGET Release Notes
 
-## v3.3 - Under construction
+## [v3.3.0](https://github.com/jjrob/MGET/releases/tag/v3.3.0) - 2025-05-06
 
 ### Added
 - WindFetchGrid: add "maximum distance per direction" and "report progress" parameters ([#33](https://github.com/jjrob/MGET/issues/33))
