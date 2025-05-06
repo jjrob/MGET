@@ -972,7 +972,8 @@ class TestBlockStatisticGrid():
                         ti2 = ti1 + tDaysInSlice[i]
                         if grid.NoDataValue is None:
                             evSlices.append(numpy.array([[grid.Data[ti1:ti2,0:5,0:5].min(), grid.Data[ti1:ti2,0:5,5:10].min(), grid.Data[ti1:ti2,0:5,10:12].min()], 
-                                                         [grid.Data[ti1:ti2,5:10,0:5].min(), grid.Data[ti1:ti2,5:10,5:10].min(), grid.Data[ti1:ti2,5:10,10:12].min()]]))
+                                                         [grid.Data[ti1:ti2,5:10,0:5].min(), grid.Data[ti1:ti2,5:10,5:10].min(), grid.Data[ti1:ti2,5:10,10:12].min()]], 
+                                                        dtype=grid.DataType))
                         else:
                             evSlices.append(numpy.array([[numpy.where((data3[ti1:ti2,0:5,0:5] == extremum).all(), noDataValue, data3[ti1:ti2,0:5,0:5].min()),
                                                           numpy.where((data3[ti1:ti2,0:5,5:10] == extremum).all(), noDataValue, data3[ti1:ti2,0:5,5:10].min()),
@@ -980,7 +981,8 @@ class TestBlockStatisticGrid():
 
                                                          [numpy.where((data3[ti1:ti2,5:10,0:5] == extremum).all(), noDataValue, data3[ti1:ti2,5:10,0:5].min()),
                                                           numpy.where((data3[ti1:ti2,5:10,5:10] == extremum).all(), noDataValue, data3[ti1:ti2,5:10,5:10].min()),
-                                                          numpy.where((data3[ti1:ti2,5:10,10:12] == extremum).all(), noDataValue, data3[ti1:ti2,5:10,10:12].min())]]))
+                                                          numpy.where((data3[ti1:ti2,5:10,10:12] == extremum).all(), noDataValue, data3[ti1:ti2,5:10,10:12].min())]], 
+                                                        dtype=grid.DataType))
                         daysFromStart = ti2
                         i += 1
                     expectedValues = numpy.stack(evSlices, axis=0, dtype=data.dtype)
@@ -1005,7 +1007,8 @@ class TestBlockStatisticGrid():
                         ti2 = ti1 + tDaysInSlice[i]
                         if grid.NoDataValue is None:
                             evSlices.append(numpy.array([[grid.Data[ti1:ti2,0:5,0:5].max(), grid.Data[ti1:ti2,0:5,5:10].max(), grid.Data[ti1:ti2,0:5,10:12].max()], 
-                                                         [grid.Data[ti1:ti2,5:10,0:5].max(), grid.Data[ti1:ti2,5:10,5:10].max(), grid.Data[ti1:ti2,5:10,10:12].max()]]))
+                                                         [grid.Data[ti1:ti2,5:10,0:5].max(), grid.Data[ti1:ti2,5:10,5:10].max(), grid.Data[ti1:ti2,5:10,10:12].max()]], 
+                                                        dtype=grid.DataType))
                         else:
                             evSlices.append(numpy.array([[numpy.where((data3[ti1:ti2,0:5,0:5] == extremum).all(), noDataValue, data3[ti1:ti2,0:5,0:5].max()),
                                                           numpy.where((data3[ti1:ti2,0:5,5:10] == extremum).all(), noDataValue, data3[ti1:ti2,0:5,5:10].max()),
@@ -1013,7 +1016,8 @@ class TestBlockStatisticGrid():
 
                                                          [numpy.where((data3[ti1:ti2,5:10,0:5] == extremum).all(), noDataValue, data3[ti1:ti2,5:10,0:5].max()),
                                                           numpy.where((data3[ti1:ti2,5:10,5:10] == extremum).all(), noDataValue, data3[ti1:ti2,5:10,5:10].max()),
-                                                          numpy.where((data3[ti1:ti2,5:10,10:12] == extremum).all(), noDataValue, data3[ti1:ti2,5:10,10:12].max())]]))
+                                                          numpy.where((data3[ti1:ti2,5:10,10:12] == extremum).all(), noDataValue, data3[ti1:ti2,5:10,10:12].max())]], 
+                                                        dtype=grid.DataType))
                         daysFromStart = ti2
                         i += 1
 
