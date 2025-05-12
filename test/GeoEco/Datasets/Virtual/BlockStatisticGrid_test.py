@@ -985,7 +985,7 @@ class TestBlockStatisticGrid():
                                                         dtype=grid.DataType))
                         daysFromStart = ti2
                         i += 1
-                    expectedValues = numpy.stack(evSlices, axis=0, dtype=data.dtype)
+                    expectedValues = numpy.stack(evSlices, axis=0).astype(data.dtype)
 
                     bg = BlockStatisticGrid(grid=grid, statistic='minimum', xySize=5, tSize=tSize, tUnit=tUnit, tStart=tStart, tSemiRegularity=tSemiRegularity)
                     result = bg.Data[:]
@@ -1021,7 +1021,7 @@ class TestBlockStatisticGrid():
                         daysFromStart = ti2
                         i += 1
 
-                    expectedValues = numpy.stack(evSlices, axis=0, dtype=data.dtype)
+                    expectedValues = numpy.stack(evSlices, axis=0).astype(data.dtype)
 
                     bg = BlockStatisticGrid(grid=grid, statistic='maximum', xySize=5, tSize=tSize, tUnit=tUnit, tStart=tStart, tSemiRegularity=tSemiRegularity)
                     result = bg.Data[:]

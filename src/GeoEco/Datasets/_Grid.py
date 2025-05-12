@@ -713,7 +713,7 @@ class Grid(Dataset):
             if unscaledData.ndim > 0:
                 unscaledData[Grid.numpy_equal_nan(value, self.NoDataValue)] = self.UnscaledNoDataValue
             elif value == self.NoDataValue:
-                return numpy.array(self.UnscaledNoDataValue, unscaledData.dtype)
+                unscaledData = numpy.array(self.UnscaledNoDataValue, unscaledData.dtype)
         
         self._SetUnscaledDataWithArray(key, unscaledData)
 
