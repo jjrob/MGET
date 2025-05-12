@@ -229,14 +229,18 @@ class GDALDataset(FileDatasetCollection):
             else:
                 self._LogDebug(_('%(class)s 0x%(id)016X: Opening %(dn)s in read-only mode.'), {'class': self.__class__.__name__, 'id': id(self), 'dn': self._DisplayName})
 
+            gdal.PushErrorHandler(self._LogGDALWarnings)
             try:
-                ds = gdal.Open(path, {False: gdalconst.GA_ReadOnly, True: gdalconst.GA_Update}[self.IsUpdatable])
-            except Exception as e:
-                gdal.ErrorReset()
-                if self.IsUpdatable:
-                    raise RuntimeError(_('%(dn)s could not be opened with the Geospatial Data Abstraction Library (GDAL). Verify that the dataset exists, is writable, is in a format supported by GDAL, and that the GDAL driver for this format supports writing. For a list of supported formats, see http://www.gdal.org/formats_list.html. If the format is not supported, find a way to convert it to a supported format. If you have trouble deciding which supported format to use, we suggest ERDAS IMAGINE (.img), or GeoTIFF (.tif). Detailed error information: gdal.Open() reported %(e)s: %(msg)s.') % {'dn': self._DisplayName, 'e': e.__class__.__name__, 'msg': e})
-                else:
-                    raise RuntimeError(_('%(dn)s could not be opened with the Geospatial Data Abstraction Library (GDAL). Verify that the dataset exists, is accessible, and in a format supported by GDAL. For a list of supported formats, see http://www.gdal.org/formats_list.html. If the format is not supported, find a way to convert it to a supported format. If you have trouble deciding which supported format to use, we suggest ERDAS IMAGINE (.img) or GeoTIFF (.tif). Detailed error information: gdal.Open() reported %(e)s: %(msg)s.') % {'dn': self._DisplayName, 'e': e.__class__.__name__, 'msg': e})
+                try:
+                    ds = gdal.Open(path, {False: gdalconst.GA_ReadOnly, True: gdalconst.GA_Update}[self.IsUpdatable])
+                except Exception as e:
+                    gdal.ErrorReset()
+                    if self.IsUpdatable:
+                        raise RuntimeError(_('%(dn)s could not be opened with the Geospatial Data Abstraction Library (GDAL). Verify that the dataset exists, is writable, is in a format supported by GDAL, and that the GDAL driver for this format supports writing. For a list of supported formats, see http://www.gdal.org/formats_list.html. If the format is not supported, find a way to convert it to a supported format. If you have trouble deciding which supported format to use, we suggest ERDAS IMAGINE (.img), or GeoTIFF (.tif). Detailed error information: gdal.Open() reported %(e)s: %(msg)s.') % {'dn': self._DisplayName, 'e': e.__class__.__name__, 'msg': e})
+                    else:
+                        raise RuntimeError(_('%(dn)s could not be opened with the Geospatial Data Abstraction Library (GDAL). Verify that the dataset exists, is accessible, and in a format supported by GDAL. For a list of supported formats, see http://www.gdal.org/formats_list.html. If the format is not supported, find a way to convert it to a supported format. If you have trouble deciding which supported format to use, we suggest ERDAS IMAGINE (.img) or GeoTIFF (.tif). Detailed error information: gdal.Open() reported %(e)s: %(msg)s.') % {'dn': self._DisplayName, 'e': e.__class__.__name__, 'msg': e})
+            finally:
+                gdal.PopErrorHandler()
 
             self._LogDebug(_('%(class)s 0x%(id)016X: Opened %(dn)s with the GDAL %(driver)s driver.') % {'class': self.__class__.__name__, 'id': id(self), 'dn': self._DisplayName, 'driver': ds.GetDriver().LongName})
 
@@ -253,6 +257,29 @@ class GDALDataset(FileDatasetCollection):
             self._OpenedFile = path
 
             self._RegisterForCloseAtExit()
+
+    def _LogGDALWarnings(self, err_class, err_no, err_msg):
+
+        # When opening .img (ERDAS) rasters that have nan is the NoData value,
+        # GDAL will issue "Warning 1: NaN converted to INT_MAX." As far as we
+        # can tell, this has no practical ramifications. If we get it, just
+        # log a DEBUG message.
+
+        gdal = self._gdal()
+        gdalconst = self._gdalconst()
+
+        if err_class == gdalconst.CE_Warning and 'NaN converted to INT_MAX' in err_msg:
+            self._LogDebug(_('%(class)s 0x%(id)016X: From GDAL: Warning %(err_no)s: %(err_msg)s') % {'class': self.__class__.__name__, 'id': id(self), 'err_no': err_no, 'err_msg': err_msg})
+
+        # Otherwise, log other warnings as WARNING messages.
+
+        elif err_class == gdalconst.CE_Warning:
+            self._LogWarning(_('When opening %(dn)s, the Geospatial Data Abstraction Library (GDAL) reported Warning %(err_no)s: %(err_msg)s') % {'dn': self._DisplayName, 'err_no': err_no, 'err_msg': err_msg})
+
+        # And allow the GDAL default error handler to handle the rest.
+
+        else:
+            gdal.CPLDefaultErrorHandler(err_class, err_no, err_msg)
 
     def _OpenBand(self, band):
         if self._GDALRasterBand is None or self._OpenedBand != band:
