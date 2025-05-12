@@ -382,9 +382,12 @@ class DatasetCollection(CollectibleObject):
             except:
                 from pyparsing import DelimitedList
 
-            # Enable "packrat" mode for higher performance.
+            # No longer do we enable "packrat" mode for higher performance.
+            # See https://github.com/jjrob/MGET/issues/39: pyparsing
+            # ParserElement.enable_packrat() unexpectedly deletes MGET objects
+            # and should no longer be used
 
-            ParserElement.enable_packrat()
+            # ParserElement.enable_packrat()
 
             # Define the parser using pyparsing.
             #

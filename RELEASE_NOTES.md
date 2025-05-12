@@ -15,6 +15,7 @@
 - FastMarchingDistanceGrid fails with NameError: name 'GridSlice' is not defined ([#34](https://github.com/jjrob/MGET/issues/34))
 - When copernicusmarine 2.1.0 is installed, MGET functions fail with ModuleNotFoundError: No module named 'copernicusmarine.download_functions.download_arco_series' ([#36](https://github.com/jjrob/MGET/issues/36))
 - MGET functions that require MATLAB fail on Windows with UnboundLocalError: cannot access local variable 'oldLdLibraryPath' where it is not associated with a value ([#38](https://github.com/jjrob/MGET/issues/38))
+- pyparsing ParserElement.enable_packrat() unexpectedly deletes MGET objects and should no longer be used ([#39](https://github.com/jjrob/MGET/issues/39))
 
 ## [v3.2.0](https://github.com/jjrob/MGET/releases/tag/v3.2.0) - 2025-02-16
 
