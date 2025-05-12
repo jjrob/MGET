@@ -104,6 +104,17 @@ should provide a value when `grid` does not have a
 Ignored if ``grid.DataIsScaled`` is False or ``grid.NoDataValue`` does not
 return :py:data:`None`."""))
 
+AddArgumentMetadata(MaskedGrid.__init__, 'tolerance',
+    typeMetadata=FloatTypeMetadata(canBeNone=True, minValue=0., mustBeLessThan=1.),
+    description=_(
+""":py:class:`float` giving the relative tolerance, expressed as the fraction
+of a grid cell, for determining that the masks enclose the grid and align with
+its cells. Having a non-zero tolerance helps avoid situations where the masks
+and grid are supposed to have exactly the same extents or cell alignments, but
+numerical rounding issues during their production has caused them to be very
+slightly different. If the tolerance is zero, then the extents and cell
+alignments must match exactly."""))
+
 AddResultMetadata(MaskedGrid.__init__, 'obj',
     typeMetadata=ClassInstanceTypeMetadata(cls=MaskedGrid),
     description=_(':class:`%s` instance.') % MaskedGrid.__name__)

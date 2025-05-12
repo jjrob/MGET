@@ -17,7 +17,7 @@ from .. import Grid
 class MaskedGrid(Grid):
     __doc__ = DynamicDocString()
 
-    def __init__(self, grid, masks, operators, values, unscaledNoDataValue=None, scaledNoDataValue=None):
+    def __init__(self, grid, masks, operators, values, unscaledNoDataValue=None, scaledNoDataValue=None, tolerance=1e-9):
         self.__class__.__doc__.Obj.ValidateMethodInvocation()
 
         # Initialize our properties.
@@ -31,6 +31,7 @@ class MaskedGrid(Grid):
         self._Values = values
         self._UnscaledNoDataValue = unscaledNoDataValue
         self._ScaledNoDataValue = scaledNoDataValue
+        self._Tolerance = tolerance
         self._MaskOffsets = None
 
         self._DisplayName = _('%(dn)s, masked where %(maskExpressions)s') % {'dn': grid.DisplayName, 'maskExpressions': _(' or ').join([self._GetMaskDisplayExpression(*s) for s in zip(masks, operators, values)])}
@@ -307,23 +308,48 @@ class MaskedGrid(Grid):
                     if mask.Dimensions[i] != 't':
                         gridCoords = numpy.asarray(self.CenterCoords[mask.Dimensions[i]], dtype='float64')
                         maskCoords = numpy.asarray(mask.CenterCoords[mask.Dimensions[i]], dtype='float64')
+
+                        if mask.CoordIncrements[i] is not None:
+                            absTol = mask.CoordIncrements[i]*self._Tolerance
+                        else:
+                            absTol = (maskCoords[-1] - maskCoords[0]) / mask.Shape[i] * self._Tolerance
+
+                        if gridCoords[0] < maskCoords[0] - absTol or gridCoords[-1] > maskCoords[-1] + absTol:
+                            self._LogInfo(_('In the %(dim)s dimension, the cell center coordinates %(dn1)s range from %(min)r to %(max)r.') % {'dim': mask.Dimensions[i], 'dn1': mask.DisplayName, 'min': maskCoords[0], 'max': maskCoords[-1]})
+                            self._LogInfo(_('In the %(dim)s dimension, the cell center coordinates %(dn2)s range from %(min)r to %(max)r.') % {'dim': mask.Dimensions[i], 'dn2': self._Grid.DisplayName, 'min': gridCoords[0], 'max': gridCoords[-1]})
+                            raise ValueError(_('%(dn1)s does not completely enclose %(dn2)s within the requested tolerance of %(tol)g of a grid cell, so it cannot be used as a mask.') % {'dn1': mask.DisplayName, 'dn2': self._Grid.DisplayName, 'tol': self._Tolerance})
+
+                        offset = maskCoords.searchsorted(gridCoords[0] - absTol)
+                        self._LogDebug(_('%(class)s 0x%(id)016X: Dimension %(dim)s: maskCoords[0] = %(m0)r, gridCoords[0] = %(g0)r, absTol = %(absTol)r, len(maskCoords) = %(lmc)s, offset = %(offset)s, len(gridCoords) = %(lgc)s'), {'class': self.__class__.__name__, 'id': id(self), 'dim': mask.Dimensions[i], 'm0': maskCoords[0], 'g0': gridCoords[0], 'absTol': absTol, 'lmc': len(maskCoords), 'offset': offset, 'lgc': len(gridCoords)})
+                        try:
+                            if len(maskCoords) - offset < len(gridCoords):
+                                raise ValueError
+
+                            if (numpy.abs(maskCoords[offset:offset+len(gridCoords)] - gridCoords) > absTol).any():
+                                raise ValueError
+                        except:
+                            raise ValueError(_('The %(dim)s coordinates of %(dn1)s do not line up with the %(dim)s coordinates of %(dn2)s within the requested tolerance of %(tol)g of a grid cell, so it cannot be used as a mask.') % {'dn1': mask.DisplayName, 'dn2': self._Grid.DisplayName, 'dim': mask.Dimensions[i], 'tol': self._Tolerance})
+
                     else:
                         gridCoords = self.CenterCoords[mask.Dimensions[i]]
                         maskCoords = mask.CenterCoords[mask.Dimensions[i]]
 
-                    if gridCoords[0] < maskCoords[0] or gridCoords[-1] > maskCoords[-1]:
-                        raise ValueError(_('%(dn1)s does not completely enclose %(dn2)s so it cannot be used as a mask.') % {'dn1': mask.DisplayName, 'dn2': self._Grid.DisplayName})
+                        if gridCoords[0] < maskCoords[0] or gridCoords[-1] > maskCoords[-1]:
+                            self._LogInfo(_('In the %(dim)s dimension, the cell center coordinates %(dn1)s range from %(min)r to %(max)r.') % {'dim': mask.Dimensions[i], 'dn1': mask.DisplayName, 'min': maskCoords[0], 'max': maskCoords[-1]})
+                            self._LogInfo(_('In the %(dim)s dimension, the cell center coordinates %(dn2)s range from %(min)r to %(max)r.') % {'dim': mask.Dimensions[i], 'dn2': self._Grid.DisplayName, 'min': gridCoords[0], 'max': gridCoords[-1]})
+                            raise ValueError(_('%(dn1)s does not completely enclose %(dn2)s so it cannot be used as a mask.') % {'dn1': mask.DisplayName, 'dn2': self._Grid.DisplayName})
                     
-                    try:
                         offset = maskCoords.searchsorted(gridCoords[0])
-                        if len(maskCoords) - offset < len(gridCoords):
-                            raise ValueError
-                        if ((mask.Dimensions[i] != 't' and ((self.CoordIncrements[i] is not None and mask.CoordIncrements[i] is not None and (numpy.abs(maskCoords[offset:offset+len(gridCoords)] - gridCoords) / mask.CoordIncrements[i] > 0.000001).any()) or \
-                                                           ((self.CoordIncrements[i] is None or mask.CoordIncrements[i] is None) and (maskCoords[offset:offset+len(gridCoords)] != gridCoords).any()))) or \
-                            (mask.Dimensions[i] == 't' and (maskCoords[offset:offset+len(gridCoords)] != gridCoords).any())):
-                            raise ValueError
-                    except:
-                        raise ValueError(_('The %(dim)s coordinates of %(dn1)s do not line up with the %(dim)s coordinates of %(dn2)s, so it cannot be used as a mask.') % {'dn1': mask.DisplayName, 'dn2': self._Grid.DisplayName, 'dim': mask.Dimensions[i]})
+                        self._LogDebug(_('%(class)s 0x%(id)016X: Dimension %(dim)s: len(maskCoords) = %(lmc)s, offset = %(offset)s, len(gridCoords) = %(lgc)s'), {'class': self.__class__.__name__, 'id': id(self), 'dim': mask.Dimensions[i], 'lmc': len(maskCoords), 'offset': offset, 'lgc': len(gridCoords)})
+                        try:
+                            if len(maskCoords) - offset < len(gridCoords):
+                                self._LogDebug(_('%(class)s 0x%(id)016X: len(maskCoords) - offset Dimension %(dim)s offset: %(offset)r'), {'class': self.__class__.__name__, 'id': id(self), 'dim': mask.Dimensions[i], 'offset': offset})
+                                raise ValueError
+
+                            if (maskCoords[offset:offset+len(gridCoords)] != gridCoords).any():
+                                raise ValueError
+                        except:
+                            raise ValueError(_('The %(dim)s coordinates of %(dn1)s do not line up with the %(dim)s coordinates of %(dn2)s, so it cannot be used as a mask.') % {'dn1': mask.DisplayName, 'dn2': self._Grid.DisplayName, 'dim': mask.Dimensions[i]})
 
                     offsets.append(offset)
 
