@@ -134,7 +134,7 @@ class MatlabDependency(Dependency):
                         newPath = oldPath + ';' + defaultDir
                         _LogDebug('Setting PATH = %s' % newPath)
                         os.environ['PATH'] = newPath
-                        return oldLdLibraryPath
+                        return oldPath
 
                     return None 
                 else:

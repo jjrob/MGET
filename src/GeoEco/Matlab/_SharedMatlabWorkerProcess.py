@@ -28,20 +28,26 @@ class SharedMatlabWorkerProcess(object):
 
     @classmethod
     def GetWorkerProcess(cls, timeout=30.):
+        Logger.Debug('%(class)s 0x%(id)016X: GetWorkerProcess() called.', {'class': cls.__name__, 'id': id(cls)})
         with cls._Lock:
             if cls._WorkerProcess is None:
+                Logger.Debug('%(class)s 0x%(id)016X: Instantiating new MatlabWorkerProcess(timeout=%(timeout)s.', {'class': cls.__name__, 'id': id(cls), 'timeout': timeout})
                 cls._WorkerProcess = MatlabWorkerProcess(timeout)
             return weakref.proxy(cls._WorkerProcess)
 
     @classmethod
     def Shutdown(cls, timeout=30.):
+        Logger.Debug('%(class)s 0x%(id)016X: Shutdown() called.', {'class': cls.__name__, 'id': id(cls)})
         with cls._Lock:
             if cls._WorkerProcess is not None:
+                Logger.Debug('%(class)s 0x%(id)016X: Calling _WorkerProcess.Stop(timeout=%(timeout)s.', {'class': cls.__name__, 'id': id(cls), 'timeout': timeout})
                 try:
                     cls._WorkerProcess.Stop(timeout)
                 except:
                     pass
                 cls._WorkerProcess = None
+            else:
+                Logger.Debug('%(class)s 0x%(id)016X: No worker process is running.', {'class': cls.__name__, 'id': id(cls)})
 
 
 atexit.register(SharedMatlabWorkerProcess.Shutdown)
