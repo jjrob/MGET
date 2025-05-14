@@ -112,11 +112,6 @@ class InpaintedGrid(Grid):
 
     def _ReadNumpyArray(self, sliceList):
 
-        # If we have not created the temporary directory, do it now.
-
-        if self._TempDir is None:
-            self._TempDir = self._CreateTempDirectory()
-
         # Iterate through each requested 2D slice and create an inpainted
         # version of it in the temporary directory, if we have not done so
         # already. If we catch an exception, call _Close() to delete the
@@ -133,15 +128,10 @@ class InpaintedGrid(Grid):
                 slices = [(d1, d2, sliceList[2], sliceList[3]) for d1 in range(sliceList[0].start, sliceList[0].stop) for d2 in range(sliceList[1].start, sliceList[1].stop)]
 
             for s in slices:
-                inpaintedFile = os.path.join(self._TempDir, 'slice_%s_inpainted.dat' % '_'.join(map(str, s[:len(self.Dimensions) - 2])))
-                if not os.path.exists(inpaintedFile):
-                    self._LogDebug(_('%(class)s 0x%(id)016X: Creating %(inpaintedFile)s from slice %(slice)r of %(dn)s.'), {'class': self.__class__.__name__, 'id': id(self), 'inpaintedFile': inpaintedFile, 'slice': s, 'dn': self._Grid.DisplayName})
-
-                    # Instantiate MatlabWorkerProcess, if we have not done so
-                    # already.
-
-                    if self._MatlabWorkerProcess is None:
-                        self._MatlabWorkerProcess = SharedMatlabWorkerProcess.GetWorkerProcess()
+                if self._TempDir is not None:
+                    inpaintedFile = os.path.join(self._TempDir, 'slice_%s_inpainted.dat' % '_'.join(map(str, s[:len(self.Dimensions) - 2])))
+                    
+                if self._TempDir is None or not os.path.exists(inpaintedFile):
 
                     # Extract the 2D slice.
 
@@ -164,7 +154,19 @@ class InpaintedGrid(Grid):
                     data = grid.Data[:]
                     data[Grid.numpy_equal_nan(data, grid.NoDataValue)] = numpy.nan
 
+                    # If we have not created the temporary directory or
+                    # instantiated MatlabWorkerProcess, do it now.
+
+                    if self._TempDir is None:
+                        self._TempDir = self._CreateTempDirectory()
+
+                    if self._MatlabWorkerProcess is None:
+                        self._MatlabWorkerProcess = SharedMatlabWorkerProcess.GetWorkerProcess()
+
                     # Inpaint the numpy array with the MATLAB function.
+
+                    inpaintedFile = os.path.join(self._TempDir, 'slice_%s_inpainted.dat' % '_'.join(map(str, s[:len(self.Dimensions) - 2])))
+                    self._LogDebug(_('%(class)s 0x%(id)016X: Creating %(inpaintedFile)s from slice %(slice)r of %(dn)s.'), {'class': self.__class__.__name__, 'id': id(self), 'inpaintedFile': inpaintedFile, 'slice': s, 'dn': self._Grid.DisplayName})
 
                     inpaintedArray = self._MatlabWorkerProcess.InpaintNaNs(data,                                                            # A
                                                                            {'del2a': 1, 'del2b': 0, 'del2c': 2, 'del4': 3, 'spring': 4}[self._Method.lower()],   # method

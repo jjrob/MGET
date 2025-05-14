@@ -131,11 +131,6 @@ class CannyEdgeGrid(Grid):
 
     def _ReadNumpyArray(self, sliceList):
 
-        # If we have not created the temporary directory, do it now.
-
-        if self._TempDir is None:
-            self._TempDir = self._CreateTempDirectory()
-
         # Iterate through each requested 2D slice, detect edges, and write
         # edges to a file in the temporary directory, if we have not done so
         # already. If we catch an exception, call _Close() to delete the
@@ -152,20 +147,10 @@ class CannyEdgeGrid(Grid):
                 slices = [(d1, d2, sliceList[2], sliceList[3]) for d1 in range(sliceList[0].start, sliceList[0].stop) for d2 in range(sliceList[1].start, sliceList[1].stop)]
 
             for s in slices:
-                edgesFile = os.path.join(self._TempDir, 'slice_%s_edges.dat' % '_'.join(map(str, s[:len(self.Dimensions) - 2])))
-                if not os.path.exists(edgesFile):
-                    if self._HighThreshold is None and self._LowThreshold is None:
-                        self._LogDebug(_('%(class)s 0x%(id)016X: Creating %(edgesFile)s from slice %(slice)r of %(dn)s, sigma=%(sigma)g, minSize=%(minSize)s. Thresholds will be computed.'), {'class': self.__class__.__name__, 'id': id(self), 'edgesFile': edgesFile, 'slice': s, 'dn': self._Grid.DisplayName, 'sigma': self._Sigma, 'minSize': self._MinSize})
-                    elif self._LowThreshold is None:
-                        self._LogDebug(_('%(class)s 0x%(id)016X: Creating %(edgesFile)s from slice %(slice)r of %(dn)s, high threshold=%(ht)g, sigma=%(sigma)g, minSize=%(minSize)s. The low threshold will be computed.'), {'class': self.__class__.__name__, 'id': id(self), 'edgesFile': edgesFile, 'slice': s, 'dn': self._Grid.DisplayName, 'sigma': self._Sigma, 'minSize': self._MinSize, 'ht': self._HighThreshold})
-                    else:
-                        self._LogDebug(_('%(class)s 0x%(id)016X: Creating %(edgesFile)s from slice %(slice)r of %(dn)s, high threshold=%(ht)g, low threshold=%(lt)g, sigma=%(sigma)g, minSize=%(minSize)s.'), {'class': self.__class__.__name__, 'id': id(self), 'edgesFile': edgesFile, 'slice': s, 'dn': self._Grid.DisplayName, 'sigma': self._Sigma, 'minSize': self._MinSize, 'ht': self._HighThreshold, 'lt': self._LowThreshold})
-
-                    # Instantiate MatlabWorkerProcess, if we have not done so
-                    # already.
-
-                    if self._MatlabWorkerProcess is None:
-                        self._MatlabWorkerProcess = SharedMatlabWorkerProcess.GetWorkerProcess()
+                if self._TempDir is not None:
+                    edgesFile = os.path.join(self._TempDir, 'slice_%s_edges.dat' % '_'.join(map(str, s[:len(self.Dimensions) - 2])))
+                    
+                if self._TempDir is None or not os.path.exists(edgesFile):
 
                     # Extract the 2D slice.
 
@@ -188,7 +173,24 @@ class CannyEdgeGrid(Grid):
                     data = grid.Data[:]
                     data[Grid.numpy_equal_nan(data, grid.NoDataValue)] = numpy.nan
 
+                    # If we have not created the temporary directory or
+                    # instantiated MatlabWorkerProcess, do it now.
+
+                    if self._TempDir is None:
+                        self._TempDir = self._CreateTempDirectory()
+
+                    if self._MatlabWorkerProcess is None:
+                        self._MatlabWorkerProcess = SharedMatlabWorkerProcess.GetWorkerProcess()
+
                     # Detect edges in the numpy array with the MATLAB function.
+
+                    edgesFile = os.path.join(self._TempDir, 'slice_%s_edges.dat' % '_'.join(map(str, s[:len(self.Dimensions) - 2])))
+                    if self._HighThreshold is None and self._LowThreshold is None:
+                        self._LogDebug(_('%(class)s 0x%(id)016X: Creating %(edgesFile)s from slice %(slice)r of %(dn)s, sigma=%(sigma)g, minSize=%(minSize)s. Thresholds will be computed.'), {'class': self.__class__.__name__, 'id': id(self), 'edgesFile': edgesFile, 'slice': s, 'dn': self._Grid.DisplayName, 'sigma': self._Sigma, 'minSize': self._MinSize})
+                    elif self._LowThreshold is None:
+                        self._LogDebug(_('%(class)s 0x%(id)016X: Creating %(edgesFile)s from slice %(slice)r of %(dn)s, high threshold=%(ht)g, sigma=%(sigma)g, minSize=%(minSize)s. The low threshold will be computed.'), {'class': self.__class__.__name__, 'id': id(self), 'edgesFile': edgesFile, 'slice': s, 'dn': self._Grid.DisplayName, 'sigma': self._Sigma, 'minSize': self._MinSize, 'ht': self._HighThreshold})
+                    else:
+                        self._LogDebug(_('%(class)s 0x%(id)016X: Creating %(edgesFile)s from slice %(slice)r of %(dn)s, high threshold=%(ht)g, low threshold=%(lt)g, sigma=%(sigma)g, minSize=%(minSize)s.'), {'class': self.__class__.__name__, 'id': id(self), 'edgesFile': edgesFile, 'slice': s, 'dn': self._Grid.DisplayName, 'sigma': self._Sigma, 'minSize': self._MinSize, 'ht': self._HighThreshold, 'lt': self._LowThreshold})
 
                     edges, lowThresh, highThresh = self._MatlabWorkerProcess.CannyEdges(
                                                        data,
