@@ -44,7 +44,7 @@ class Interpolator(object):
 
         import numpy
 
-        if value is None or value == grid.NoDataValue or numpy.isnan(value) and numpy.isnan(grid.NoDataValue):
+        if value is None or value == grid.NoDataValue or numpy.isnan(value):
             if loggingEnabled:
                 Logger.Debug(_('Nearest cell indices = %(nearestIndices)s, interpolated value = %(value)s. The cell nearest the coordinates has no data.') % {'nearestIndices': repr(nearestIndices), 'value': repr(noDataValue)})
             return noDataValue
@@ -84,7 +84,7 @@ class Interpolator(object):
 
         import numpy
 
-        if value is None or value == grid.NoDataValue or numpy.isnan(value) and numpy.isnan(grid.NoDataValue):
+        if value is None or value == grid.NoDataValue or numpy.isnan(value):
             if loggingEnabled:
                 Logger.Debug(_('Interpolated value = %(value)s. The cell nearest the coordinates has no data.') % {'value': repr(noDataValue)})
             return noDataValue
@@ -218,7 +218,7 @@ class Interpolator(object):
             cellWeight = functools.reduce(lambda a, b: a*b, cellWeights[i])
             if cellWeight > 0:
                 value = grid.Data.__getitem__(tuple(cellIndices[i]))
-                if value is not None and value != grid.NoDataValue:
+                if value is not None and value != grid.NoDataValue and not numpy.isnan(value):
                     totalWeight += cellWeight
                     if weightedSum is None:
                         weightedSum = value * cellWeight
