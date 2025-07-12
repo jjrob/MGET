@@ -1061,6 +1061,11 @@ class RWorkerProcess(collections.abc.MutableMapping):
         elif isinstance(value, float) and (math.isnan(value) or math.isinf(value)):
             value = [value]
 
+        # If it's a range, convert it to a list.
+
+        elif isinstance(value, range):
+            value = list(value)
+
         # If it's a dict, recurse down through its values and replace atomic
         # NaN/Inf/-Inf as immediately above.
 
@@ -1083,11 +1088,13 @@ class RWorkerProcess(collections.abc.MutableMapping):
         return {k: [v] if isinstance(v, float) and (math.isnan(v) or math.isinf(v)) else \
                    self._PrepareDictForJSON(v) if isinstance(v, collections.abc.Mapping) else \
                    self._PrepareListForJSON(v) if isinstance(v, (list, tuple)) else \
+                   list(v) if isinstance(v, range) else \
                    v for k, v in d.items()}
 
     def _PrepareListForJSON(self, lst):
         return [self._PrepareDictForJSON(item) if isinstance(item, collections.abc.Mapping) else \
                 self._PrepareListForJSON(item) if isinstance(item, (list, tuple)) else \
+                range(item) if isinstance(item, range) else \
                 item for item in lst]
 
     def __len__(self):

@@ -9,6 +9,7 @@
 - When opening ERDAS (.img) float32 files with nan as the NoData value, "Warning 1: NaN converted to INT_MAX" is printed ([#37](https://github.com/jjrob/MGET/issues/37))
 - MGET functions that require MATLAB fail on Windows with UnboundLocalError: cannot access local variable 'oldLdLibraryPath' where it is not associated with a value ([#38](https://github.com/jjrob/MGET/issues/38))
 - pyparsing ParserElement.enable_packrat() unexpectedly deletes MGET objects and should no longer be used ([#39](https://github.com/jjrob/MGET/issues/39))
+- Using RWorkerProcess to send a Python range() object to R results in TypeError: Object of type range is not JSON serializable ([#39](https://github.com/jjrob/MGET/issues/42))
 
 ## [v3.3.0](https://github.com/jjrob/MGET/releases/tag/v3.3.0) - 2025-05-06
 
