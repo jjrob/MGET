@@ -765,10 +765,20 @@ class CMEMSARCOArray(Grid):
                 variableName = self._VariableShortName
                 self._LogDebug('%(class)s 0x%(id)016X: The "standard_name" attribute was %(standardName)r, so the "short_name" of %(shortName)r will be used instead.' % {'class': self.__class__.__name__, 'id': id(self), 'url': self._URI, 'standardName': self._VariableStandardName, 'shortName': self._VariableShortName})
 
-            self._LogDebug('%(class)s 0x%(id)016X: Opening the xarray by calling copernicusmarine.download_functions.download_arco_series.open_dataset_from_arco_series(username="%(username)s", password=\'*****\', dataset_url="%(url)s", variables=["%(var)s"], geographical_parameters=GeographicalParameters(), temporal_parameters=TemporalParameters(), depth_parameters=DepthParameters(), chunks="auto")' % {'class': self.__class__.__name__, 'username': self._Username, 'id': id(self), 'url': self._URI, 'var': variableName})
+            self._LogDebug('%(class)s 0x%(id)016X: Opening the xarray by calling copernicusmarine\'s open_dataset_from_arco_series(username="%(username)s", password=\'*****\', dataset_url="%(url)s", variables=["%(var)s"], geographical_parameters=GeographicalParameters(), temporal_parameters=TemporalParameters(), depth_parameters=DepthParameters())' % {'class': self.__class__.__name__, 'username': self._Username, 'id': id(self), 'url': self._URI, 'var': variableName})
 
             try:
-                if int(copernicusmarine.__version__.split('.')[0]) > 2 or int(copernicusmarine.__version__.split('.')[0]) == 2 and int(copernicusmarine.__version__.split('.')[1]) >= 1:
+                if int(copernicusmarine.__version__.split('.')[0]) > 2 or int(copernicusmarine.__version__.split('.')[0]) == 2 and int(copernicusmarine.__version__.split('.')[1]) >= 2:
+                    self._Dataset = open_dataset_from_arco_series(username=self._Username, 
+                                                                  password=self._Password,
+                                                                  dataset_url=self._URI,
+                                                                  variables=[variableName],
+                                                                  geographical_parameters=GeographicalParameters(),
+                                                                  temporal_parameters=TemporalParameters(),
+                                                                  depth_parameters=DepthParameters(),
+                                                                  coordinates_selection_method=DEFAULT_COORDINATES_SELECTION_METHOD,
+                                                                  optimum_dask_chunking=None)                                          # copernicusmarine 2.2.0 renamed opening_dask_chunks
+                elif int(copernicusmarine.__version__.split('.')[0]) == 2 and int(copernicusmarine.__version__.split('.')[1]) == 1:
                     self._Dataset = open_dataset_from_arco_series(username=self._Username, 
                                                                   password=self._Password,
                                                                   dataset_url=self._URI,
@@ -778,7 +788,7 @@ class CMEMSARCOArray(Grid):
                                                                   depth_parameters=DepthParameters(),
                                                                   coordinates_selection_method=DEFAULT_COORDINATES_SELECTION_METHOD,
                                                                   opening_dask_chunks='auto')                                          # copernicusmarine 2.1.0 renamed chunks parameter
-                elif int(copernicusmarine.__version__.split('.')[0]) >= 2:
+                elif int(copernicusmarine.__version__.split('.')[0]) == 2:
                     self._Dataset = open_dataset_from_arco_series(username=self._Username, 
                                                                   password=self._Password,
                                                                   dataset_url=self._URI,
@@ -798,7 +808,7 @@ class CMEMSARCOArray(Grid):
                                                                   depth_parameters=DepthParameters(),
                                                                   chunks='auto')
             except Exception as e:
-                raise RuntimeError(_('Failed to open Copernicus Marine Service dataset "%(url)s". Please check your internet connectivity and that your username and password is correct. The following error, reported by the copernicusmarine.download_functions.download_arco_series.open_dataset_from_arco_series() function, may indicate the problem: %(e)s: %(msg)s.') % {'url': self._URI, 'e': e.__class__.__name__, 'msg': e})
+                raise RuntimeError(_('Failed to open Copernicus Marine Service dataset "%(url)s". Please check your internet connectivity and that your username and password is correct. The following error, reported by the copernicusmarine\'s open_dataset_from_arco_series() function, may indicate the problem: %(e)s: %(msg)s.') % {'url': self._URI, 'e': e.__class__.__name__, 'msg': e})
 
             self._LogDebug('%(class)s 0x%(id)016X: xarray opened successfully.' % {'class': self.__class__.__name__, 'id': id(self)})
 
@@ -834,7 +844,8 @@ class CMEMSARCOArray(Grid):
         sliceName = ','.join([str(s.start) + ':' + str(s.stop) for s in sliceList])
         self._LogDebug(_('%(class)s 0x%(id)016X: Reading slice [%(slice)s] of %(dn)s.'), {'class': self.__class__.__name__, 'id': id(self), 'slice': sliceName, 'dn': self.DisplayName})
         try:
-            data = self._Dataset[self._VariableShortName].__getitem__(tuple(sliceList)).data.compute().copy()
+            data = self._Dataset[self._VariableShortName].__getitem__(tuple(sliceList)).data
+            data = data.compute().copy() if hasattr(data, 'compute') else data.copy()
         except Exception as e:
             raise RuntimeError(_('Failed to read slice [%(slice)s] of %(dn)s. Detailed error information: %(e)s: %(msg)s.') % {'slice': sliceName, 'dn': self.DisplayName, 'e': e.__class__.__name__, 'msg': e})
 
