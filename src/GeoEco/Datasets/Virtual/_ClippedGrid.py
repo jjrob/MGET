@@ -69,34 +69,24 @@ class ClippedGrid(Grid):
             self._DisplayName = self._Grid.DisplayName
 
         # Initialize the base class.
+
+        queryableAttributes = tuple(grid.GetAllQueryableAttributes())
         
-        super(ClippedGrid, self).__init__(self._Grid.ParentCollection, queryableAttributes=self._Grid._QueryableAttributes, queryableAttributeValues=self._Grid._QueryableAttributeValues)
+        queryableAttributeValues = {}
+        for qa in queryableAttributes:
+            queryableAttributeValues[qa.Name] = grid.GetQueryableAttributeValue(qa.Name)
+        
+        super(ClippedGrid, self).__init__(queryableAttributes=queryableAttributes, queryableAttributeValues=queryableAttributeValues)
 
         # Our goal is to imitate the contained grid except with a smaller
-        # extent. In order to do this, we have to override the lazy
-        # properties for the shape and corner coordinates. This task is
-        # complicated because we have to expose the same queryable attributes
-        # and have the same parent collection, and those could be used to set
-        # the shape and corner coordinates. Thus we can't just wait to be
-        # called at _GetLazyPropertyPhysicalValue to return the shape and
-        # corner coordinates because if a queryable attribute sets them, we
-        # won't ever be called.
-        #
-        # To work around this, set the shape now (we know it already) and see
-        # if the corner coordinates are available from the contained grid
-        # without accessing physical storage (i.e. they are already cached by
-        # the contained grid or are set by a queryable attribute of it or its
-        # parents). If they are, then set our modified values now. Otherwise,
-        # do nothing; we know that we'll be called at
-        # _GetLazyPropertyPhysicalValue when they are needed, and we can
+        # extent. In order to do this, we have to override the lazy properties
+        # for the shape and corner coordinates. Set the shape now (we know it
+        # already). For the corner coordinates,  we know that we'll be called
+        # at _GetLazyPropertyPhysicalValue when they are needed, and we can
         # retrieve and modify the values from the contained grid at that
         # point.
 
         self.SetLazyPropertyValue('Shape', tuple([s.stop - s.start for s in sliceList]))
-
-        oldCornerCoords = grid.GetLazyPropertyValue('CornerCoords', allowPhysicalValue=False)
-        if oldCornerCoords is not None:
-            self.SetLazyPropertyValue('CornerCoords', self._GetNewCornerCoords(oldCornerCoords, grid, sliceList))
 
     def _Close(self):
         if hasattr(self, '_Grid') and self._Grid is not None:

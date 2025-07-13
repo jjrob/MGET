@@ -170,7 +170,7 @@ class File(object):
                         fout = open(destinationFile, 'wb')
                         try:
                             data = fin.read(1024*1024)
-                            while data != '':
+                            while data:
                                 fout.write(data)
                                 data = fin.read(1024*1024)
                         finally:

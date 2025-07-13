@@ -97,7 +97,13 @@ class RotatedGlobalGrid(Grid):
 
         # Initialize the base class.
         
-        super(RotatedGlobalGrid, self).__init__(self._Grid.ParentCollection, queryableAttributes=self._Grid._QueryableAttributes, queryableAttributeValues=self._Grid._QueryableAttributeValues, lazyPropertyValues=lazyPropertyValues)
+        queryableAttributes = tuple(grid.GetAllQueryableAttributes())
+        
+        queryableAttributeValues = {}
+        for qa in queryableAttributes:
+            queryableAttributeValues[qa.Name] = grid.GetQueryableAttributeValue(qa.Name)
+        
+        super(RotatedGlobalGrid, self).__init__(queryableAttributes=queryableAttributes, queryableAttributeValues=queryableAttributeValues, lazyPropertyValues=lazyPropertyValues)
 
     def _Close(self):
         if hasattr(self, '_Grid') and self._Grid is not None:

@@ -58,7 +58,13 @@ class MemoryCachedGrid(Grid):
 
         # Initialize the base class.
         
-        super(MemoryCachedGrid, self).__init__(self._Grid.ParentCollection, queryableAttributes=self._Grid._QueryableAttributes, queryableAttributeValues=self._Grid._QueryableAttributeValues)
+        queryableAttributes = tuple(grid.GetAllQueryableAttributes())
+        
+        queryableAttributeValues = {}
+        for qa in queryableAttributes:
+            queryableAttributeValues[qa.Name] = grid.GetQueryableAttributeValue(qa.Name)
+        
+        super(MemoryCachedGrid, self).__init__(queryableAttributes=queryableAttributes, queryableAttributeValues=queryableAttributeValues)
 
     def _Close(self):
         if hasattr(self, '_Grid') and self._Grid is not None:

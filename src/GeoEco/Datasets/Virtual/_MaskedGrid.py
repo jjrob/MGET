@@ -38,36 +38,13 @@ class MaskedGrid(Grid):
 
         # Initialize the base class.
         
-        super(MaskedGrid, self).__init__(self._Grid.ParentCollection, queryableAttributes=self._Grid._QueryableAttributes, queryableAttributeValues=self._Grid._QueryableAttributeValues)
-
-        # Our goal is to imitate the contained grid except with ideal values
-        # for PhysicalDimensions or PhysicalDimensionsFlipped (the contained
-        # grid takes care of reordering, if needed) and with an
-        # UnscaledNoDataValue and ScaledNoDataValue (if the contained grid
-        # does not have any). This task is complicated because we have to
-        # expose the same queryable attributes and have the same parent
-        # collection, and those could be used to set those lazy properties.
-        # Thus we can't just wait to be called at
-        # _GetLazyPropertyPhysicalValue to return the values because if a
-        # queryable attribute sets them, we won't ever be called.
-        #
-        # To work around this, see if values are available without accessing
-        # physical storage (i.e. they are set by a queryable attribute). If
-        # they are, then set our modified values now. Otherwise, do nothing;
-        # we know that we'll be called at _GetLazyPropertyPhysicalValue when
-        # they are needed.
-
-        if self.HasLazyPropertyValue('PhysicalDimensions', allowPhysicalValue=False):
-            self.SetLazyPropertyValue('PhysicalDimensions', self._GetLazyPropertyPhysicalValue('PhysicalDimensions'))
-
-        if self.HasLazyPropertyValue('PhysicalDimensionsFlipped', allowPhysicalValue=False):
-            self.SetLazyPropertyValue('PhysicalDimensionsFlipped', self._GetLazyPropertyPhysicalValue('PhysicalDimensionsFlipped'))
-
-        if self.HasLazyPropertyValue('UnscaledNoDataValue', allowPhysicalValue=False):
-            self.SetLazyPropertyValue('UnscaledNoDataValue', self._GetLazyPropertyPhysicalValue('UnscaledNoDataValue'))
-
-        if self.HasLazyPropertyValue('ScaledNoDataValue', allowPhysicalValue=False):
-            self.SetLazyPropertyValue('ScaledNoDataValue', self._GetLazyPropertyPhysicalValue('ScaledNoDataValue'))
+        queryableAttributes = tuple(grid.GetAllQueryableAttributes())
+        
+        queryableAttributeValues = {}
+        for qa in queryableAttributes:
+            queryableAttributeValues[qa.Name] = grid.GetQueryableAttributeValue(qa.Name)
+        
+        super(MaskedGrid, self).__init__(queryableAttributes=queryableAttributes, queryableAttributeValues=queryableAttributeValues)
 
     def _Close(self):
         if hasattr(self, '_Grid') and self._Grid is not None:

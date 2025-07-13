@@ -4,6 +4,7 @@
 
 ### Added
 - Add a tolerance parameter to MaskedGrid ([#40](https://github.com/jjrob/MGET/issues/40))
+- Port HDF4.py module from MGET 0.8 to MGET 3 ([#44](https://github.com/jjrob/MGET/issues/44))
 
 ### Fixed
 - When opening ERDAS (.img) float32 files with nan as the NoData value, "Warning 1: NaN converted to INT_MAX" is printed ([#37](https://github.com/jjrob/MGET/issues/37))
