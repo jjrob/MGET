@@ -1,6 +1,6 @@
 # MGET Release Notes
 
-## v3.4.0 - Under construction
+## [v3.4.0](https://github.com/jjrob/MGET/releases/tag/v3.4.0) - 2025-07-14
 
 ### Added
 - Add a tolerance parameter to MaskedGrid ([#40](https://github.com/jjrob/MGET/issues/40))
