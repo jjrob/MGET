@@ -53,14 +53,15 @@ corresponding `mget3 package on the Python Package Index
 Step 1. Install micromamba
 ~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-At least up through ArcGIS Pro 3.4, trying to use the conda that comes with
-ArcGIS Pro to install MGET is problematic. Pro 3.2 and 3.3 shipped with conda
-4.14.0, which gets stuck forever at the message "Solving environment" (for
-more, see the article `introduction of the libmamba solver
+Trying to use the conda that comes with ArcGIS Pro to install MGET is
+problematic. Pro 3.2 and 3.3 shipped with conda 4.14.0, which gets stuck
+forever at the message "Solving environment" (for more, see the article
+`introduction of the libmamba solver
 <https://conda.org/blog/2023-07-05-conda-libmamba-solver-rollout/>`__). Pro
 3.4 shipped with an updated version of conda, but it contains a buggy
 dependency checker that cannot install MGET (see `issue #18
-<https://github.com/jjrob/MGET/issues/18>`__.)
+<https://github.com/jjrob/MGET/issues/18>`__.) Pro 3.5's version of conda does
+work but still requires 10 minutes or more during "Solving environment".
 
 You can work around these problems by using `micromamba
 <https://mamba.readthedocs.io/en/latest/user_guide/micromamba.html>`__
@@ -81,9 +82,6 @@ To install micromamba:
    you know what it means and want to do it.
 
 4. Close PowerShell.
-
-It is possible that an improved version of conda will be introduced into
-ArcGIS Pro after 3.4, but until that happens, you should use micromamba.
 
 
 Step 2. Clone the ``arcgispro-py3`` environment
@@ -116,9 +114,13 @@ Step 3. Install MGET
 
 2. Run the following command to install the packages. Replace ``micromamba``
    with ``conda`` if you did not install micromamba in step 1 and want to try
-   the conda that comes with ArcGIS Pro (we don't recommend this)::
+   the conda that comes with ArcGIS Pro (we don't recommend that)::
 
-      micromamba install --channel conda-forge --yes mget3
+      micromamba install --channel esri --channel conda-forge mget3
+
+   Review the changes that micromamba proposes if you like, then press Enter
+   to approve them and install MGET. If you have any questions, please post
+   them to the `discussion forum <https://github.com/jjrob/MGET/discussions>`__.
 
 
 Step 4. Add the MGET toolbox to ArcGIS Pro
@@ -173,10 +175,10 @@ MGET may be uninstalled like any other conda package:
 
     (arcgispro-py3-mget) C:\Users\Jason\AppData\Local\ESRI\conda\envs\arcgispro-py3-mget>
 
-4. Run the following command to uninstall MGET. Replace ``conda`` with
-   ``micromamba`` if you installed it in Step 1::
+4. Run the following command to uninstall MGET. Replace ``micromamba`` with
+   ``conda`` if you did not install micromamba in Step 1::
 
-    conda remove --yes mget3
+    micromamba remove --yes mget3
 
 Alternatively, if you no longer need the conda environment, you can just
 `delete the environment <https://pro.arcgis.com/en/pro-app/latest/arcpy/get-started/delete-an-environment.htm>`__.

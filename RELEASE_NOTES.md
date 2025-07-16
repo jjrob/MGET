@@ -1,5 +1,11 @@
 # MGET Release Notes
 
+## [v3.4.1](https://github.com/jjrob/MGET/releases/tag/v3.4.1) - 2025-07-16
+
+### Fixed
+- GeoEco.Datasets.HDF4 is missing from PublicAPI.rst ([#45](https://github.com/jjrob/MGET/issues/45))
+- On ArcGIS Pro 3.5, MGET installation instructions remove arpy module ([#47](https://github.com/jjrob/MGET/issues/47))
+
 ## [v3.4.0](https://github.com/jjrob/MGET/releases/tag/v3.4.0) - 2025-07-14
 
 ### Added

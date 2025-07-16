@@ -32,6 +32,7 @@ community that supports their long-term maintenance.
     GeoEco.Datasets.ArcGIS
     GeoEco.Datasets.Collections
     GeoEco.Datasets.GDAL
+    GeoEco.Datasets.HDF4
     GeoEco.Datasets.NetCDF
     GeoEco.Datasets.SQLite
     GeoEco.Datasets.Virtual
