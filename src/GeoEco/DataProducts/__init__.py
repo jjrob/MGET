@@ -8,7 +8,7 @@
 # root of this project or https://opensource.org/license/bsd-3-clause for the
 # full license text.
 
-# To keep file sizes managable, we split the names defined by this package
+# To keep file sizes manageable, we split the names defined by this package
 # across several files.
 
 from ..Internationalization import _
