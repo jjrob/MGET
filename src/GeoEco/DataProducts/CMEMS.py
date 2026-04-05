@@ -748,7 +748,10 @@ class CMEMSARCOArray(Grid):
             try:
                 from copernicusmarine.python_interface.open_dataset import open_dataset_from_arco_series
             except:
-                from copernicusmarine.download_functions.download_arco_series import open_dataset_from_arco_series
+                try:
+                    from copernicusmarine.download_functions.download_arco_series import open_dataset_from_arco_series
+                except:
+                    from copernicusmarine.download_functions.download_zarr import open_dataset_from_arco_series
             try:
                 from copernicusmarine.python_interface.open_dataset import DepthParameters, GeographicalParameters, TemporalParameters
             except:
@@ -768,7 +771,16 @@ class CMEMSARCOArray(Grid):
             self._LogDebug('%(class)s 0x%(id)016X: Opening the xarray by calling copernicusmarine\'s open_dataset_from_arco_series(username="%(username)s", password=\'*****\', dataset_url="%(url)s", variables=["%(var)s"], geographical_parameters=GeographicalParameters(), temporal_parameters=TemporalParameters(), depth_parameters=DepthParameters())' % {'class': self.__class__.__name__, 'username': self._Username, 'id': id(self), 'url': self._URI, 'var': variableName})
 
             try:
-                if int(copernicusmarine.__version__.split('.')[0]) > 2 or int(copernicusmarine.__version__.split('.')[0]) == 2 and int(copernicusmarine.__version__.split('.')[1]) >= 2:
+                if int(copernicusmarine.__version__.split('.')[0]) > 2 or int(copernicusmarine.__version__.split('.')[0]) == 2 and int(copernicusmarine.__version__.split('.')[1]) >= 3:
+                    self._Dataset = open_dataset_from_arco_series(username=self._Username,                                             # copernicusmarine 2.3.0 removed the password parameter
+                                                                  dataset_url=self._URI,
+                                                                  variables=[variableName],
+                                                                  geographical_parameters=GeographicalParameters(),
+                                                                  temporal_parameters=TemporalParameters(),
+                                                                  depth_parameters=DepthParameters(),
+                                                                  coordinates_selection_method=DEFAULT_COORDINATES_SELECTION_METHOD,
+                                                                  optimum_dask_chunking=None)
+                elif int(copernicusmarine.__version__.split('.')[0]) == 2 and int(copernicusmarine.__version__.split('.')[1]) == 2:
                     self._Dataset = open_dataset_from_arco_series(username=self._Username, 
                                                                   password=self._Password,
                                                                   dataset_url=self._URI,

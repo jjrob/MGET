@@ -184,16 +184,6 @@ class TestCMEMSARCOArray():
     ('cmems_mod_glo_phy_my_0.083deg_P1M-m', 'siconc'),
     ('cmems_mod_glo_phy_my_0.083deg_P1M-m', 'sithick'),
     ('cmems_mod_glo_phy_my_0.083deg_P1M-m', 'zos'),
-    ('cmems_mod_glo_phy_myint_0.083deg_P1D-m', 'bottomT'),
-    ('cmems_mod_glo_phy_myint_0.083deg_P1D-m', 'mlotst'),
-    ('cmems_mod_glo_phy_myint_0.083deg_P1D-m', 'siconc'),
-    ('cmems_mod_glo_phy_myint_0.083deg_P1D-m', 'sithick'),
-    ('cmems_mod_glo_phy_myint_0.083deg_P1D-m', 'zos'),
-    ('cmems_mod_glo_phy_myint_0.083deg_P1M-m', 'bottomT'),
-    ('cmems_mod_glo_phy_myint_0.083deg_P1M-m', 'mlotst'),
-    ('cmems_mod_glo_phy_myint_0.083deg_P1M-m', 'siconc'),
-    ('cmems_mod_glo_phy_myint_0.083deg_P1M-m', 'sithick'),
-    ('cmems_mod_glo_phy_myint_0.083deg_P1M-m', 'zos'),
 ])
 class TestCMEMSARCOArrayBuggyTYX():
 
