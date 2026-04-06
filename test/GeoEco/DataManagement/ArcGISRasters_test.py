@@ -8,6 +8,7 @@
 # full license text.
 
 import datetime
+import importlib
 import operator
 import os
 
@@ -26,13 +27,7 @@ Logger.Initialize()
 
 
 def isArcPyInstalled():
-    success = False
-    try:
-        import arcpy
-        success = True
-    except:
-        pass
-    return success
+    return importlib.util.find_spec("arcpy") is not None
 
 
 def generateExampleArrays(dtypes, shape, numUniqueIntegers):

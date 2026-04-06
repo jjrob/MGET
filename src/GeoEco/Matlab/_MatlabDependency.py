@@ -104,7 +104,8 @@ class MatlabDependency(Dependency):
 
         elif sys.platform == 'win32':
             fileToFind = 'mclmcrrt26_1.dll'
-            defaultDirs = [os.path.join(os.environ.get('PROGRAMFILES', r'C:\Program Files'), r'MATLAB\MATLAB Runtime\R2026a\runtime\win64')]
+            defaultDirs = [os.path.join(os.environ.get('PROGRAMFILES', r'C:\Program Files'), r'MATLAB\R2026a\runtime\win64'),
+                           os.path.join(os.environ.get('PROGRAMFILES', r'C:\Program Files'), r'MATLAB\MATLAB Runtime\R2026a\runtime\win64')]
 
             _LogDebug('MATLAB is required. Searching for %s in PATH.', fileToFind)
 

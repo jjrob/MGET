@@ -14,27 +14,12 @@ import sys
 import numpy
 import pytest
 
+from test.helpers.matlab import isMatlabInstalled
+
 from GeoEco.Logging import Logger
 from GeoEco.Matlab import MatlabDependency, MatlabWorkerProcess
 
 Logger.Initialize()
-
-
-def isMatlabInstalled():
-
-    # Currently, we only support MGET's MATLAB functionality on Python 3.13 or
-    # lower, because the MATLAB Compiler only supports that, and we can only
-    # execute MATLAB code packaged by it on Python versions it supports.
-
-    if sys.version_info.minor > 13:
-        return False
-
-    d = MatlabDependency()
-    try:
-        d.Initialize()
-    except:
-        return False
-    return True
 
 
 @pytest.mark.skipif(not isMatlabInstalled(), reason='MATLAB or MATLAB Runtime is not installed, or initialization of interoperability with it failed')

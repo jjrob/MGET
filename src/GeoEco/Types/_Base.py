@@ -626,6 +626,12 @@ class FloatTypeMetadata(TypeMetadata):
                 _RaiseException(ValueError(_('The %(variable)s requires a float but a %(type)s was provided with the value %(value)r. This value cannot be represented by as a Python float without a loss of precision, so we cannot safely coerce it to a float automatically. Please either provide a float or a %(type)s that can be coerced safely.') % {'value' : value, 'type': type(value), 'variable' : variableName}))
             value = newValue
             valueChanged = True
+        if hasattr(value, 'dtype') and value.dtype.name.startswith('float'):
+            newValue = float(value)
+            if newValue != value:
+                _RaiseException(ValueError(_('The %(variable)s requires a float but a %(type)s was provided with the value %(value)r. This value cannot be represented by as a Python float without a loss of precision, so we cannot safely coerce it to a float automatically. Please either provide a float or a %(type)s that can be coerced safely.') % {'value' : value, 'type': type(value), 'variable' : variableName}))
+            value = newValue
+            valueChanged = True
         (valueChanged2, value) = super(FloatTypeMetadata, self).ValidateValue(value, variableName, methodLocals, argMetadata)
         if value is not None:
             if self.MinValue is not None and value < self.MinValue:

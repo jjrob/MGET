@@ -8,12 +8,15 @@
 # full license text.
 
 import datetime
+import importlib
 import os
 from pathlib import Path
 import sys
 
 import numpy
 import pytest
+
+from test.helpers.matlab import isMatlabInstalled
 
 from GeoEco.ArcGIS import GeoprocessorManager
 from GeoEco.Datasets import Dataset, QueryableAttribute
@@ -37,28 +40,7 @@ def getCMEMSCredentials():
 
 
 def isArcPyInstalled():
-    try:
-        import arcpy
-    except:
-        return False
-    return True
-
-
-def isMatlabInstalled():
-
-    # Currently, we only support MGET's MATLAB functionality on Python 3.12 or
-    # lower, because the MATLAB Compiler only supports that, and we can only
-    # execute MATLAB code packaged by it on Python versions it supports.
-
-    if sys.version_info.minor > 12:
-        return False
-
-    d = MatlabDependency()
-    try:
-        d.Initialize()
-    except:
-        return False
-    return True
+    return importlib.util.find_spec("arcpy") is not None
 
 
 def isCopernicus1Installed():
@@ -318,10 +300,10 @@ class TestCMEMSARCOArrayArcGIS():
                                            datasetID=datasetID,
                                            variableShortName=vsn,
                                            outputWorkspace=outputDir,
-                                           startDate=datetime.datetime(2024,1,1,0,0,0),
-                                           endDate=datetime.datetime(2024,1,1,23,59,59))
+                                           startDate=datetime.datetime(2026,1,1,0,0,0),
+                                           endDate=datetime.datetime(2026,1,1,23,59,59))
         for hour in range(24):
-            assert (outputDir / datasetID / vsn / '2024' / ('%s_20240101_%02i0000.img' % (vsn, hour))).is_file()
+            assert (outputDir / datasetID / vsn / '2026' / ('%s_20260101_%02i0000.img' % (vsn, hour))).is_file()
 
     def test_CreateArcGISRasters_tyx_15min(self, tmp_path):
         username, password = getCMEMSCredentials()
@@ -334,11 +316,11 @@ class TestCMEMSARCOArrayArcGIS():
                                            datasetID=datasetID,
                                            variableShortName=vsn,
                                            outputWorkspace=outputDir,
-                                           startDate=datetime.datetime(2024,1,1,0,0,0),
-                                           endDate=datetime.datetime(2024,1,1,2,59,59))
+                                           startDate=datetime.datetime(2026,1,1,0,0,0),
+                                           endDate=datetime.datetime(2026,1,1,2,59,59))
         for hour in range(3):
             for minute in [0, 15, 30, 45]:
-                assert (outputDir / datasetID / vsn / '2024' / ('%s_20240101_%02i%02i00.img' % (vsn, hour, minute))).is_file()
+                assert (outputDir / datasetID / vsn / '2026' / ('%s_20260101_%02i%02i00.img' % (vsn, hour, minute))).is_file()
 
     # Test creation of seafloor grids.
 

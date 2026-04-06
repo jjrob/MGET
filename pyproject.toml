@@ -18,12 +18,12 @@ description = "Marine Geospatial Ecology Tools: access and manipulate marine eco
 readme = "README.md"
 requires-python = ">=3.9,<3.14"
 keywords = ["marine", "geospatial", "ecology", "gis"]
-license = {file = "LICENSE"}
+license = "BSD-3-Clause-Open-MPI"
+license-files = ["LICENSE"]
 classifiers = [
     "Development Status :: 5 - Production/Stable",
     "Programming Language :: Python :: 3 :: Only",
     "Intended Audience :: Science/Research",
-    "License :: OSI Approved :: BSD License",
     "Operating System :: Microsoft :: Windows",
     "Operating System :: POSIX :: Linux",
     "Topic :: Scientific/Engineering :: Bio-Informatics",

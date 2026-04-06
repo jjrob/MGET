@@ -8,12 +8,15 @@
 # root of this project or https://opensource.org/license/bsd-3-clause for the
 # full license text.
 
+import importlib
 import os
 import pathlib
 import sys
 
 import numpy
 import pytest
+
+from test.helpers.matlab import isMatlabInstalled
 
 from GeoEco.Logging import Logger
 from GeoEco.DataManagement.ArcGISRasters import ArcGISRaster
@@ -24,30 +27,7 @@ Logger.Initialize()
 
 
 def isArcPyInstalled():
-    success = False
-    try:
-        import arcpy
-        success = True
-    except:
-        pass
-    return success
-
-
-def isMatlabInstalled():
-
-    # Currently, we only support MGET's MATLAB functionality on Python 3.12 or
-    # lower, because the MATLAB Compiler only supports that, and we can only
-    # execute MATLAB code packaged by it on Python versions it supports.
-
-    if sys.version_info.minor > 12:
-        return False
-
-    d = MatlabDependency()
-    try:
-        d.Initialize()
-    except:
-        return False
-    return True
+    return importlib.util.find_spec("arcpy") is not None
 
 
 @pytest.mark.skipif(not isArcPyInstalled(), reason='ArcGIS arcpy module is not installed')
@@ -90,8 +70,8 @@ class TestProjectToTemplate():
         expectedRaster = pathlib.Path(__file__).parent / 'topo30_Clip_10km.img'
         outputData, outputNoDataValue = ArcGISRaster.ToNumpyArray(outputRaster)
         expectedData, expectedNoDataValue = ArcGISRaster.ToNumpyArray(expectedRaster)
-        outputData[outputData == outputNoDataValue] = -999999           # These are integer rasters, so we can't use numpy.nan here, so we use -999999 to represent NoData in both rasters
-        expectedData[expectedData == expectedNoDataValue] = -999999
+        outputData[outputData == outputNoDataValue] = -29999            # These are integer rasters, so we can't use numpy.nan here, so we use -29999 to represent NoData in both rasters
+        expectedData[expectedData == expectedNoDataValue] = -29999
         assert numpy.allclose(outputData, expectedData)
 
     def test_Crosses180_FromNeg180ToPos180(self, tmp_path):

@@ -9,6 +9,7 @@
 # full license text.
 
 import datetime
+import importlib
 import os
 from pathlib import Path
 import re
@@ -16,6 +17,8 @@ import sys
 
 import numpy
 import pytest
+
+from test.helpers.matlab import isMatlabInstalled
 
 from GeoEco.ArcGIS import GeoprocessorManager
 from GeoEco.Datasets import Dataset, QueryableAttribute
@@ -38,28 +41,7 @@ def getEarthdataCredentials():
 
 
 def isArcPyInstalled():
-    try:
-        import arcpy
-    except:
-        return False
-    return True
-
-
-def isMatlabInstalled():
-
-    # Currently, we only support MGET's MATLAB functionality on Python 3.12 or
-    # lower, because the MATLAB Compiler only supports that, and we can only
-    # execute MATLAB code packaged by it on Python versions it supports.
-
-    if sys.version_info.minor > 12:
-        return False
-
-    d = MatlabDependency()
-    try:
-        d.Initialize()
-    except:
-        return False
-    return True
+    return importlib.util.find_spec("arcpy") is not None
 
 
 @pytest.mark.skipif(None in getEarthdataCredentials(), reason='NASA_EARTHDATA_USERNAME or NASA_EARTHDATA_PASSWORD environment variables not defined')

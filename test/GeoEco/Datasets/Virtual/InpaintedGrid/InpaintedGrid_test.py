@@ -14,29 +14,14 @@ import sys
 import numpy
 import pytest
 
+from test.helpers.matlab import isMatlabInstalled
+
 from GeoEco.Logging import Logger
 from GeoEco.Datasets.GDAL import GDALDataset
 from GeoEco.Datasets.Virtual import InpaintedGrid
 from GeoEco.Matlab import MatlabDependency
 
 Logger.Initialize()
-
-
-def isMatlabInstalled():
-
-    # Currently, we only support MGET's MATLAB functionality on Python 3.12 or
-    # lower, because the MATLAB Compiler only supports that, and we can only
-    # execute MATLAB code packaged by it on Python versions it supports.
-
-    if sys.version_info.minor > 12:
-        return False
-
-    d = MatlabDependency()
-    try:
-        d.Initialize()
-    except:
-        return False
-    return True
 
 
 @pytest.fixture

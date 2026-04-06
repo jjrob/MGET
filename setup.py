@@ -55,8 +55,10 @@ class BuildMatlabFunctions(setuptools.Command):
         if self.matlab_path is None:
             if sys.platform == 'linux':
                 self.matlab_path = '/usr/local/MATLAB/R2026a/bin/matlab'
+            elif sys.platform == 'win32':
+                self.matlab_path = r'C:\Program Files\MATLAB\R2026a\bin\matlab.exe'
             else:
-                self.matlab_path = NotImplementedError(f'This script does not currently support the {sys.platform} platform (but adding support would probably be easy).')
+                self.matlab_path = NotImplementedError(f'This script does not currently support building the MATLAB functions on the {sys.platform} platform (but adding support would probably be easy).')
 
         # Determine the directory that contains the .m files and that will
         # receive the __init__.py and the .ctf file that results from
@@ -148,9 +150,17 @@ class BuildMatlabFunctions(setuptools.Command):
 
         mFilesStr = '[' + ','.join(['"' + f + '"' for f in self.m_files]) + ']'
         command = f'compiler.build.pythonPackage({mFilesStr}, "PackageName", "GeoEco.Matlab._Matlab", "Verbose", "on")'
-        args = [self.matlab_path, '-nodesktop', '-nosplash', '-batch', command]
 
-        # Execute the MATLAB Compiler from the command line.
+        # Execute the MATLAB Compiler with subprocess.Popen. If running on
+        # win32, it is necessary to precede each " character in command with
+        # another " character. Even though we're passing in args as a
+        # sequence rather than a string, it is apparently still necessary to
+        # escape each " with another ".
+
+        if sys.platform == 'win32':
+            args = [self.matlab_path, '-batch', command.replace('"', '""')]
+        else:
+            args = [self.matlab_path, '-batch', command]
 
         print(f'Executing: {" ".join(args)}')
 

@@ -8,6 +8,7 @@
 # root of this project or https://opensource.org/license/bsd-3-clause for the
 # full license text.
 
+import importlib
 import os
 from pathlib import Path
 
@@ -25,11 +26,7 @@ Logger.Initialize()
 
 
 def isArcPyInstalled():
-    try:
-        import arcpy
-    except:
-        return False
-    return True
+    return importlib.util.find_spec("arcpy") is not None
 
 
 class TestPSLClimateIndices():

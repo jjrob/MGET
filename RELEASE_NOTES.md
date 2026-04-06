@@ -1,5 +1,19 @@
 # MGET Release Notes
 
+## v3.5.0 - Under construction
+
+### Breaking changes
+- On Windows, Python 3.13 or later is now required, and ArcGIS Pro 3.6.0 or later if you wish to use MGET with ArcGIS. For more information, please see issue [#51](https://github.com/jjrob/MGET/issues/51).
+- To use tools that require MATLAB, you must have Matlab R2026a or MATLAB Runtime R2026a (which is free). Previously R2024b was required. We had to upgrade in order to invoke MATLAB from Python 3.13. You do not need to uninstall R2024b if you still need it; it is OK to have multiple versions of the MATLAB installed simultaneously.
+
+### Fixed
+- When copernicusmarine 2.3.0 is installed, MGET functions fail with ModuleNotFoundError: No module named 'copernicusmarine.download_functions.download_arco_series' ([#49](https://github.com/jjrob/MGET/issues/49))
+- Building MGET on Windows results in SetuptoolsDeprecationWarning: License classifiers are deprecated. ([#50](https://github.com/jjrob/MGET/issues/50))
+
+### Added
+- For MGET 3.5.0 on Windows, adjust compatibility requirements to ArcGIS Pro 3.6.0 or later and Python 3.13 or later ([#51](https://github.com/jjrob/MGET/issues/51))
+- Change MATLAB dependency from 2024b to 2026a, so Python 3.13 can be supported ([#52](https://github.com/jjrob/MGET/issues/52))
+
 ## [v3.4.1](https://github.com/jjrob/MGET/releases/tag/v3.4.1) - 2025-07-16
 
 ### Fixed

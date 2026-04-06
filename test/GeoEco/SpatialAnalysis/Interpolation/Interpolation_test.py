@@ -7,6 +7,7 @@
 # root of this project or https://opensource.org/license/bsd-3-clause for the
 # full license text.
 
+import importlib
 import os
 import pathlib
 
@@ -23,13 +24,7 @@ Logger.Initialize()
 
 
 def isArcPyInstalled():
-    success = False
-    try:
-        import arcpy
-        success = True
-    except:
-        pass
-    return success
+    return importlib.util.find_spec("arcpy") is not None
 
 
 @pytest.fixture
