@@ -19,10 +19,10 @@ from . import GridSlice
 
 
 _CannyEdgesOverview = (
-"""To run this tool, you either must have MATLAB R2024b or MATLAB Runtime R2024b
+"""To run this tool, you either must have MATLAB R2026a or MATLAB Runtime R2026a
 installed. The MATLAB Runtime is free and may be downloaded from
 https://www.mathworks.com/help/compiler/install-the-matlab-runtime.html.
-Please follow the installation instructions carefully. Version R2024b must be
+Please follow the installation instructions carefully. Version R2026a must be
 used; other versions will not work. MATLAB Runtime allows multiple versions
 can be installed at the same time.
 

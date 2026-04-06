@@ -25,14 +25,14 @@ installing them.
   license includes this extension but you did not install it, you can re-run
   the ArcGIS setup program to add it to your installation.
 
-- `MATLAB Runtime R2024b
+- `MATLAB Runtime R2026a
   <https://www.mathworks.com/products/compiler/matlab-runtime.html>`__ (free)
-  or the full version of MATLAB R2024b (not free). Either one is OK. These are
+  or the full version of MATLAB R2026a (not free). Either one is OK. These are
   required for front detection, larval dispersal simulation, and certain
-  interpolation tools. You must install version R2024b; other versions will
+  interpolation tools. You must install version R2026a; other versions will
   not work. Multiple versions can be installed at the same time, so if you
   use a different version of MATLAB for your own work, you can continue to do
-  so, providing you install the R2024b Runtime for MGET's use.
+  so, providing you install the R2026a Runtime for MGET's use.
 
 
 .. _arcgis-pro-install:

@@ -1,4 +1,4 @@
-# Copyright 2015-2024 MathWorks, Inc.
+# Copyright 2015-2025 MathWorks, Inc.
 
 
 """ Package for executing deployed MATLAB functions """
@@ -13,24 +13,31 @@ import platform
 import re
 import sys
 import weakref
+import warnings
 
 class _PathInitializer(object):
     PLATFORM_DICT = {'Windows': ['PATH','dll',''], 'Linux': ['LD_LIBRARY_PATH','so','libmw'], 'Darwin': ['DYLD_LIBRARY_PATH','dylib','libmw']}
-    SUPPORTED_PYTHON_VERSIONS = ['3_9', '3_10', '3_11', '3_12']
-    RUNTIME_VERSION_W_DOTS = '24.2'
-    RUNTIME_VERSION_W_UNDERSCORES = '24_2'
+    SUPPORTED_PYTHON_VERSIONS = ['3_9', '3_10', '3_11', '3_12', '3_13']
+    RUNTIME_VERSION_W_DOTS = '26.1'
+    RUNTIME_VERSION_W_UNDERSCORES = '26_1'
     PACKAGE_NAME = 'GeoEco.Matlab._Matlab'
     
-    def set_interpreter_version(self):    
+    def set_interpreter_version(self):
         """Make sure the interpreter version is supported."""
-        ver = sys.version_info
-        version = '{0}_{1}'.format(ver[0], ver[1])
+        _ver = sys.version_info
+        _version = '{0}_{1}'.format(_ver[0], _ver[1])
+        version_with_dot = _version.replace("_", ".")
+        newer_than_supported = _ver[1] > 13
 
-        if version in _PathInitializer.SUPPORTED_PYTHON_VERSIONS:
-            self.interpreter_version = version
+        if _version in self.SUPPORTED_PYTHON_VERSIONS:
+            self.interpreter_version = _version
+        elif newer_than_supported:
+            warnings.warn('Python versions 3.9, 3.10, 3.11, 3.12, and 3.13 are supported, but your version of Python is %s' % version_with_dot)
+            self.interpreter_version = _version
         else:
-            version_with_dot = version.replace("_", ".")
             raise EnvironmentError("Python {0} is not supported.".format(version_with_dot))
+
+            
 
     def __init__(self):
         """Initialize the variables."""
@@ -121,9 +128,11 @@ class _PathInitializer(object):
             path_elements = os.environ[self.path_var].split(os.pathsep)
         if not path_elements:
             if self.system == 'Darwin':
-                raise RuntimeError('On the Mac, you must run mwpython rather than python ' + 
-                    'to start a session or script that imports your package. ' +
-                    'For more details, execute "mwpython -help" or see the package documentation.')
+                if self.force_mwpython_usage():
+                    raise RuntimeError('On the Mac, you must run mwpython rather than python ' + 
+                        'to start a session or script that imports your package. ' +
+                        'You must also set the environment variable "DYLD_LIBRARY_PATH" to a non-empty string. ' +
+                        'For more details, execute "mwpython -help" or see the package documentation.')
             else:
                 raise RuntimeError('On {0}, you must set the environment variable "{1}" to a non-empty string. {2}'.format(
                     self.system, self.path_var, 
@@ -136,9 +145,12 @@ class _PathInitializer(object):
                 path_found = elem
                 break
         if not path_found:
+            possible_path = ''
+            if self.path_var in os.environ:
+                possible_path = os.environ[self.path_var]
             msg = '{0} {1}. Details: file not found: {2}; {1}: {3}'.format(
                 'Could not find an appropriate directory for MATLAB or the MATLAB runtime in', 
-                self.path_var, file_to_find, os.environ[self.path_var])
+                self.path_var, file_to_find, possible_path)
             raise RuntimeError(msg)
 
         path_components = re.split(r'\\|/', path_found)
@@ -221,15 +233,8 @@ class _PathInitializer(object):
     def initialize_runtime(self, option_list):
         if not self.cppext_handle:
             raise RuntimeError('Cannot call initialize_application before import_cppext.')
-        if self.is_mac:
-            ignored_option_found = False
-            for option in option_list:
-                if option in ('-nodisplay', '-nojvm'):
-                    ignored_option_found = True
-                    break
-            if ignored_option_found:
-                print('WARNING: Options "-nodisplay" and "-nojvm" are ignored on Mac.')
-                print('They must be passed to mwpython in order to take effect.')
+        if self.is_mac and self.force_mwpython_usage() and option_list:
+            print('WARNING: On the Mac, runtime startup options must be passed to mwpython using the "-mlstartup" keyword.')
         self.cppext_handle.initializeApplication(option_list)
 
     def terminate_runtime(self):
@@ -284,6 +289,9 @@ class _PathInitializer(object):
 
         if secondExceptionMessage:
             raise ImportError(secondExceptionMessage)
+            
+    def force_mwpython_usage(self):
+        return (("MWPYTHON_OVERRIDE_ALLOWED" not in os.environ) or (os.environ["MWPYTHON_OVERRIDE_ALLOWED"] == "0"))
 
 # If an exception is raised, let it propagate normally.
 _pir = _PathInitializer()
