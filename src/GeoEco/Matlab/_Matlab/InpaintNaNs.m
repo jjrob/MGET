@@ -221,7 +221,7 @@ nan_list=[nan_list,nr,nc];
 % supply default method
 if (nargin<2) || isempty(method)
   method = 0;
-elseif ~ismember(method,0:5)
+elseif ~ismember(int64(method),0:5)    % Explicitly cast to int64 to work around MATLAB 2026a bug that causes ismember to fail (when member comes from Python) with: Undefined function 'classID' for input arguments of type 'int64'.
   error 'If supplied, method must be one of: {0,1,2,3,4,5}.'
 end
 
