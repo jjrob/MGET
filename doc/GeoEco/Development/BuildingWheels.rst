@@ -33,7 +33,7 @@ MGET includes some functions written in MATLAB. These are the ``.m`` files in
 ``src/GeoEco/Matlab/_Matlab``. MGET's ``setup.py`` uses the `MATLAB Compiler
 <https://www.mathworks.com/products/compiler.html>`_ to compile these
 functions into the file ``src/GeoEco/Matlab/_Matlab/_Matlab.ctf``. Performing
-this compilation requires that a full (non-free) version of MATLAB R2024b be
+this compilation requires that a full (non-free) version of MATLAB R2026a be
 `installed <https://www.mathworks.com/help/install/install-products.html>`_.
 However, if you do change any of the ``.m`` files, you shouldn't need MATLAB
 to build MGET. We keep the compiled ``_Matlab.ctf`` in the source tree, rather
@@ -136,8 +136,14 @@ Install the following, if they are not installed already:
     This may not be necessary if you instructed the Git for Windows Installer
     to do this for you. But there's no harm in running this command anyway.
 
-* `Python <https://python.org>`_ 3.9 or later. We use this rather than
-  ArcGIS's Anaconda Python to build the wheel.
+* `Python <https://python.org>`_ 3.13 or later. We use this rather than
+  ArcGIS's Anaconda Python to build the wheel. 
+
+  * Windows versions of MGET are mainly installed by ArcGIS Pro users, and the
+    oldest version of Pro that MGET supports is currently 3.6.0. Because that
+    version of Pro ships with Python 3.13, we only support 3.13 or later for
+    building MGET on Windows (although it will probably build fine on earlier
+    versions of Python).
 
   * Use the "Windows installer (64-bit)" to install it.
 
@@ -148,7 +154,7 @@ Install the following, if they are not installed already:
 
 * The C/C++ compiler `recommended by Python
   <https://wiki.python.org/moin/WindowsCompilers>`_ for compiling C/C++
-  extension modules for Python 3.9 and later. At the time of this writing, the
+  extension modules for Python 3.5 and later. At the time of this writing, the
   recommended compiler was Microsoft Visual C++ version 14.x. For our own
   builds, we used the most recent compiler available, version 14.3, which was
   that included with Visual Studio 2022. (We used the free Visual Studio 2022
@@ -160,7 +166,7 @@ Install the following, if they are not installed already:
 
 **MATLAB**
 
-:ref:`As on Linux <building-linux-matlab>`, MATLAB R2024b must be installed in
+:ref:`As on Linux <building-linux-matlab>`, MATLAB R2026a must be installed in
 order to rebuild MGET when any of the ``.m`` files in
 ``src/GeoEco/Matlab/_Matlab`` have changed. If they have not changed, you
 don't need MATLAB.
@@ -179,15 +185,15 @@ instructions above first.
 Now create and activate a Python virtual environment::
 
     cd MGET
-    C:\Python39\python.exe -m venv .venv
+    "C:\Program Files\Python313\python.exe" -m venv .venv
     .venv\Scripts\activate
 
 This example specifically invoked ``python.exe`` using the full path to the
-typical installation directory of Python 3.9. You may have installed a
-different version or installed it to a different place, or you may have your
-Python installation directory in your PATH environment variable, making it
-unnecessary to specify the full path to the executable. Adjust the example
-accordingly.
+typical system-wide installation directory of Python 3.13. You may have
+installed a different version or installed it to a different place, or you
+may have your Python installation directory in your PATH environment
+variable, making it unnecessary to specify the full path to the executable.
+Adjust the example accordingly.
 
 Your command prompt should now indicate the environment is activated and look
 something like ``(.venv) C:\Users\Jason\Documents\dev\MGET>``.

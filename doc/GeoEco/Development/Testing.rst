@@ -58,16 +58,32 @@ and skip tests associated with that service.
 Run pytest
 ----------
 
-When you're ready, from the same virtual environment, execute::
+On Linux, when you're ready, from the same virtual environment, execute::
 
     cd test/GeoEco
     pytest
+
+On Windows, execute::
+
+    cd test/GeoEco
+    pytest -p no:faulthandler
 
 The text scripts will skip relevant tests when needed credentials are not
 supplied in the ``.env`` file or certain software is not installed, including:
 
 * ArcGIS Pro
-* MATLAB Runtime R2024b or the full version of MATLAB R2024b
+* MATLAB Runtime R2026a or the full version of MATLAB R2026a
+
+The `-p no:faulthandler` disables the `faulthandler` plugin. If you do not
+disable this plugin, then when `pytest` first imports the ArcGIS `arcpy`
+module, it will report a very large number of messages similar to `Windows
+fatal exception: code 0xc0000139`, each followed by a roughly 50 line stack
+trace. These appear to be first-chance exceptions raised but successfully
+handled within `arcpy` when it is imported. Apparently `arcpy` expects these
+exceptions under normal operation. They do not represent problems that need
+to be fixed, but having them in your output window is very distracting and
+usually overwhelms your Command Prompt window's buffer. Disalbing the
+`faulthandler` plugin prevents it from logging these exceptions.
 
 Please see the `pytest documentation
 <https://docs.pytest.org/en/stable/how-to/usage.html>`__ for instructions on

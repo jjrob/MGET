@@ -22,11 +22,11 @@ Logger.Initialize()
 
 def isMatlabInstalled():
 
-    # Currently, we only support MGET's MATLAB functionality on Python 3.12 or
+    # Currently, we only support MGET's MATLAB functionality on Python 3.13 or
     # lower, because the MATLAB Compiler only supports that, and we can only
     # execute MATLAB code packaged by it on Python versions it supports.
 
-    if sys.version_info.minor > 12:
+    if sys.version_info.minor > 13:
         return False
 
     d = MatlabDependency()
