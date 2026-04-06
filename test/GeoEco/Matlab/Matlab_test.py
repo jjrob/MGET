@@ -112,6 +112,15 @@ class TestMatlab():
                     output = matlab.TestParameterType(input)
                     self._OutputEqualsInput(input, output)
 
+    # When updating our code to work with MATLAB R2026a, we had a problem in
+    # which the MATLAB ismember() function would fail. Make sure it works.
+
+    def test_is_member(self):
+        with MatlabWorkerProcess() as matlab:
+            for input in list(range(0, 10)):
+                output = matlab.TestIsMember(input)
+                assert input in list(range(0,6)) and output == 1 or input not in list(range(0,6)) and output == 0
+
     # Helper functions
 
     def _OutputEqualsInput(self, input, output):
