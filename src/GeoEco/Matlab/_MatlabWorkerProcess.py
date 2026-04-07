@@ -321,13 +321,24 @@ class MatlabWorkerProcess(object):
         if sys.platform != 'win32':
             return multiprocessing.get_context('spawn')
 
-        # Othewise (we're on win32), we have a problem. The 'spawn' context as
-        # implemented by the Python Standard Library
-        # calls _winapi.CreateProcess() without specifying the creation flag
-        # needed to hide the window. Define a new 'spawnhidden' context that
-        # the Standard Library's multiprocessing.context module can use, and
-        # add 'spawnhidden' to that module's _concrete_contexts dictonary.
-        # Now get the 'spawnhidden' context and return it.
+        # Otherwise (we're on win32), if we appear to be running as part of a
+        # GitHub Action, also fall back to the standard spawn implementation.
+        # This is because GitHub hosted Windows runners are already headless
+        # (no GUI will be shown) and they appear to reject
+        # CREATE_BREAKAWAY_FROM_JOB, which is needed by our custom
+        # 'spawnhidden' context below. Note that this means we cannot test the
+        # 'spawnhidden' path from GitHub Actions.
+
+        if os.environ.get('GITHUB_ACTIONS', '').lower() == 'true':
+            return multiprocessing.get_context('spawn')
+
+        # Othewise, we have a problem. The 'spawn' context as implemented by
+        # the Python Standard Library calls _winapi.CreateProcess() without
+        # specifying the creation flag needed to hide the window. Define a
+        # custom 'spawnhidden' context that the Standard Library's
+        # multiprocessing.context module can use, and add 'spawnhidden' to
+        # that module's _concrete_contexts dictonary. Now get the
+        # 'spawnhidden' context and return it.
 
         return multiprocessing.get_context('spawnhidden')
 
