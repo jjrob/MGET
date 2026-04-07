@@ -103,6 +103,7 @@ jobs:
           sudo apt-get -y install apt-fast
 
       - name: Install GDAL
+        run: |
           sudo apt-fast install -y gdal-bin gdal-data gdal-plugins libgdal-dev
 
       - name: Install Python packages needed to install GDAL's Python bindings    # Numpy 1.x is needed for GDAL 3.8.4's Python bindings. Setuptools >= 77 is needed for new licensing metadata in pyproject.toml
