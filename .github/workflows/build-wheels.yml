@@ -34,12 +34,13 @@ jobs:
           python-version: "3.13"
 
       - name: Install cibuildwheel
-        run: python -m pip install cibuildwheel==2.23.3
+        run: python -m pip install cibuildwheel==3.4.1
 
       - name: Build wheels
         run: python -m cibuildwheel --output-dir wheelhouse
         env:
-          CIBW_ARCHS: "auto64"
+          CIBW_ARCHS: "auto64"        # 64-bit only
+          CIBW_SKIP: "cp3??t-*"       # Skip free-threaded builds for now; we can enable them once we have the bandwidth to explore the issues and fully test them
 
       - uses: actions/upload-artifact@v6
         with:
@@ -231,7 +232,7 @@ jobs:
         shell: bash   # Yes, bash on Windows
         run: |
           python -m pip install -U pip
-          python -m pip install -U setuptools wheel
+          python -m pip install -U setuptools wheel numpy
           python -m pip install gdal==3.12.2 --find-links=GDAL_wheels
           echo ""
           echo "Importing GDAL's Python bindings and printing gdal.VersionInfo()"

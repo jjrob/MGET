@@ -16,7 +16,7 @@ authors = [
 ]
 description = "Marine Geospatial Ecology Tools: access and manipulate marine ecological and oceanographic data"
 readme = "README.md"
-requires-python = ">=3.9,<3.14"
+requires-python = ">=3.9,<3.15"
 keywords = ["marine", "geospatial", "ecology", "gis"]
 license = "BSD-3-Clause-Open-MPI"
 license-files = ["LICENSE"]
