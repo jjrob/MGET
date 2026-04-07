@@ -95,7 +95,7 @@ jobs:
 
       - name: Display GDAL versions available for installation
         run: |
-          apt-cache policy gdal-bin gdal-data gdal-plugins libgdal-dev 
+          apt-cache policy gdal-bin gdal-data gdal-plugins libgdal-dev python3-gdal
 
       - name: Install apt-fast
         run: |
@@ -105,7 +105,7 @@ jobs:
 
       - name: Install GDAL
         run: |
-          sudo apt-fast install -y gdal-bin gdal-data gdal-plugins libgdal-dev
+          sudo apt-fast install -y gdal-bin gdal-data gdal-plugins libgdal-dev python3-gdal
 
       - name: Install Python packages needed to install GDAL's Python bindings    # Numpy 1.x is needed for GDAL 3.8.4's Python bindings. Setuptools >= 77 is needed for new licensing metadata in pyproject.toml
         run: |
@@ -136,23 +136,23 @@ jobs:
         run: |
           python -m pip install pytest python-dotenv
 
-      - name: Cache MATLAB Runtime
-        id: cache-matlab-runtime-linux
-        uses: actions/cache@v5
-        with:
-          path: ~/MATLAB_Runtime
-          key: cache-matlab-runtime-r2026a-linux
+      # - name: Cache MATLAB Runtime
+      #   id: cache-matlab-runtime-linux
+      #   uses: actions/cache@v5
+      #   with:
+      #     path: ~/MATLAB_Runtime
+      #     key: cache-matlab-runtime-r2026a-linux
 
-      - name: Download MATLAB Runtime
-        if: ${{ steps.cache-matlab-runtime-linux.outputs.cache-hit != 'true' }}
-        run: |
-          curl -L -o MATLAB_Runtime.zip https://ssd.mathworks.com/supportfiles/downloads/R2026a/Release/0/deployment_files/installer/complete/glnxa64/MATLAB_Runtime_R2026a_glnxa64.zip
-          mkdir ~/MATLAB_Runtime
-          unzip MATLAB_Runtime.zip -d ~/MATLAB_Runtime
+      # - name: Download MATLAB Runtime
+      #   if: ${{ steps.cache-matlab-runtime-linux.outputs.cache-hit != 'true' }}
+      #   run: |
+      #     curl -L -o MATLAB_Runtime.zip https://ssd.mathworks.com/supportfiles/downloads/R2026a/Release/0/deployment_files/installer/complete/glnxa64/MATLAB_Runtime_R2026a_glnxa64.zip
+      #     mkdir ~/MATLAB_Runtime
+      #     unzip MATLAB_Runtime.zip -d ~/MATLAB_Runtime
 
-      - name: Install MATLAB runtime
-        run: |
-          sudo ~/MATLAB_Runtime/install -agreeToLicense yes
+      # - name: Install MATLAB runtime
+      #   run: |
+      #     sudo ~/MATLAB_Runtime/install -agreeToLicense yes
 
       - name: Checkout source
         uses: actions/checkout@v6
@@ -193,7 +193,7 @@ jobs:
         # much of an advantage to testing on both 2019 and 2022. Therefore, we are
         # just running this job on windows-latest.
         os: [windows-latest]
-        python-version: ["3.13", "3.14"]     # Our minimum on Windows is currently 3.13; we support later versions but MATLAB related tests may be skipped until the MATLAB Runtime supports them
+        python-version: ["3.13"]     # Our minimum on Windows is currently 3.13; we support later versions but pyhdf is not currently available for 3.14 so we limit testing to 3.13
 
     environment:
       name: "Test data products"
