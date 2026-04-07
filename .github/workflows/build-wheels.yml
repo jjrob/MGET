@@ -275,16 +275,55 @@ jobs:
       - name: Install MATLAB runtime
         shell: pwsh
         run: |
-          Write-Host "Locating setup.exe"
-          $setup = Get-ChildItem -Path "MATLAB_Runtime" -Recurse -Filter "setup.exe" |
+          $ErrorActionPreference = 'Stop'
+
+          Write-Host "Searching for setup.exe under MATLAB_Runtime"
+          $setup = Get-ChildItem -Path "MATLAB_Runtime" -Recurse -Filter "setup.exe" -File |
             Select-Object -First 1 -ExpandProperty FullName
 
           if (-not $setup) {
             throw "Could not find setup.exe under MATLAB_Runtime"
           }
 
-          Write-Host "Executing installer: $setup"
-          & $setup -agreeToLicense yes
+          $log = Join-Path $env:RUNNER_TEMP "matlab-runtime-install.log"
+
+          Write-Host "Using installer: $setup"
+          Write-Host "Installer log: $log"
+
+          if (Test-Path $log) {
+            Remove-Item $log -Force
+          }
+
+          $proc = Start-Process `
+            -FilePath $setup `
+            -ArgumentList @(
+              '-agreeToLicense', 'yes',
+              '-outputFile', $log
+            ) `
+            -Wait `
+            -PassThru
+
+          Write-Host "Installer exit code: $($proc.ExitCode)"
+
+          if (Test-Path $log) {
+            Write-Host "----- MATLAB Runtime installer log begin -----"
+            Get-Content $log
+            Write-Host "----- MATLAB Runtime installer log end -----"
+          }
+          else {
+            Write-Host "Expected installer log was not created at: $log"
+            Write-Host "TEMP = $env:TEMP"
+            Write-Host "RUNNER_TEMP = $env:RUNNER_TEMP"
+            Write-Host "Searching TEMP for MathWorks logs..."
+            Get-ChildItem $env:TEMP -Filter "mathworks*.log" -ErrorAction SilentlyContinue |
+              Sort-Object LastWriteTime -Descending |
+              Format-Table FullName, LastWriteTime, Length -AutoSize
+            throw "MATLAB Runtime installer did not produce the expected log file."
+          }
+
+          if ($proc.ExitCode -ne 0) {
+            throw "MATLAB Runtime installer failed with exit code $($proc.ExitCode)"
+          }
 
       - name: Install R
         uses: r-lib/actions/setup-r@v2
