@@ -129,10 +129,10 @@ class MatlabDependency(Dependency):
                     # We found it but its directory was not in the PATH.
                     # The MATLAB Runtime installer is supposed to do
                     # this, so there could be a problem with MATLAB.
-                    # Nevertheless, add it to the PATH and try it.
+                    # Nevertheless, prepend it to the PATH and try it.
 
                     if setPath:
-                        newPath = oldPath + ';' + defaultDir
+                        newPath = defaultDir + ';' + oldPath
                         _LogDebug('Setting PATH = %s' % newPath)
                         os.environ['PATH'] = newPath
                         return oldPath
