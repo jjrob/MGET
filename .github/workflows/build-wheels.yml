@@ -130,7 +130,7 @@ jobs:
       - name: Download built wheels
         uses: actions/download-artifact@v8
         with:
-          name: cibw-wheels-ubuntu-latest
+          name: cibw-wheels-ubuntu-24.04
           path: ./wheels
 
       - name: Install wheel
