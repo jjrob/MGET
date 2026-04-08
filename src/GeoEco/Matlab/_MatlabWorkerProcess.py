@@ -172,7 +172,7 @@ class MatlabWorkerProcess(object):
                         raise RuntimeError(_('MATLAB worker process %(pid)s did not respond within %(timeout)s seconds. Verify that the system is not overloaded by other processes. If the system seems idle and this problem keeps happening, please contact the developer of this tool for assistance.') % {'pid': self._WorkerProcess.pid, 'timeout': self._Timeout})
 
                     if isinstance(message, (list, tuple)) and len(message) == 2 and message[0] == 'EXCEPTION':
-                        raise message[1]
+                        MatlabWorkerProcess._RaiseExceptionReportedByWorker(message[1])
 
                     if message != 'EXECUTING':
                         raise RuntimeError(_('MATLAB worker process %(pid)s responded with unknown message %(message)r. If this problem keeps happening, please contact the developer of this tool for assistance.') % {'pid': self._WorkerProcess.pid, 'message': message})
@@ -196,7 +196,7 @@ class MatlabWorkerProcess(object):
                         self._WorkerProcess = None
 
                 if isinstance(message, (list, tuple)) and len(message) == 2 and message[0] == 'EXCEPTION':
-                    raise message[1]
+                    MatlabWorkerProcess._RaiseExceptionReportedByWorker(message[1])
 
                 if not isinstance(message, (list, tuple)) or len(message) != 2 or message[0] != 'RESULT':
                     raise RuntimeError(_('MATLAB worker process %(pid)s responded with unknown message %(message)r. If this problem keeps happening, please contact the developer of this tool for assistance.') % {'pid': self._WorkerProcess.pid, 'message': message})
@@ -291,7 +291,7 @@ class MatlabWorkerProcess(object):
 
                 if isinstance(message, (list, tuple)) and len(message) == 2 and message[0] == 'EXCEPTION':
                     Logger.Error(_('MATLAB worker process %(pid)s failed while trying to initialize MATLAB. Please review the preceding and following log messages for more information.') % {'pid': self._WorkerProcess.pid})
-                    raise message[1]
+                    MatlabWorkerProcess._RaiseExceptionReportedByWorker(message[1])
 
                 if message != 'READY':
                     raise RuntimeError(_('MATLAB worker process %(pid)s responded with unknown message %(message)r after being started. Please contact the developer of this tool for assistance.') % {'pid': self._WorkerProcess.pid, 'message': message})
@@ -601,8 +601,28 @@ class MatlabWorkerProcess(object):
         excType, excValue, excTraceback = sys.exc_info()
         stackTrace = ''.join(traceback.format_exception(excType, excValue, excTraceback))
         outputQueue.put(('LOG', logging.DEBUG, stackTrace))
-        outputQueue.put(('EXCEPTION', e))
 
+        # Send only pickle-safe built-in data back to the parent.
+
+        outputQueue.put((
+            'EXCEPTION',
+            {
+                'module': e.__class__.__module__,
+                'class': e.__class__.__name__,
+                'message': str(e),
+                'traceback': stackTrace,
+            }
+        ))
+
+    @staticmethod
+    def _RaiseExceptionReportedByWorker(info):
+        if isinstance(info, dict):
+            raise RuntimeError(
+                f"MATLAB worker process raised "
+                f"{info['module']}.{info['class']}: {info['message']}\n\n"
+                f"Worker traceback:\n{info['traceback']}"
+            )
+        raise RuntimeError(str(info))
 
 # If we're on win32, we need to define a custom
 # multiprocessing.context.BaseContext class so that we can spawn hidden child
