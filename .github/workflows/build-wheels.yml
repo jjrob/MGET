@@ -21,7 +21,7 @@ jobs:
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
-        os: [ubuntu-latest, windows-latest]
+        os: [ubuntu-24.04, windows-latest]
         # Python versions are specified in pyproject.toml
 
     steps:
@@ -95,7 +95,7 @@ jobs:
 
       - name: Display GDAL versions available for installation
         run: |
-          apt-cache policy gdal-bin gdal-data gdal-plugins libgdal-dev python3-gdal
+          apt-cache policy gdal-bin gdal-data gdal-plugins libgdal-dev
 
       - name: Install apt-fast
         run: |
@@ -105,7 +105,7 @@ jobs:
 
       - name: Install GDAL
         run: |
-          sudo apt-fast install -y gdal-bin gdal-data gdal-plugins libgdal-dev python3-gdal
+          sudo apt-fast install -y gdal-bin gdal-data gdal-plugins libgdal-dev
 
       - name: Install Python packages needed to install GDAL's Python bindings    # Numpy 1.x is needed for GDAL 3.8.4's Python bindings. Setuptools >= 77 is needed for new licensing metadata in pyproject.toml
         run: |
@@ -116,7 +116,7 @@ jobs:
       - name: Install GDAL's Python package
         run: |
           GDAL_VERSION_NEEDED=$(gdalinfo --version | awk '{print $2}' | sed 's/,//')
-          python -m pip install gdal==$GDAL_VERSION_NEEDED
+          python -m pip install --no-cache-dir --force-reinstall gdal[numpy]==$GDAL_VERSION_NEEDED
           echo ""
           echo "Importing GDAL's Python bindings and printing gdal.VersionInfo()"
           python -c "from osgeo import gdal, gdal_array; print(gdal.VersionInfo())"
