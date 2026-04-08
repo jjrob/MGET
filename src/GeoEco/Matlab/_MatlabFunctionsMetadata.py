@@ -91,6 +91,10 @@ AddArgumentMetadata(MatlabFunctions.Initialize, 'loggingQueue',
     typeMetadata=ClassInstanceTypeMetadata(cls=multiprocessing.queues.Queue, canBeNone=True),
     description=_(':py:class:`multiprocessing.queues.Queue` object to which logging messages should be posted. If not given, messages will be logged to the ``GeoEco`` logger with Python\'s :py:mod:`logging` module.'))
 
+AddArgumentMetadata(MatlabFunctions.Initialize, 'revertPathChanges',
+    typeMetadata=BooleanTypeMetadata(),
+    description=_('If True, any changes made to the PATH environment variable that were needed to initialize MATLAB will be reverted before this function returns. If False, the default, changes to PATH will not be reverted. Because subsequent calls to MATLAB functions could need to load additional MATLAB libraries, we recommend that the changes to PATH not be reverted.'))
+
 
 #################################################################################
 # This module is not meant to be imported directly. Import GeoEco.Matlab instead.

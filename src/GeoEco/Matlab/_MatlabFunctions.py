@@ -30,7 +30,7 @@ class MatlabFunctions(object):
     _MatlabModuleHandle = None
 
     @classmethod
-    def Initialize(cls, loggingQueue=None):
+    def Initialize(cls, loggingQueue=None, revertPathChanges=False):
         cls.__doc__.Obj.ValidateMethodInvocation()
 
         # If we've already been initialized, return immediately.
@@ -94,9 +94,10 @@ class MatlabFunctions(object):
                 setattr(MatlabFunctions, funcName, meth)
 
         finally:
-            # If we set the path, unset it now.
+            # If we set the path and the caller requested we revert changes to
+            # it, unset it now.
 
-            if oldPath is not None:
+            if oldPath is not None and revertPathChanges:
                 if sys.platform == 'linux':
                     if len(oldPath) > 0:
                         _LogDebug('Changing LD_LIBRARY_PATH back to %s', oldPath)
