@@ -203,22 +203,45 @@ class TestRWorkerProcess():
                 assert r['x'] == now.astimezone(r['x'].tzinfo)
 
     def test_DataFrames(self, rWorkerProcess):
-        df = pandas.DataFrame({'BoolCol': [True, False, None, False, True, True, False, False, False],
-                               'IntCol': [0, -1, 1, 10, 0-2**31+1, 2**31-1, 1000, 2000, 3000],
-                               'Int64Col': [0, -1, 1, 10, 0-2**63+1, 2**63-1, 1000, 2000, 3000],
-                               'FloatCol': [0., 1.1, float('nan'), float('inf'), float('-inf'), sys.float_info.min, sys.float_info.max, 4.9406564584124654e-324, 4.9406564584124654e-324 * -1],
-                               'StrCol': ['a', 'b', 'c', None, 'd', '', '[abc]', 'résumé', 'e'],
-                               })
 
-        rWorkerProcess['df'] = df
-        assert rWorkerProcess.Eval('sapply(df, class)') == ['logical', 'integer', 'integer64', 'numeric', 'character']
+        # This test has been known to fail randomly on Windows GitHub runners
+        # on the line:
+        #
+        #     df2 = rWorkerProcess['df']
+        #
+        # Turn on debug logging for the GeoEco and GeoEco.R loggers, so we can
+        # capture more information when the failure occurs.
 
-        def isEqualNaN(x, y):
-            return x == y or math.isnan(x) and math.isnan(y)
+        geoeco_logger = logging.getLogger("GeoEco")
+        geoeco_r_logger = logging.getLogger("GeoEco.R")
 
-        df2 = rWorkerProcess['df']
-        assert all(df.columns == df2.columns)
-        assert all([all([isEqualNaN(df.at[i,c], df2.at[i,c]) for i in range(len(df))]) for c in df.columns])
+        old_geoeco_level = geoeco_logger.level
+        old_geoeco_r_level = geoeco_r_logger.level
+
+        geoeco_logger.setLevel(logging.DEBUG)
+        geoeco_r_logger.setLevel(logging.DEBUG)
+
+        try:
+            df = pandas.DataFrame({'BoolCol': [True, False, None, False, True, True, False, False, False],
+                                   'IntCol': [0, -1, 1, 10, 0-2**31+1, 2**31-1, 1000, 2000, 3000],
+                                   'Int64Col': [0, -1, 1, 10, 0-2**63+1, 2**63-1, 1000, 2000, 3000],
+                                   'FloatCol': [0., 1.1, float('nan'), float('inf'), float('-inf'), sys.float_info.min, sys.float_info.max, 4.9406564584124654e-324, 4.9406564584124654e-324 * -1],
+                                   'StrCol': ['a', 'b', 'c', None, 'd', '', '[abc]', 'résumé', 'e'],
+                                   })
+
+            rWorkerProcess['df'] = df
+            assert rWorkerProcess.Eval('sapply(df, class)') == ['logical', 'integer', 'integer64', 'numeric', 'character']
+
+            def isEqualNaN(x, y):
+                return x == y or math.isnan(x) and math.isnan(y)
+
+            df2 = rWorkerProcess['df']
+            assert all(df.columns == df2.columns)
+            assert all([all([isEqualNaN(df.at[i,c], df2.at[i,c]) for i in range(len(df))]) for c in df.columns])
+
+        finally:
+            geoeco_logger.setLevel(old_geoeco_level)
+            geoeco_r_logger.setLevel(old_geoeco_r_level)
 
     def test_AuthenticationToken(self, rWorkerProcess):
         # Change Python's copy of the authentication token and verify that R

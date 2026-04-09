@@ -13,6 +13,7 @@ import collections.abc
 import ctypes
 import datetime
 import functools
+import hashlib
 import io
 import json
 import logging
@@ -219,6 +220,26 @@ class RWorkerProcess(collections.abc.MutableMapping):
 
             try:
                 Logger.Debug(f'{self.__class__.__name__} 0x{id(self):016X}: Opened requests.Session 0x{id(self._Session):016X}.')
+                
+                try:
+                    import pyarrow
+                except Exception:
+                    pyarrow = None
+
+                try:
+                    import pandas
+                except Exception:
+                    pandas = None
+
+                Logger.Debug(
+                    f'{self.__class__.__name__} 0x{id(self):016X}: '
+                    f'Python runtime versions: '
+                    f'python={sys.version.split()[0]}, '
+                    f'requests={requests.__version__}, '
+                    f'pyarrow={getattr(pyarrow, "__version__", "not-importable")}, '
+                    f'pandas={getattr(pandas, "__version__", "not-importable")}, '
+                    f'platform={sys.platform}'
+                )
 
                 # Locate the Rscript executable.
 
@@ -966,13 +987,58 @@ class RWorkerProcess(collections.abc.MutableMapping):
 
             elif resp.headers['Content-Type'] in ['application/vnd.apache.arrow.file', 'application/x-feather']:
                 Logger.Debug(f'{self.__class__.__name__} 0x{id(self):016X}: Recieved HTTP 200, parsing feather.')
+                import pyarrow
                 import pyarrow.feather
+
+                body = resp.content
+                sha256 = hashlib.sha256(body).hexdigest()
+                first64 = body[:64].hex()
+                last64 = body[-64:].hex() if len(body) > 64 else body.hex()
+                starts_with_arrow1 = body.startswith(b'ARROW1')
+                ends_with_arrow1 = len(body) >= 6 and body[-6:] == b'ARROW1'
+
+                Logger.Debug(
+                    f'{self.__class__.__name__} 0x{id(self):016X}: '
+                    f'Feather response diagnostics: '
+                    f'status={resp.status_code}, '
+                    f'content_type={resp.headers.get("Content-Type")!r}, '
+                    f'content_encoding={resp.headers.get("Content-Encoding")!r}, '
+                    f'content_length_header={resp.headers.get("Content-Length")!r}, '
+                    f'actual_length={len(body)}, '
+                    f'sha256={sha256}, '
+                    f'starts_with_ARROW1={starts_with_arrow1}, '
+                    f'ends_with_ARROW1={ends_with_arrow1}, '
+                    f'pyarrow={pyarrow.__version__}'
+                )
+                Logger.Debug(f'{self.__class__.__name__} 0x{id(self):016X}: Feather response first64={first64}')
+                Logger.Debug(f'{self.__class__.__name__} 0x{id(self):016X}: Feather response last64={last64}')
+
                 try:
-                    featherData = io.BytesIO(resp.content)
+                    featherData = io.BytesIO(body)
                     table = pyarrow.feather.read_feather(featherData)
-                except:
-                    Logger.Error('MGET placed a call to R through HTTP and the R plumber package and was supposed receive a data frame as a feather table but a pandas DataFrame could not be parsed from the HTTP response. The following exception contains the details.')
+                except Exception as e:
+                    Logger.Error(
+                        f'MGET placed a call to R through HTTP and the R plumber package and was supposed receive a data frame as a feather table but a pandas DataFrame could not be parsed from the HTTP response. '
+                        f'Diagnostics: status={resp.status_code}, '
+                        f'content_type={resp.headers.get("Content-Type")!r}, '
+                        f'content_encoding={resp.headers.get("Content-Encoding")!r}, '
+                        f'content_length_header={resp.headers.get("Content-Length")!r}, '
+                        f'actual_length={len(body)}, '
+                        f'sha256={sha256}, '
+                        f'starts_with_ARROW1={starts_with_arrow1}, '
+                        f'ends_with_ARROW1={ends_with_arrow1}, '
+                        f'first64={first64}, '
+                        f'last64={last64}, '
+                        f'exception={e.__class__.__name__}: {e}'
+                    )
                     raise
+
+                try:
+                    Logger.Debug(f'{self.__class__.__name__} 0x{id(self):016X}: Parsed feather successfully: rows={len(table)}, columns={list(table.columns)}')
+                    Logger.Debug(f'{self.__class__.__name__} 0x{id(self):016X}: Parsed feather dtypes={dict(table.dtypes.astype(str))}')
+                except Exception:
+                    pass
+
                 return table
 
             raise RuntimeError(f'MGET placed a call to R through HTTP and the R plumber package and received a response with an unknown Content-Type "{resp.headers["Content-Type"]}". Please try this operation again, and if it continues to fail, contact the MGET development team for assistance.')

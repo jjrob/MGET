@@ -145,6 +145,22 @@ if (loggedInstallDir) {
   cat("DONE_INSTALLING_R_PACKAGES\n")
 }
 
+# Log some debugging information.
+
+cat(sprintf("DEBUG: R version: %s\n", R.version.string))
+cat(sprintf("DEBUG: R platform: %s\n", R.Version()$platform))
+cat(sprintf("DEBUG: R os: %s\n", R.Version()$os))
+cat(sprintf("DEBUG: .libPaths(): %s\n", paste(.libPaths(), collapse=" | ")))
+cat(sprintf("DEBUG: Repository: %s\n", getOption("repos")[["CRAN"]]))
+
+for (pkg in c("plumber", "arrow", "tzdb", "jsonlite", "rlang")) {
+  if (requireNamespace(pkg, quietly=TRUE)) {
+    cat(sprintf("DEBUG: %s version %s\n", pkg, as.character(packageVersion(pkg))))
+  } else {
+    cat(sprintf("DEBUG: %s is not installed\n", pkg))
+  }
+}
+
 # Load plumber. (The others will be loaded later if needed).
 
 library(plumber)
