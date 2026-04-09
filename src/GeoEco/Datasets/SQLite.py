@@ -28,7 +28,7 @@ class SQLiteDatabase(FileDatasetCollection, Database):
 
     Connection = property(_GetConnection, doc=DynamicDocString())
 
-    def __init__(self, path, timeout=5., isolation_level=None, detect_types=sqlite3.PARSE_DECLTYPES|sqlite3.PARSE_COLNAMES, decompressedFileToReturn=None, displayName=None, parentCollection=None, queryableAttributes=None, queryableAttributeValues=None, lazyPropertyValues=None, cacheDirectory=None):
+    def __init__(self, path, timeout=5., isolation_level=None, detect_types=0, decompressedFileToReturn=None, displayName=None, parentCollection=None, queryableAttributes=None, queryableAttributeValues=None, lazyPropertyValues=None, cacheDirectory=None):
         self.__doc__.Obj.ValidateMethodInvocation()
 
         # Initialize our properties.
@@ -262,7 +262,7 @@ class SQLiteDatabase(FileDatasetCollection, Database):
 
                 elif sourceTable.GetFieldByName('ObjectID') is not None:
                     fieldsToCopy = [field.Name for field in sourceTable.Fields if field.Name.upper() != 'OBJECTID' and (sourceTable.GeometryFieldName is None or field.Name.upper() != sourceTable.GeometryFieldName.upper())]
-                    self._LogWarning(('The field "%(field)s" from %(src)s will not be imported into the table %(tn)s in %(dest)s because that field name is already in use. This problem is a limitation of this tool; please contact the developer of this tool for assistance.') % {'field': sourceTable.GetFieldByName('ObjectID').Name, 'src': dataset.DisplayName, 'tn': tableName, 'dest': database.DisplayName})
+                    cls._LogWarning(('The field "%(field)s" from %(src)s will not be imported into the table %(tn)s in %(dest)s because that field name is already in use. This problem is a limitation of this tool; please contact the developer of this tool for assistance.') % {'field': sourceTable.GetFieldByName('ObjectID').Name, 'src': dataset.DisplayName, 'tn': tableName, 'dest': database.DisplayName})
 
                 # Import the table.
 
@@ -562,6 +562,33 @@ class SQLiteTable(Table):
 
 class _SQLiteReadableCursor(object):
 
+    @staticmethod
+    def _ParseDateValue(value):
+        if value is None:
+            return None
+        if isinstance(value, datetime.datetime):
+            return datetime.datetime(value.year, value.month, value.day)
+        if isinstance(value, datetime.date):
+            return datetime.datetime(value.year, value.month, value.day)
+        if isinstance(value, bytes):
+            value = value.decode('utf-8')
+        return datetime.datetime.fromisoformat(str(value)[:10])     # Accept YYYY-MM-DD, and be tolerant if someone stored a datetime string.
+
+    @staticmethod
+    def _ParseDateTimeValue(value):
+        if value is None:
+            return None
+        if isinstance(value, datetime.datetime):
+            return value
+        if isinstance(value, datetime.date):
+            return datetime.datetime(value.year, value.month, value.day)
+        if isinstance(value, bytes):
+            value = value.decode('utf-8')
+        value = str(value)
+        if value.endswith('Z'):
+            value = value[:-1] + '+00:00'
+        return datetime.datetime.fromisoformat(value)
+
     def _NextRow(self):
         self._Row = self._Cursor.fetchone()
         self._RowValues = {}
@@ -572,7 +599,16 @@ class _SQLiteReadableCursor(object):
     def _GetValue(self, field):
         if field not in self._RowValues:
             value = self._Row[str(field)]
+
+            f = self._Table.GetFieldByName(field)
+            if value is not None and f is not None:
+                if f.DataType == 'date':
+                    value = self._ParseDateValue(value)
+                elif f.DataType == 'datetime':
+                    value = self._ParseDateTimeValue(value)
+
             self._RowValues[field] = value
+
         return self._RowValues[field]
 
     def _GetOID(self):
@@ -582,6 +618,21 @@ class _SQLiteReadableCursor(object):
 class _SQLiteWritableCursor(object):
 
     def _SetValue(self, field, value):
+        f = self._Table.GetFieldByName(field)
+
+        if value is not None and f is not None:
+            if f.DataType == 'date':
+                if isinstance(value, datetime.datetime):
+                    value = value.date()
+                if isinstance(value, datetime.date):
+                    value = value.isoformat()
+
+            elif f.DataType == 'datetime':
+                if isinstance(value, datetime.date) and not isinstance(value, datetime.datetime):
+                    value = datetime.datetime(value.year, value.month, value.day)
+                if isinstance(value, datetime.datetime):
+                    value = value.isoformat(' ')
+
         self._RowValues[field] = value
         self._SetFields.add(field)
         
@@ -716,18 +767,17 @@ class _SQLiteInsertCursor(_SQLiteWritableCursor, InsertCursor):
         
         if len(self._SetFields) <= 0:
             sql = 'INSERT INTO %s DEFAULT VALUES' % self._Table.TableName
+            self._Table.ParentCollection._Connection.execute(sql)
 
         # Otherwise, we have to use the normal INSERT syntax.
 
         else:
             fieldsToSet = list(self._SetFields)
-            valueStrings = ['?'] * len(self._SetFields)
+            valueStrings = ['?'] * len(fieldsToSet)
 
             sql = 'INSERT INTO %s (%s) VALUES (%s)' % (self._Table.TableName, ', '.join(fieldsToSet), ', '.join(valueStrings))
+            self._Table.ParentCollection._Connection.execute(sql, [self._RowValues[field] for field in fieldsToSet])
 
-        # Insert the row.
-        
-        self._Table.ParentCollection._Connection.execute(sql, [self._RowValues[field] for field in fieldsToSet])
         self._RowValues = {}
         self._SetFields = set()
 
@@ -955,19 +1005,19 @@ Warning:
 AddArgumentMetadata(SQLiteDatabase.__init__, 'detect_types',
     typeMetadata=IntegerTypeMetadata(),
     description=_(
-"""Controls whether SQLite will detect and convert custom types other than the
-natively-supported types TEXT, INTEGER, FLOAT, BLOB and NULL.
+"""Controls whether :py:mod:`sqlite3` will be used to detect and convert
+custom SQLite types other than the natively-supported types TEXT, INTEGER,
+FLOAT, BLOB and NULL. Please see the documentation for the :py:mod:`sqlite3`
+module for more information on this parameter. By default, this is set to 0,
+so that :py:mod:`sqlite3` will not be used to detect and convert any
+additional types.
 
-By default, this is set to :py:data:`sqlite3.PARSE_DECLTYPES` |
-:py:data:`sqlite3.PARSE_COLNAMES`, which enables type detection and
-conversion. The underlying Python :py:mod:`sqlite3` module automatically
-supports conversion of the "date" datatype to :py:class:`datetime.date` and
-"timestamp" data type to :py:class:`datetime.datetime`. You can enable
-detection and conversion of additional types by registering adapters and
-convertors with :py:mod:`sqlite3` prior to connecting to the database. See the
-:py:mod:`sqlite3` documentation for more information.
-
-Set this to ``0`` to disable type detection and conversion."""))
+:class:`SQLiteDatabase` automatically converts columns with the datatype
+"date" and "datetime" to and from Python :py:class:`datetime.datetime`
+instances. "date" and "datetime" columns are assumed to be strings in ISO 8601
+format, as described by :py:meth:`datetime.datetime.fromisoformat`. Note that
+"date" is converted to and from :py:class:`datetime.datetime` (hours, minutes,
+seconds, and microseconds are ignored). not :py:class:`datet.date`."""))
 
 CopyArgumentMetadata(FileDatasetCollection.__init__, 'decompressedFileToReturn', SQLiteDatabase.__init__, 'decompressedFileToReturn')
 

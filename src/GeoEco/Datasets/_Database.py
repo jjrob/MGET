@@ -202,7 +202,7 @@ class Database(object):
 
         if not self.TableExists(tableName):
             if failIfNotExists:
-                raise RuntimeError(_('Cannot create %(objectType)s %(table)s in %(dn)s because that %(objectType)s already exists.') % {'objectType': self._GetObjectTypeDisplayName(tableName), 'table': tableName, 'dn': self.DisplayName})
+                raise RuntimeError(_('Cannot delete %(objectType)s %(table)s from %(dn)s because that %(objectType)s does not exist.') % {'objectType': self._GetObjectTypeDisplayName(tableName), 'table': tableName, 'dn': self.DisplayName})
             self._LogDebug(_('%(class)s 0x%(id)016X: Not deleting %(objectType)s %(table)s from %(dn)s because that %(objectType)s does not exist.'), {'class': self.__class__.__name__, 'id': id(self), 'objectType': self._GetObjectTypeDisplayName(tableName), 'table': tableName, 'dn': self.DisplayName})
             return
 
