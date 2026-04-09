@@ -210,9 +210,19 @@ function(name, value) {
   })
 }
 
+serializer_feather_uncompressed <- function(type = "application/vnd.apache.arrow.file") {
+  plumber::serializer_write_file(
+    type = type,
+    fileext = ".feather",
+    write_fn = function(val, tmpfile) {
+      arrow::write_feather(val, tmpfile, version = 2, compression = "uncompressed")
+    }
+  )
+}
+
 serializers <- list(
-  json=serializer_unboxed_json_for_python(), 
-  feather=serializer_feather()
+  json = serializer_unboxed_json_for_python(),
+  feather = serializer_feather_uncompressed()
 )
 
 #* Returns the value of a variable.
