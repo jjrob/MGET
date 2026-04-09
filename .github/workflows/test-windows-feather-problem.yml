@@ -24,11 +24,6 @@ jobs:
         with:
           python-version: "3.13"
 
-      - name: Checkout source
-        uses: actions/checkout@v6
-        with:
-          fetch-depth: 0
-
       - name: Cache GDAL wheels from cgohlke/geospatial-wheels
         id: cache-GDAL-wheels
         uses: actions/cache@v5
@@ -91,6 +86,11 @@ jobs:
         run: |
           Rscript -e "print(version)"
 
+      - name: Checkout source
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
       - name: Run tests
         run: |
-          pytest -vv -o log_cli=true --log-cli-level=DEBUG .test/GeoEco/R/RWorkerProcess_test.py::TestRWorkerProcess::test_DataFrames
+          pytest -vv -o log_cli=true --log-cli-level=DEBUG .test/GeoEco/R
