@@ -1,0 +1,96 @@
+# test-windows-feather-problem.yml
+#
+# Try to reproduce issue #54: On GitHub windows-latest runner, when retrieving
+# an R data frame, RWorkerProcess fails in pyarrow._feather.FeatherReader.read
+# with OSError: LZ4 decompress failed: ERROR_frameType_unknown
+
+name: Test Windows feather problem (issue 54)
+
+on:
+  workflow_dispatch:  # Allows manual trigger
+
+
+jobs:
+  test_windows:
+    name: Test on Windows
+    runs-on: windows-latest
+
+    environment:
+      name: "Test data products"
+
+    steps:
+      - name: Set up Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: "3.13"
+
+      - name: Checkout source
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
+      - name: Cache GDAL wheels from cgohlke/geospatial-wheels
+        id: cache-GDAL-wheels
+        uses: actions/cache@v5
+        with:
+          path: GDAL_wheels
+          key: cache-gdal-3.12.2-win_amd64-wheels
+
+      - name: Download GDAL wheels from cgohlke/geospatial-wheels
+        if: ${{ steps.cache-GDAL-wheels.outputs.cache-hit != 'true' }}
+        run: |
+          mkdir GDAL_wheels
+          curl -L -o GDAL_wheels\\gdal-3.12.2-cp313-cp313-win_amd64.whl https://github.com/cgohlke/geospatial-wheels/releases/download/v2026.2.26/gdal-3.12.2-cp313-cp313-win_amd64.whl
+          curl -L -o GDAL_wheels\\gdal-3.12.2-cp314-cp314-win_amd64.whl https://github.com/cgohlke/geospatial-wheels/releases/download/v2026.2.26/gdal-3.12.2-cp314-cp314-win_amd64.whl
+
+      - name: Install GDAL wheel
+        shell: bash   # Yes, bash on Windows
+        run: |
+          python -m pip install -U pip
+          python -m pip install -U setuptools wheel numpy
+          python -m pip install gdal==3.12.2 --find-links=GDAL_wheels
+          echo ""
+          echo "Importing GDAL's Python bindings and printing gdal.VersionInfo()"
+          python -c "from osgeo import gdal, gdal_array; print(gdal.VersionInfo())"
+
+      - name: Get latest run of build-wheels.yml workflow on main branch
+        id: get_run_id
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: pwsh
+        run: |
+          $workflow_file_name = "build-wheels.yml"
+          # Get the latest workflow run ID from the main branch; supposedly these are returned in reverse chronological order 
+          $workflow_runs = gh api repos/${{ github.repository }}/actions/workflows/$workflow_file_name/runs --paginate --jq '.workflow_runs[] | select(.head_branch == "main") | .id' | Select-Object -First 1
+          echo "RUN_ID: $workflow_runs"
+          echo "RUN_ID=$workflow_runs" >> $env:GITHUB_OUTPUT     # Important: use $env:GITHUB_OUTPUT rather than $GITHUB_OUTPUT so variable is exported
+
+      - name: Download built wheels
+        uses: actions/download-artifact@v8
+        with:
+          name: cibw-wheels-windows-latest
+          path: wheels
+          run-id: ${{ steps.get_run_id.outputs.RUN_ID }}
+          github-token: ${{ github.token }}    # Needed to download from another workflow run than the current run
+
+      - name: Install wheel
+        shell: pwsh
+        run: |
+          $env:MGET_VERSION = python -c "import glob; import os; files = glob.glob(os.path.join('wheels', 'mget3-*.whl')); print(os.path.basename(files[0]).split('-')[1])"
+          python -m pip install mget3==$env:MGET_VERSION --find-links=wheels
+
+      - name: Install Python packages needed to run tests
+        run: |
+          python -m pip install pytest python-dotenv
+
+      - name: Install R
+        uses: r-lib/actions/setup-r@v2
+
+      - name: Display R version
+        shell: cmd
+        run: |
+          Rscript -e "print(version)"
+
+      - name: Run tests
+        run: |
+        pytest -vv -o log_cli=true --log-cli-level=DEBUG .test/GeoEco/R/RWorkerProcess_test.py::TestRWorkerProcess::test_DataFrames

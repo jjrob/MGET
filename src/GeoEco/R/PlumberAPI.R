@@ -242,16 +242,6 @@ function(name, res) {
     for (line in lines) {
       cat("DEBUG:", line)
     }
-    
-    if ("data.frame" %in% class(value) || "tibble" %in% class(value)) {
-      colClasses <- vapply(value, function(x) paste(class(x), collapse="|"), FUN.VALUE=character(1))
-      cat(sprintf("DEBUG: GET serializer=feather rows=%d cols=%d names=%s\n",
-                  nrow(value), ncol(value), paste(names(value), collapse=",")))
-      cat(sprintf("DEBUG: GET feather column classes: %s\n",
-                  paste(sprintf("%s=%s", names(colClasses), colClasses), collapse=", ")))
-    } else {
-      cat(sprintf("DEBUG: GET serializer=json class=%s\n", paste(class(value), collapse="|")))
-    }
 
     # If the value is a dataframe or a tibble, set the serializer to feather.
     # Otherwise use unboxed JSON. Then return the value.
