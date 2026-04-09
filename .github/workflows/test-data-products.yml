@@ -45,44 +45,49 @@ jobs:
           echo "python3 --version:"
           python3 --version
 
-      - name: Display GDAL versions available for installation
-        run: |
-          apt-cache policy gdal-bin gdal-data gdal-plugins libgdal-dev 
-
-      # Now we need to install GDAL. Unfortunately, we cannot use
-      # awalsh128/cache-apt-pkgs-action for this, at least on ubuntu-24.04,
-      # because it appears that GDAL has a post-install script that sets
-      # LD_LIBRARY_PATH, and that script does not appear to run even if
-      # execute_install_scripts is true for cache-apt-pkgs-action. At least, I
-      # THINK that is the problem. In any case, if we use
-      # cache-apt-pkgs-action, we get the following error when we try to run
-      # gdalinfo later below:
-      #
-      #     gdalinfo: error while loading shared libraries: libblas.so.3: cannot open shared object file: No such file or directory
-      #
-      # So call apt-get ourselves. The line with curl installs apt-fast.
-
       - name: Install apt-fast
         run: |
-          sudo /bin/bash -c "$(curl -sL https://git.io/vokNn)"
+          sudo add-apt-repository ppa:apt-fast/stable
           sudo apt-get update -y
+          sudo apt-get -y install apt-fast
 
-      - name: Install GDAL on ubuntu-24.04
+      # ubuntu-24.04 provides GDAL 3.8.4, which requires numpy 1.x. Most
+      # recent versions of packages that MGET depends on require numpy 2.x. We
+      # don't want to continue testing against those old packages rather than
+      # the newer ones. Add ppa:ubuntugis/ubuntugis-unstable, which has newer
+      # versions of GDAL for Ubuntu 24.04 which are compatible with numpy 2.x.
+
+      - name: Display GDAL versions available from ppa:ubuntugis/ubuntugis-unstable
         run: |
-          sudo apt-fast install -y gdal-bin gdal-data gdal-plugins libgdal-dev libgdal34t64
+          sudo add-apt-repository -y ppa:ubuntugis/ubuntugis-unstable
+          sudo apt-get update -y
+          apt-cache policy gdal-bin gdal-data gdal-plugins libgdal-dev
+
+      - name: Install GDAL from ppa:ubuntugis/ubuntugis-unstable
+        run: |
+          sudo apt-fast install -y gdal-bin gdal-data gdal-plugins libgdal-dev
+          gdalinfo --version
+          gdal-config --version
 
       - name: Install Python packages needed to install GDAL's Python bindings
         run: |
           python -m pip install --upgrade pip
-          python -m pip install "numpy<2" setuptools wheel
+          python -m pip install "numpy>=2,<3" "setuptools>=67" wheel
+          python -c "import numpy; print('numpy:', numpy.__version__)"
+          python -m pip list
 
-      - name: Install GDAL's Python package
+      - name: Install GDAL's Python bindings
         run: |
-          GDAL_VERSION_NEEDED=$(gdalinfo --version | awk '{print $2}' | sed 's/,//')
-          python -m pip install gdal==$GDAL_VERSION_NEEDED
+          GDAL_VERSION_NEEDED=$(gdal-config --version)
+          case "$GDAL_VERSION_NEEDED" in
+            3.11.*|3.12.*) ;;
+            *) echo "Unexpected GDAL version: $GDAL_VERSION_NEEDED" ; exit 1 ;;
+          esac
+          python -m pip install --no-build-isolation --no-cache-dir --force-reinstall "gdal==$GDAL_VERSION_NEEDED"
           echo ""
-          echo "Testing GDAL's python bindings"
-          python -c "from osgeo import _gdal_array"
+          echo "Verifying GDAL Python bindings"
+          python -c "from osgeo import gdal; print(gdal.VersionInfo())"
+          python -c "from osgeo import gdal_array; print('gdal_array OK')"
 
       - name: Get latest run of build-wheels.yml workflow on main branch
         id: get_run_id
@@ -96,9 +101,9 @@ jobs:
           echo "RUN_ID=$workflow_runs" >> "$GITHUB_OUTPUT"
 
       - name: Download built wheels
-        uses: actions/download-artifact@v5
+        uses: actions/download-artifact@v8
         with:
-          name: cibw-wheels-ubuntu-latest
+          name: cibw-wheels-ubuntu-24.04
           path: ./wheels
           run-id: ${{ steps.get_run_id.outputs.RUN_ID }}
           github-token: ${{ github.token }}    # Needed to download from another workflow run than the current run
@@ -128,7 +133,7 @@ jobs:
         continue-on-error: true
 
       - name: Upload test linux_results.xml as artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: linux_results
           path: linux_results.xml
@@ -143,37 +148,33 @@ jobs:
 
     steps:
       - name: Set up Python
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v6
         with:
           python-version: "3.13"
 
       - name: Cache GDAL wheels from cgohlke/geospatial-wheels
         id: cache-GDAL-wheels
-        uses: actions/cache@v4
+        uses: actions/cache@v5
         with:
           path: GDAL_wheels
-          key: cache-GDAL-3.10.1-win_amd64-wheels
+          key: cache-gdal-3.12.2-win_amd64-wheels
 
       - name: Download GDAL wheels from cgohlke/geospatial-wheels
-        if: steps.cache-GDAL-wheels.outputs.cache-hit != 'true'
+        if: ${{ steps.cache-GDAL-wheels.outputs.cache-hit != 'true' }}
         run: |
           mkdir GDAL_wheels
-          curl -L -o GDAL_wheels\\GDAL-3.9.2-cp39-cp39-win_amd64.whl https://github.com/cgohlke/geospatial-wheels/releases/download/v2024.9.22/GDAL-3.9.2-cp39-cp39-win_amd64.whl
-          curl -L -o GDAL_wheels\\GDAL-3.10.1-cp310-cp310-win_amd64.whl https://github.com/cgohlke/geospatial-wheels/releases/download/v2025.1.20/GDAL-3.10.1-cp310-cp310-win_amd64.whl
-          curl -L -o GDAL_wheels\\GDAL-3.10.1-cp311-cp311-win_amd64.whl https://github.com/cgohlke/geospatial-wheels/releases/download/v2025.1.20/GDAL-3.10.1-cp311-cp311-win_amd64.whl
-          curl -L -o GDAL_wheels\\GDAL-3.10.1-cp312-cp312-win_amd64.whl https://github.com/cgohlke/geospatial-wheels/releases/download/v2025.1.20/GDAL-3.10.1-cp312-cp312-win_amd64.whl
-          curl -L -o GDAL_wheels\\GDAL-3.10.1-cp313-cp313-win_amd64.whl https://github.com/cgohlke/geospatial-wheels/releases/download/v2025.1.20/GDAL-3.10.1-cp313-cp313-win_amd64.whl
+          curl -L -o GDAL_wheels\\gdal-3.12.2-cp313-cp313-win_amd64.whl https://github.com/cgohlke/geospatial-wheels/releases/download/v2026.2.26/gdal-3.12.2-cp313-cp313-win_amd64.whl
+          curl -L -o GDAL_wheels\\gdal-3.12.2-cp314-cp314-win_amd64.whl https://github.com/cgohlke/geospatial-wheels/releases/download/v2026.2.26/gdal-3.12.2-cp314-cp314-win_amd64.whl
 
       - name: Install GDAL wheel
         shell: bash   # Yes, bash on Windows
         run: |
           python -m pip install -U pip
-          python -m pip install -U setuptools wheel
-          if [ "${{ matrix.python-version }}" = "3.9" ]; then
-            python -m pip install GDAL==3.9.2 --find-links=GDAL_wheels
-          else
-            python -m pip install GDAL==3.10.1 --find-links=GDAL_wheels
-          fi        
+          python -m pip install -U setuptools wheel numpy
+          python -m pip install gdal==3.12.2 --find-links=GDAL_wheels
+          echo ""
+          echo "Importing GDAL's Python bindings and printing gdal.VersionInfo()"
+          python -c "from osgeo import gdal, gdal_array; print(gdal.VersionInfo())"
 
       - name: Get latest run of build-wheels.yml workflow on main branch
         id: get_run_id
@@ -188,7 +189,7 @@ jobs:
           echo "RUN_ID=$workflow_runs" >> $env:GITHUB_OUTPUT     # Important: use $env:GITHUB_OUTPUT rather than $GITHUB_OUTPUT so variable is exported
 
       - name: Download built wheels
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         with:
           name: cibw-wheels-windows-latest
           path: wheels
@@ -206,7 +207,7 @@ jobs:
           python -m pip install pytest python-dotenv
 
       - name: Checkout source
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           fetch-depth: 0
 
@@ -221,7 +222,7 @@ jobs:
         continue-on-error: true
 
       - name: Upload test windows_results.xml as artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: windows_results
           path: windows_results.xml
@@ -237,7 +238,7 @@ jobs:
 
     steps:
       - name: Download results
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
 
       - name: Compute pass percentage
         id: get_pass_pct
@@ -256,13 +257,13 @@ jobs:
           echo "PASS_PERCENTAGE=$PASS_PERCENTAGE" >> "$GITHUB_OUTPUT"
 
       - name: Upload test pass percentage as artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: pass_percentage.txt
           path: pass_percentage.txt
 
       - name: Update badge
-        uses: schneegans/dynamic-badges-action@v1.7.0
+        uses: schneegans/dynamic-badges-action@v1.8.0
         with:
           auth: ${{ secrets.GISTS_TOKEN }}
           gistID: c3761a6823cbf5aaded07b64fa4964b8
