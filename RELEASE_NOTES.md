@@ -15,8 +15,10 @@
 ### Fixed
 - GeoEco/Datasets/SQLite.py: DeprecationWarning: The default datetime adapter is deprecated as of Python 3.12 ([#2](https://github.com/jjrob/MGET/issues/2))
 - MATLAB tests are being skipped on Windows GitHub builds ([#26](https://github.com/jjrob/MGET/issues/26))
+- On Windows, RWorkerProcess should install binary R packages by default ([#28](https://github.com/jjrob/MGET/issues/28))
 - When copernicusmarine 2.3.0 is installed, MGET functions fail with ModuleNotFoundError: No module named 'copernicusmarine.download_functions.download_arco_series' ([#49](https://github.com/jjrob/MGET/issues/49))
 - Building MGET on Windows results in SetuptoolsDeprecationWarning: License classifiers are deprecated. ([#50](https://github.com/jjrob/MGET/issues/50))
+- On GitHub windows-latest runner, when retrieving an R data frame, RWorkerProcess fails in `pyarrow._feather.FeatherReader.read` with OSError: LZ4 decompress failed: ERROR_frameType_unknown ([#54](https://github.com/jjrob/MGET/issues/54))
 
 ## [v3.4.1](https://github.com/jjrob/MGET/releases/tag/v3.4.1) - 2025-07-16
 

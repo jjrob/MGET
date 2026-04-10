@@ -44,10 +44,15 @@ if (length(args) <= 5 || (tolower(trimws(args[6])) != "true" && tolower(trimws(a
 }
 updateRPackages <- tolower(trimws(args[6]))
 
-if (length(args) <= 6) {
-  stop("The authentication token must be given as the seventh command line argument.")
+if (length(args) <= 6 || (tolower(trimws(args[7])) != "true" && tolower(trimws(args[7])) != "false")) {
+  stop("The value \"True\" or \"False\" must be given as the seventh command line argument, indicating whether only binary packages should be installed on Windows.")
 }
-authenticationToken <- trimws(args[7])
+winBinaryOnly <- tolower(trimws(args[7]))
+
+if (length(args) <= 7) {
+  stop("The authentication token must be given as the eighth command line argument.")
+}
+authenticationToken <- trimws(args[8])
 
 # If an R library directory was not given, check whether any of the current
 # .libPaths() are writable. If not, set rLibrary based on the operating
@@ -81,6 +86,14 @@ if (tolower(rLibrary) != "none") {
     dir.create(rLibrary, recursive=TRUE)
   }
   .libPaths(rLibrary)
+}
+
+# If requested, before updating or installing packages on Windows, change the
+# default pkgType to "win.binary", so that only binary packages will be
+# installed.
+
+if (.Platform$OS.type == "windows" && winBinaryOnly) {
+  options(pkgType = "win.binary")
 }
 
 # Set the R repository and update the R packages, if requested. On linux,
