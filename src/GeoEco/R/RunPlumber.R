@@ -92,7 +92,7 @@ if (tolower(rLibrary) != "none") {
 # default pkgType to "win.binary", so that only binary packages will be
 # installed.
 
-if (.Platform$OS.type == "windows" && winBinaryOnly) {
+if (.Platform$OS.type == "windows" && winBinaryOnly == "true") {
   options(pkgType = "win.binary")
 }
 
