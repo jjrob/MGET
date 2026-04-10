@@ -93,4 +93,4 @@ jobs:
 
       - name: Run tests
         run: |
-          pytest -vv -o log_cli=true --log-cli-level=DEBUG .\test\GeoEco\R\RWorkerProcess_test.py::TestRWorkerProcess::test_DataFrames
+          pytest -vv -s -o log_cli=true --log-cli-level=DEBUG .\test\GeoEco\R\RWorkerProcess_test.py::TestRWorkerProcess::test_DataFrames
