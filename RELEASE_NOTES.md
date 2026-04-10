@@ -1,6 +1,6 @@
 # MGET Release Notes
 
-## v3.5.0 - Under construction
+## [v3.5.0](https://github.com/jjrob/MGET/releases/tag/v3.5.0) - 2026-04-10
 
 ### Breaking changes
 - When used with ArcGIS Pro, MGET 3.5 requires ArcGIS Pro 3.6.0 or later. For more information, please see issue [#51](https://github.com/jjrob/MGET/issues/51).

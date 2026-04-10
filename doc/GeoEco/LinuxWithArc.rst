@@ -1,17 +1,14 @@
-Linux with ArcGIS Server
-========================
+Linux with ArcGIS Enterprise
+============================
 
 .. Warning::
-    We have not tested MGET on Linux with ArcGIS Server yet, so we cannot say
-    for certain how best to install it. `ESRI's documentation
+    We have not tested MGET on Linux with ArcGIS Enterprise yet, so we cannot
+    say for certain how best to install it. `ESRI's documentation
     <https://enterprise.arcgis.com/en/server/latest/develop/linux/linux-python.htm>`_
-    suggests that ArcPy on Linux runs within conda. However, we have not yet
-    developed a conda package for MGET, so our best guess is to configure a
-    conda environment needed for MGET and then install MGET with pip as the
-    last step. Below is our best current guess on how to accomplish this,
-    without having tested it yet ourselves. We will update this documentation
-    when we are actually able to test this.
-
+    suggests that ``arcpy`` on Linux runs within conda. Our best guess is that
+    getting MGET working with ArcGIS Enterprise requires installing `MGET's
+    conda package from conda-forge
+    <https://anaconda.org/conda-forge/mget3>`__, known as ``mget3``.
 
 Prerequisites
 -------------
@@ -23,7 +20,7 @@ Prerequisites
 You may be able to get MGET working on other processors or distributions if
 you build MGET from scratch, but we are not currently able to support this.
 These instructions are written as if you are running an Ubuntu derivative and
-use bash as your shell.
+installing the conda package we built.
 
 
 Optional software
@@ -52,32 +49,22 @@ according to ESRI's instructions. This may involve installing conda or
 miniconda first.
 
 
-Step 2: Install packages needed by MGET from conda-forge
---------------------------------------------------------
+Step 2: Install MGET from conda-forge
+-------------------------------------
 
 We assume that in Step 1, you created and activated a conda environment. We
 also assume that ESRI's procedure installed GDAL, the GDAL Python bindings,
-numpy 1.x, and the numerous other packages that come with ArcGIS Pro into that
-environment. Now we need to install a few more Python packages that probably
-weren't installed by ESRI's procedure (because they're not part of ArcGIS
-Pro's default conda environment).
+numpy, and the numerous other packages that come with ArcGIS Pro into that
+environment. Now you can install MGET from conda-forge. From a terminal in
+which the conda environment is activated, run::
 
-From a terminal in which the conda environment is activated, run::
+    conda install --channel esri --channel conda-forge mget3
 
-    conda install --channel conda-forge --yes copernicusmarine docutils scikit-fmm
-
-In our experience on Windows with ArcGIS Pro 3.2.2, this hung with the message
-``Solving environment`` for a very long time, owing to Pro coming with an old
-version of conda that had a slow solver. We anticipate the conda or miniconda
-you installed in Step 1 contained the improved solver. But if not, you could
-try mamba or micromamba instead of conda or miniconda and it might run faster.
-
-Step 3. Install MGET with pip
------------------------------
-
-Assuming that Step 2 completed successfully, from the same terminal, run::
-
-    python3 -m pip install mget3
+In our experience on Windows with ArcGIS Pro, this gets stuck with the message
+``Solving environment`` for at least 10 minutes, owing to ArcGIS coming with
+an old version of conda that had a slow dependency solver. If that happens to
+you and you don't want to wait, or if conda can't solve the enviorment, you
+could try mamba or micromamba instead.
 
 
 Uninstalling MGET
@@ -85,7 +72,4 @@ Uninstalling MGET
 
 To uninstall MGET from your conda environment::
 
-    python -m pip uninstall mget3
-
-Or, if you don't need the virtual environment anymore, you can delete its
-directory entirely.
+    conda remove --yes mget3

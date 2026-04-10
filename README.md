@@ -15,15 +15,14 @@ Lab](https://mgel.env.duke.edu/).
 
 ## Installation
 
-MGET requires 64-bit Python 3.9–3.13 running on Windows or Linux. For full
-functionality, ArcGIS Pro 3.2.2 or later or ArcGIS Server 11.2 or later is
-also required, along with some freely-available software. MGET can be
-installed with `pip install mget3`, but please see the platform-specific
-instructions below to ensure all prerequisites are met.
+MGET requires 64-bit Python 3.9–3.14 running on Windows or Linux. For full
+functionality, ArcGIS Pro 3.6.0 or later or ArcGIS Enterprise 12.0 or later is
+also required, along with some freely-available software. Please use these
+platform-specific instructions to install it:
 
-* [Windows with ArcGIS Pro or Server](https://mget.readthedocs.io/en/stable/WindowsWithArc.html)
+* [Windows with ArcGIS Pro or ArcGIS Enterprise](https://mget.readthedocs.io/en/stable/WindowsWithArc.html)
 * [Windows without ArcGIS](https://mget.readthedocs.io/en/stable/WindowsWithoutArc.html)
-* [Linux with ArcGIS Server](https://mget.readthedocs.io/en/stable/LinuxWithArc.html)
+* [Linux with ArcGIS Enterprise](https://mget.readthedocs.io/en/stable/LinuxWithArc.html)
 * [Linux without ArcGIS](https://mget.readthedocs.io/en/stable/LinuxWithoutArc.html)
 * [Windows with Python 2.x and ArcGIS Desktop (no longer maintained)](https://mget.readthedocs.io/en/stable/WindowsWithArcDesktop.html)
 

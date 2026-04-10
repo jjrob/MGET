@@ -10,14 +10,19 @@ Prerequisites
 - Recent build of a Debian-based distribution; we have only tested Ubuntu and Mint
 
 - Python 3.9 or later; we have only tested CPython (i.e. the reference
-  implementations of Python released on python.org)
+  implementations of Python released on python.org). Currently, 3.13 is
+  recommended for maximum compatibility with other software MGET needs.
 
-- `GDAL <https://gdal.org/>`_ 3.8.0 or later
+- `GDAL <https://gdal.org/>`_ 3.8.0 or later, with its Python bindings. 3.9.0
+  is highly recommended for ``numpy`` 2.x compatibility, which many other
+  recent packages require, which many newer Python packages now require.
+  Please look up instructions on how to install GDAL for your distro, if it
+  doesn't come with it already.
 
 You may be able to get MGET working on other processors, distributions, or
 Python implementations if you build MGET from scratch, but we are not
 currently able to support this. These instructions are written as if you are
-running an Ubuntu derivative and use bash as your shell.
+running an Ubuntu derivative and installing an MGET wheel that we built.
 
 
 Optional software
@@ -54,13 +59,14 @@ Step 2: Verify your GDAL version
 --------------------------------
 
 MGET depends heavily on `GDAL <https://gdal.org/>`_. GDAL 3.8.0 or later must
-be installed. To validate this, start a terminal and run::
+be installed, along with its Python bindings. To validate GDAL is installed,
+start a terminal and run::
 
     gdalinfo --version
 
 If this doesn't work or reports that GDAL is older than 3.8.0, please install
 3.8.0 or later using the package management system appropriate for your Linux
-distribution.
+distribution. As noted above, we strongly recommend 3.9.0 or later.
 
 
 Step 3: Create a Python virtual environment (or activate an existing one)
@@ -88,46 +94,12 @@ assuming you created the virtual environment in your home directory. The
 critical thing is that you now see ``(.venv)`` at the beginning of the command
 prompt.
 
-
-Step 4: Install Python packages needed for GDAL's Python bindings
------------------------------------------------------------------
-
-MGET requires GDAL's Python bindings (a.k.a. the ``osgeo`` package), and
-GDAL's Python bindings require `numpy <https://numpy.org/>`_ and a couple of
-other packages. In order for GDAL's Python bindings to install properly, those
-packages *must be installed first*; you cannot rely on pip to install them
-when you install GDAL's Python bindings. A second issue is that MGET is not
-yet compatible with numpy 2.x. Therefore we need to install numpy 1.x instead.
-
-From the virtual environment you created above::
-
-    python3 -m pip cache purge
-    python3 -m pip install -U pip "numpy<2" setuptools wheel
-
-That will install the most recent release of numpy 1.x along with the other
-packages needed to install GDAL's Python bindings. Prior to doing this, we use
-``pip cache purge`` to force the packages to be redownloaded. (Some users
-reported a problem with stale packages and solved it by doing this, so we do
-it as precaution.)
+If you know what you're doing, you can use other virtual environment managers
+instead of ``venv``. Also, we will use ``pip`` below to install MGET, but you
+can use other wheel-compatible installers such as ``uv`` instead.
 
 
-Step 5: Install GDAL's Python bindings
---------------------------------------
-
-From the same virtual environment::
-
-    python3 -m pip install gdal==X.Y.Z
-
-where ``X.Y.Z`` is the GDAL version you looked up in Step 2. After this
-installation completes successfully, run::
-
-    python3 -c "from osgeo import _gdal_array"
-
-This command should complete with no error. If it fails, you need to debug why
-before proceeding to the MGET installation in the next step.
-
-
-Step 6: Install MGET
+Step 4: Install MGET
 --------------------
 
 From the same virtual environment::

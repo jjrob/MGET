@@ -14,7 +14,9 @@ Prerequisites
 - Microsoft Windows 10 or later, or Windows Server 2016 or later
 
 - Python 3.9 or later; we have only tested the reference implementations of
-  Python released on python.org (known as CPython)
+  Python released on python.org (known as CPython), and most of our testing is
+  currently restricted to Python 3.13. We recommend 3.13 for the best
+  compatibility.
 
 
 Optional software
@@ -45,13 +47,16 @@ directory is in your PATH, then you can simply run::
 
 If Windows reports that it is not a recognized command or program, then try
 the full path to your Python installation, which is usually something like
-this::
+this, if you installed Python for "all users"::
 
-    C:\PythonXXX\python.exe --version
+    C:\Program Files\Python X.Y\python.exe --version
 
-where ``XXX`` is something like ``39`` for Python 3.9, ``310`` for Python 3.10,
-and so on. Anyway, once you get it working, verify that Python reports version
-3.9.0 or later.
+where ``X.Y`` is the version number, such as ``3.13``. If you installed Python
+for just your own user account it will likely be in something similar to
+``C:\Users\<YourUser>\AppData\Local\Python\PythonXY\`` or
+``C:\Users\<YourUser>\AppData\Local\Programs\Python\PythonXY\`` instead.
+
+Once you get Python working, verify that it reports version 3.9.0 or later.
 
 
 Step 2: Create a Python virtual environment (or activate an existing one)
@@ -79,23 +84,26 @@ Your prompt should change to something like this::
 The critical thing is that you now see ``(.venv)`` at the beginning of the
 prompt.
 
+If you know what you're doing, you can use other virtual environment managers
+instead of ``venv``. Also, we will use ``pip`` below to install MGET, but you
+can use other wheel-compatible installers such as ``uv`` instead.
+
 
 Step 3: Install GDAL and its Python bindings
 --------------------------------------------
 
 MGET depends heavily on `GDAL <https://gdal.org/>`_. GDAL 3.8.0 or later is
-required, along with the GDAL Python bindings. GDAL can be tricky to install.
-If you have already installed it and know it works with your virtual
-environment, skip this step.
+required, along with the GDAL Python bindings. We highly recommend GDAL 3.9.0
+or later, which is compatible with ``numpy`` 2.0, which many newer Python
+packages now require. GDAL can be tricky to install. If you have already
+installed it and know it works with your virtual environment, skip this step.
 
 .. Note::
     If you installed GDAL with conda and want to continue with Anaconda
-    Python, please start over with our instructions for :doc:`installing MGET
-    on Windows with ArcGIS Pro <WindowsWithArc>` and follow steps 1, 3, and 4
-    of those instructions, and ignore the stuff that relates to ArcGIS. Those
-    instructions describe how to install MGET with conda. To continue instead
-    with a reference implementation of Python released on python.org
-    (CPython), read on below.
+    Python, please check our instructions for :doc:`installing MGET on Windows
+    with ArcGIS Pro <WindowsWithArc>` to see how to install MGET with conda
+    (micromamba is highly recommended). To continue instead with a reference
+    implementation of Python released on python.org (CPython), read on below.
 
 The easiest way we know of to install GDAL on Windows is to use Christoph
 Gohlke's collection of `geospatial library wheels

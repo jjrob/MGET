@@ -652,7 +652,6 @@ AddArgumentMetadata(RWorkerProcess.__init__, 'winBinaryOnly',
     typeMetadata=BooleanTypeMetadata(),
     description=_(
 """If True, the default, then when running on Windows
-
 ``options(pkgType = "win.binary")`` will be invoked when R starts up, before
 any packages are installed or updated. This will ensure that only binary
 packages available from the package repository will be installed, and block
@@ -663,13 +662,13 @@ using RTools and related R utilities. We found that sometimes these
 locally-compiled packages end up being incompatible with other packages,
 possibly due to conflicts over common libraries that they both need. Package
 repositories help avoid this problem by compiling all packages against the
-same common libraries. We found that by restricting our Windows verisons of R
+same common libraries. We found that by restricting our Windows versions of R
 to only binary packages, the conflicts were avoided.
 
 If you want to go ahead and allow MGET to install source-only packages, set
-this parameter to False. When this works, it can provide access to the very
-latest versions of packages, that may not yet have been compiled by the
-package repository.
+this parameter to False. This can sometimes provide access to the very latest
+versions of packages that have not yet been compiled by the package
+repository.
 
 This parameter is ignored on platforms other than Windows (e.g. Linux). On
 those platforms, R's default settings are used, which usually allow
