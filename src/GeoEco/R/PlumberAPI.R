@@ -96,6 +96,34 @@ serializer_unboxed_json_for_python <- function(auto_unbox=TRUE, na="string", nul
   })
 }
 
+#' A serializer that converts the input to uncompressed feather format
+#' 
+#' We use this for data frames and tibbles. This performs the same job as
+#' plumber's own serializer_feather() but forces uncompressed format rather 
+#' than feather's default LZ4 format, which Python sometimes seems to fail
+#' to decompress. The conditions that lead to this failure are unknown, but
+#' so far we are only able to reproduce it (intermittantly) on the GitHub
+#' windows-latest runner, which at this time is Windows Server 2025. That
+#' makes reproducing and debugging this very difficult, and given that this
+#' mechanism is for local interprocess communciation, we're just going to
+#' switch to uncompressed feather format. This issue was tracked as 
+#' https://github.com/jjrob/MGET/issues/54
+
+serializer_feather_uncompressed <- function(type = "application/vnd.apache.arrow.file") {
+  plumber::serializer_write_file(
+    type = type,
+    fileext = ".feather",
+    write_fn = function(val, tmpfile) {
+      arrow::write_feather(val, tmpfile, version = 2, compression = "uncompressed")
+    }
+  )
+}
+
+serializers <- list(
+  json = serializer_unboxed_json_for_python(),
+  feather = serializer_feather_uncompressed()
+)
+
 ###############################################################################
 # API functions exposed through plumber
 ###############################################################################
@@ -209,21 +237,6 @@ function(name, value) {
     return()
   })
 }
-
-serializer_feather_uncompressed <- function(type = "application/vnd.apache.arrow.file") {
-  plumber::serializer_write_file(
-    type = type,
-    fileext = ".feather",
-    write_fn = function(val, tmpfile) {
-      arrow::write_feather(val, tmpfile, version = 2, compression = "uncompressed")
-    }
-  )
-}
-
-serializers <- list(
-  json = serializer_unboxed_json_for_python(),
-  feather = serializer_feather_uncompressed()
-)
 
 #* Returns the value of a variable.
 #* @post /get
