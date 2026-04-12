@@ -6,6 +6,7 @@ Integer division can now return a float
 file() was removed; use open() instead
 Remove unnecessary calls to unicode() and str()
 sort() lost cmp argument; use key instead
+replace ConfigParser.SafeConfigParser with configparser.ConfigParser
 
 
 MGET issues to check for:
@@ -15,6 +16,8 @@ Remove unnecessary absolute imports of GeoEco.Whatever
 Replace PythonAggregatedModuleDependency with PythonModuleDependency
 Search for aggregated and make sure it is ok
 Remove ArcGISProductDependency and use ArcGISDependency instead
+Remove isExposedAsCOMServer, comIID, comCLSID from AddClassMetadata 
+Remove isExposedByCOM from AddMethodMetadata
 Remove GetResultCacheKey
 Remove ImportGDALModule
 Change 0x%(id)08X to 0x%(id)016X
