@@ -9,8 +9,9 @@ function [compCurve, dispersalMatrix, settledDensityMatrix, suspendedDensityMatr
 % of larvae are released per entire reef, spread across all of the cells
 % occupied by that reef, proportionally according to reefProps.
 %
-% releaseDate - serial date number specifying the date and time that larvae
-% are released from reefs, e.g. 731065.5 for 2-Oct-2000 12:00:00.
+% releaseDate - scalar serial date number or datetime specifying the date and
+% time that larvae are released from reefs, e.g. 731065.5 or 
+% datetime(2000,10,2,12,0,0) for 2-Oct-2000 12:00:00.
 %
 % simulationDuration - scalar double that specifies the duration of the
 % simulation in days, e.g. 1.5 for a 36 hour simulation.
@@ -104,9 +105,9 @@ function [compCurve, dispersalMatrix, settledDensityMatrix, suspendedDensityMatr
 % and vSurface. If these matrices are empty (i.e. the [] matrix) then
 % vertical migration will not be performed.
 %
-% currentsStartDate - serial date number specifying the date and time that
-% the first ocean currents image starts, e.g. 731064.5 for 1-Oct-2000
-% 12:00:00.
+% currentsStartDate - serial date number or datetime specifying the date and
+% time that the first ocean currents image starts, e.g. 731064.5 or 
+% datetime(2000,10,1,12,0,0) for 1-Oct-2000 12:00:00.
 %
 % currentsTimeStep - scalar double that indicates the duration of a
 % currents image, in days, e.g. 3.0 for 3 days.
@@ -190,6 +191,9 @@ function [compCurve, dispersalMatrix, settledDensityMatrix, suspendedDensityMatr
 % 28-Dec-14 EAT - Added sourceIDs and destIDS to enable different source
 %                 and destination reefs
 %
+% 15-Apr-26 JJR - Allow releaseDate and currentsStartDate to be datetimes or
+%                 serial date numbers.
+%
 % COPYRIGHT AND LICENSE:
 %
 % Copyright (C) 2009 Eric A Treml and Jason J. Roberts
@@ -208,6 +212,20 @@ function [compCurve, dispersalMatrix, settledDensityMatrix, suspendedDensityMatr
 % You should have received a copy of the GNU General Public License
 % along with this program; if not, write to the Free Software
 % Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
+
+% Convert datetimes to serial date numbers.
+
+if isdatetime(releaseDate)
+    releaseDate = datenum(releaseDate);
+elseif ~(isnumeric(releaseDate) && isscalar(releaseDate) && isfinite(releaseDate))
+    error('releaseDate must be either a scalar serial date number or a scalar datetime.');
+end
+
+if isdatetime(currentsStartDate)
+    currentsStartDate = datenum(currentsStartDate);
+elseif ~(isnumeric(currentsStartDate) && isscalar(currentsStartDate) && isfinite(currentsStartDate))
+    error('currentsStartDate must be either a scalar serial date number or a scalar datetime.');
+end
 
 % Ensure that multithreaded processing is enabled. Depending on the version
 % of MATLAB we are using, it may already be enabled by default.
