@@ -94,6 +94,18 @@ tasks.
 
     GeoEco.SpatialAnalysis.Interpolation
 
+Connectivity Analysis
+---------------------
+
+Classes with functions that analyze connectivity in marine ecosystems.
+
+.. autosummary::
+    :toctree: _autodoc/GeoEco
+    :template: autosummary/module.rst
+    :recursive:
+
+    GeoEco.Connectivity.LarvalDispersal
+
 Accessing R from Python
 -----------------------
 

@@ -1698,7 +1698,7 @@ AddMethodMetadata(CMEMSARCOArray.CannyEdgesAsArcGISRasters,
     isExposedAsArcGISTool=True,
     arcGISDisplayName=_('Find Canny Fronts in CMEMS Dataset'),
     arcGISToolCategory=_('Data Products\\Copernicus Marine Service (CMEMS)'),
-    dependencies=[ArcGISDependency(), MatlabDependency()] + CMEMSARCOArray.__init__.__doc__.Obj.Dependencies)
+    dependencies=[ArcGISDependency(3,6,0), MatlabDependency()] + CMEMSARCOArray.__init__.__doc__.Obj.Dependencies)
 
 CopyArgumentMetadata(CMEMSARCOArray.CreateArcGISRasters, 'cls', CMEMSARCOArray.CannyEdgesAsArcGISRasters, 'cls')
 CopyArgumentMetadata(CMEMSARCOArray.CreateArcGISRasters, 'username', CMEMSARCOArray.CannyEdgesAsArcGISRasters, 'username')

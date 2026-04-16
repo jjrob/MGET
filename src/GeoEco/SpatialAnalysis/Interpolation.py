@@ -1533,7 +1533,7 @@ copyright statement."""),
     isExposedAsArcGISTool=True,
     arcGISDisplayName=_('Interpolate NoData Cells'),
     arcGISToolCategory=_('Spatial and Temporal Analysis\\Interpolate\\Raster Values for NoData Cells'),
-    dependencies=[ArcGISDependency(), MatlabDependency(), PythonModuleDependency('numpy', cheeseShopName='numpy'), PythonModuleDependency(importName='osgeo', displayName='Python bindings for the Geospatial Data Abstraction Library (GDAL)', cheeseShopName='GDAL')])
+    dependencies=[ArcGISDependency(3,6,0), MatlabDependency(), PythonModuleDependency('numpy', cheeseShopName='numpy'), PythonModuleDependency(importName='osgeo', displayName='Python bindings for the Geospatial Data Abstraction Library (GDAL)', cheeseShopName='GDAL')])
 
 CopyArgumentMetadata(Interpolator.InterpolateArcGISRasterValuesAtPoints, 'cls', Interpolator.InpaintArcGISRaster, 'cls')
 

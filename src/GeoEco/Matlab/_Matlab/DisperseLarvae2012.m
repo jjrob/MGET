@@ -26,20 +26,19 @@ function [compCurve, dispersalMatrix, settledDensityMatrix, suspendedDensityMatr
 % every 24 hours. Every time the simulation is summarized, a new record is
 % added to dispersalMatrix, settledDensityMatrix, and suspendedDensityMatrix.
 %
-% competencyGammaA - scalar double that specifies the shape parameter of
-% the Gamma CDF function used to represent the onset of larval settlement
-% competency. Together with competencyGammaB, these parameters describe
-% this probabilty function. For this function, the mean is a*b and variance
-% is a*(b^2), which can be used to calculate a & b from values for the
-% onset of competency and variance (or uncertainty) in this value. To
-% make larvae immediately fully competent, set competencyGammaA to 0.
+% competencyGammaA - scalar double that specifies the shape parameter (a or
+% alpha) of the gamma cumulative distribution function (CDF) used to 
+% represent the onset of larval settlement competency, where x is the number
+% of days since the simulation started and y is the probability that a larva
+% is competent. competencyGammaB, the scale parameter, must also be given.
+% Must be 0 or greater. To make larvae immediately fully competent, set 
+% competencyGammaA to 0. For more about the gamma function, see 
+% https://en.wikipedia.org/wiki/Gamma_distribution.
 %
-% competencyGammaB - scalar double that specifies the scale parameter of
-% the Gamma CDF function used to represent the onset of larval settlement
-% competency. Together with competencyGammaA, these parameters describe
-% this probabilty function.For this function, the mean is a*b and variance
-% is a*(b^2), which can be used to calculate a & b from values for the
-% onset of competency and variance (or uncertainty) in this value.
+% competencyGammaB - scalar double that specifies the scale parameter (b or
+% theta) of the gamma cumulative distribution function (CDF) used to 
+% represent the onset of larval settlement competency. Must be 0 or greater.
+% Ignored if competencyGammaA is 0.
 %
 % settlementRate - scalar double that specifies the rate at which competent
 % larvae will settle when over reef, expressed as the proportion of larvae

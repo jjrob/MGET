@@ -172,6 +172,7 @@ class LarvalDispersal(object):
         Logger.Info(_('CMEMS dataset %(datasetID)s has a cell size of %(cellSize)r and a temporal resolution of %(TIncrement)g %(TIncrementUnit)ss') % {'datasetID': datasetID, 'cellSize': grid.GetLazyPropertyValue('CoordIncrements')[-1], 'TIncrement': grid.GetLazyPropertyValue('TIncrement'), 'TIncrementUnit': grid.GetLazyPropertyValue('TIncrementUnit')})
         Logger.Info(_('The spatial extent is: left = %(left)r, right = %(right)r, bottom = %(bottom)r, top = %(top)r') % {'left': float(grid.MinCoords['x', 0]), 'right': float(grid.MaxCoords['x', -1]), 'bottom': float(grid.MinCoords['y', 0]), 'top': float(grid.MaxCoords['y', -1])})
         Logger.Info(_('The first time slice starts on %(first)s, the last slice starts on %(last)s') % {'first': grid.MinCoords['t', 0].strftime('%Y-%m-%d %H:%M:%S'), 'last': grid.MinCoords['t', -1].strftime('%Y-%m-%d %H:%M:%S')})
+        Logger.Info(_('The vertical layers of this dataset have the depths: %(depths)s') % {'depths': ', '.join(repr(float(depth)) for depth in grid.CenterCoords['z',:])})
 
         # Now download and create CMEMS current rasters in a CMEMS-specific
         # directory. These will have the CMEMS projection, extent, and cell
@@ -1127,24 +1128,24 @@ from ..ArcGIS import ArcGISDependency, ArcGISExtensionDependency
 from ..Dependencies import PythonModuleDependency
 from ..Metadata import *
 
-AddModuleMetadata(shortDescription=_('Implements Eric Treml\'s larval dispersal analysis.'))
+AddModuleMetadata(shortDescription=_('Functions for simulating dispersal of marine larvae and modeling connectivity networks.'))
 
 ###############################################################################
 # Metadata: LarvalDispersal class
 ###############################################################################
 
 AddClassMetadata(LarvalDispersal,
-    shortDescription=_('Implements Eric Treml\'s larval dispersal analysis.'))
+    shortDescription=_('Functions for simulating larval dispersal and settlement, with configurable pre-competency, settlement, and mortality rates.'))
 
 # Public method: LarvalDispersal.CreateSimulationFromArcGISRasters
 
 AddMethodMetadata(LarvalDispersal.CreateSimulationFromArcGISRasters,
-    shortDescription=_('Creates a larval dispersal simulation and initializes it with habitat patches defined in ArcGIS rasters.'),
+    shortDescription=_('Creates a larval dispersal simulation and initializes it with habitat patches defined in rasters.'),
     isExposedToPythonCallers=True,
     isExposedAsArcGISTool=True,
-    arcGISDisplayName=_('Create Larval Dispersal Simulation From ArcGIS Rasters'),
+    arcGISDisplayName=_('Create Larval Dispersal Simulation From Rasters'),
     arcGISToolCategory=_('Connectivity Analysis\\Simulate Larval Dispersal'),
-    dependencies=[ArcGISDependency(), ArcGISExtensionDependency('spatial'), PythonModuleDependency('numpy', cheeseShopName='numpy')])
+    dependencies=[ArcGISDependency(3,6,0), ArcGISExtensionDependency('spatial'), PythonModuleDependency('numpy', cheeseShopName='numpy')])
 
 AddArgumentMetadata(LarvalDispersal.CreateSimulationFromArcGISRasters, 'cls',
     typeMetadata=ClassOrClassInstanceTypeMetadata(cls=LarvalDispersal),
@@ -1155,136 +1156,133 @@ AddArgumentMetadata(LarvalDispersal.CreateSimulationFromArcGISRasters, 'simulati
     description=_(
 """Output directory to create to contain the simulation's data.
 
-After creating the simulation directory, you must load ocean currents
-data into it using other tools before you can run the simulation. Use
-the MGET tools designed for this purpose. Unless you know what you are
-doing, do not modify the contents of the simulation directory
-yourself."""),
+After creating the simulation directory, you must load ocean currents data
+into it using other tools before you can run the simulation. Use the MGET
+tools designed for this purpose. Unless you know what you are doing, do not
+modify the contents of the simulation directory yourself."""),
     direction='Output',
     arcGISDisplayName=_('Simulation directory to create'))
 
 AddArgumentMetadata(LarvalDispersal.CreateSimulationFromArcGISRasters, 'patchIDsRaster',
     typeMetadata=ArcGISRasterLayerTypeMetadata(mustExist=True, allowedPixelTypes=['S8', 'U8', 'S16', 'U16', 'S32', 'U32', 'S64', 'U64']),
     description=_(
-"""Integer raster specifying the locations and IDs of habitat patches
-from which larvae will be released and upon which larvae can settle.
+"""Integer raster specifying the locations and IDs of habitat patches from
+which larvae will be released and upon which larvae can settle.
 
-If you wish to control which patches larvae may be released from and
-which they may settle upon, rather than simply having all of them
-serve in both roles, do not worry about that now; you can control that
-later. For now, you must provide a raster that defines all of the
-patches, regardless of their ultimate roles.
+If you wish to control which patches larvae may be released from and which
+they may settle upon, rather than simply having all of them serve in both
+roles, do not worry about that now; you can control that later. For now, you
+must provide a raster that defines all of the patches, regardless of their
+ultimate roles.
 
-Each patch is defined as one or more cells having the same positive
-integer ID value. Patch IDs may range from 1 to 65535, inclusive.
-NoData indicates that the cell is not part of a patch. Typically, each
-patch's cells form a single contiguous blob, but this is not required;
-the cells of a patch may be separated by NoData cells.
+Each patch is defined as one or more cells having the same positive integer ID
+value. Patch IDs may range from 1 to 65535, inclusive. NoData indicates that
+the cell is not part of a patch or that it is land. Typically, each patch's
+cells form a single contiguous region, but this is not required; the cells of
+a patch may be separated by NoData cells.
 
-The raster also defines the coordinate system, extent, and cell size
-for the analysis. The raster must use a projected coordinate system,
-with meters as the linear unit. When ocean currents data are loaded
-into the simulation, they will be automatically projected and clipped
-as needed into this coordinate system, extent, and cell size.
+This raster also defines the coordinate system, extent, and cell size for the
+analysis. It must use a projected coordinate system, with meters as the linear
+unit. When ocean currents data are loaded into the simulation, they will be
+automatically projected and clipped as needed to exactly match this raster's
+coordinate system, extent, and cell size.
 
 Due to compatibility problems between ArcGIS and some open source GIS
-libraries used by MGET, we do not recommend you use any of the "Web
-Mercator" coordinate systems. If you were inclined to use one of
-those, we recommend you use one of the "World Mercator" coordinate
-systems instead.
+libraries used by MGET, we do not recommend you use any of the "Web Mercator"
+coordinate systems. If you were inclined to use one of those, we recommend you
+use one of the "World Mercator" coordinate systems instead.
 
-A common challenge with this tool is that habitat patch data such as
-the locations of coral reefs are typically available at very high
-resolution--often 1 km cell size or finer--while ocean currents data
-are typically available at much lower resolution--often 10 km or
-coarser. In general, we recommend you conduct your simulation at the
-coarser resolution of the ocean currents, rather than the finer
-resolution of the habitat patches, for two reasons.
+A common challenge with this tool is that habitat patch data such as the
+locations of coral reefs are typically available at very high
+resolution--often 1 km cell size or finer--while ocean currents data are
+typically available at much lower resolution--often 10 km or coarser. In
+general, we recommend you conduct your simulation at the coarser resolution of
+the ocean currents, rather than the finer resolution of the habitat patches,
+for two reasons:
 
-First, although the tools provided to load currents into the
-simulation will automatically interpolate the currents data to the
-resolution of the habitat patches via bilinear or cubic spline
-interpolation, you have no assurance that this interpolation is
-realistic. Conducting the analysis at a substantially finer resolution
-than the ocean currents data will introduce an unknown degree of
-uncertainty into the results.
+1. Although the tools provided to load currents into the simulation will
+   automatically interpolate the currents data to the resolution of the
+   habitat patches via bilinear or cubic spline interpolation, you have no
+   assurance that these approaches to interpolation are realistic. Conducting
+   the analysis at a substantially finer resolution than the ocean currents
+   data will introduce an unknown degree of uncertainty into the results.
 
-Second, the memory required to run the simulation and the speed at which it
-runs are directly related to the number of rows and columns of the analysis.
-Large rasters can cause the tool to fail with an "OUT OF MEMORY" error. Even
-if this does not happen, they can greatly increase the run time of the tool.
-In general, we recommend the dimensions of the analysis be less than
-1000x1000 cells; ideally it should be less than 500x500 cells.
+2. The memory required to run the simulation and the speed at which it runs
+   are directly related to the number of rows and columns of the analysis.
+   Large rasters can cause the tool to fail with an "OUT OF MEMORY" error.
+   Even if this does not happen, large rasters can greatly increase the run
+   time of the tool. In general, we recommend the dimensions of the analysis
+   be less than 1000x1000 cells; ideally it should be less than 500x500 cells.
 
-To rescale your patch IDs raster to a coarser resolution, consider
-using the ArcGIS Spatial Analyst Block Statistics tool, setting
-Statistics Type to MAJORITY. Then rescale the patch cover raster the
-same way with Statistics Type set to MEAN, and the water mask raster
-with Statistics Type set to MAXIMUM."""),
+To rescale your patch IDs raster to a coarser resolution, consider using the
+ArcGIS Spatial Analyst Block Statistics tool, setting Statistics Type to
+MAJORITY. Then rescale the patch cover raster the same way with Statistics
+Type set to MEAN, and the water mask raster with Statistics Type set to
+MAXIMUM."""),
     arcGISDisplayName=_('Patch IDs raster'))
 
 AddArgumentMetadata(LarvalDispersal.CreateSimulationFromArcGISRasters, 'patchCoverRaster',
     typeMetadata=ArcGISRasterLayerTypeMetadata(mustExist=True),
     description=_(
-"""Floating-point raster specifying the proportion of each cell's
-area that is occupied by habitat from which larvae can be released or
-upon which larvae can settle.
+"""Floating-point raster specifying the proportion of each cell's area that is
+occupied by habitat from which larvae can be released or upon which larvae can
+settle.
 
-The raster must have the same coordinate system, extent, and cell size
-as the patch IDs raster.
+The raster must have the same coordinate system, extent, and cell size as the
+patch IDs raster.
 
-The raster values must be greater than or equal to 0 and less than or
-equal to 1. The value 1 indicates that the entire cell is occupied by
-suitable habitat, while 0.5 indicates that only half of it is. If the cell size
-was 25 km by 25 km, this would mean the cell contained either 625 or
-312.5 square km of suitable habitat, respectively.
+The raster values must be greater than or equal to 0 and less than or equal to
+1. The value 1 indicates that the entire cell is occupied by suitable habitat,
+while 0.5 indicates that only half of it is. If the cell size was 25 km by 25
+km, this would mean the cell contained either 625 or 312.5 square km of
+suitable habitat, respectively.
 
-If the value is 0 or NoData, it is assumed that the cell does not
-contain any suitable habitat, even if the patch IDs raster indicates
-that suitable habitat is there. If the value is greater than 0 but the
-corresponding patch IDs raster contains NoData, it is assumed that the
-cell does not contain any suitable habitat.
+If the value is 0 or NoData, it is assumed that the cell does not contain any
+suitable habitat, even if the patch IDs raster indicates that suitable habitat
+is there. If the value is greater than 0 but the corresponding cell in the
+patch IDs raster contains NoData, it is assumed that the cell does not contain
+any suitable habitat.
 
-If you wish to control which patches larvae may be released from and
-which they may settle upon, rather than simply having all of them
-serve in both roles, do not worry about that now; you can control that
-later. For now, you may only provide a raster that gives the
-proportion of each cell that contains suitable habitat, regardless of
-whether that habitat will be used for spawning, settlement, or both. A
-limitation of this tool is that when a cell is used for both spawning
-and settlement, the same proportion of it is used for both roles."""),
+If you wish to control which patches larvae may be released from and which
+they may settle upon, rather than simply having all of them serve in both
+roles, do not worry about that now; you can control that later. For now, you
+must provide a raster that gives the proportion of each cell that contains
+suitable habitat, regardless of whether that habitat will be used for
+spawning, settlement, or both. A limitation of this tool is that when a cell
+is used for both spawning and settlement, the same proportion of it is used
+for both roles."""),
     arcGISDisplayName=_('Patch cover raster'))
 
 AddArgumentMetadata(LarvalDispersal.CreateSimulationFromArcGISRasters, 'waterMaskRaster',
     typeMetadata=ArcGISRasterLayerTypeMetadata(mustExist=True),
     description=_(
-"""Raster specifying the locations of land and water. 0 or NoData
-indicates land; any other value indicates water.
+"""Raster specifying the locations of land and water. 0 or NoData indicates
+land; any other value indicates water.
 
-The raster must have the same coordinate system, dimensions, and cell
-size as the patch IDs raster."""),
+The raster must have the same coordinate system, dimensions, and cell size as
+the patch IDs raster."""), 
     arcGISDisplayName=_('Water mask raster'))
 
 AddArgumentMetadata(LarvalDispersal.CreateSimulationFromArcGISRasters, 'crosses180',
     typeMetadata=BooleanTypeMetadata(),
     description=_(
-"""Set this option to True if your study area crosses the 180th
-meridian (i.e. 180 W / 180 E). This will happen if you are studying
-coral reefs in the tropical Pacific, for example."""),
+"""Set this option to True if your study area crosses the 180th meridian (i.e.
+180 W / 180 E). This could happen if you are studying coral reefs in the
+tropical Pacific, for example."""),
     arcGISDisplayName=_('Study area crosses the 180th meridian'))
 
 AddArgumentMetadata(LarvalDispersal.CreateSimulationFromArcGISRasters, 'overwriteExisting',
     typeMetadata=BooleanTypeMetadata(),
     description=_(
-"""If True, the simulation directory will be deleted and recreated,
-if it exists. If False, a ValueError will be raised if the simulation
-directory exists."""),
+"""If True, the simulation directory will be deleted and recreated, if it
+exists. If False, a ValueError will be raised if the simulation directory
+exists."""),
     initializeToArcGISGeoprocessorVariable='env.overwriteOutput')
 
 # Public method: LarvalDispersal.LoadCMEMSCurrentsIntoSimulation
 
 AddMethodMetadata(LarvalDispersal.LoadCMEMSCurrentsIntoSimulation,
-    shortDescription=_('Downloads ocean currents from Copernicus Marine Service (CMEMS) into a larval dispersal simulation for a specified range of dates.'),
+    shortDescription=_('Downloads ocean currents from Copernicus Marine Service (CMEMS) into a larval dispersal simulation for a range of dates.'),
     isExposedToPythonCallers=True,
     isExposedAsArcGISTool=True,
     arcGISDisplayName=_('Load CMEMS Currents Into Larval Dispersal Simulation'),
@@ -1294,19 +1292,18 @@ AddMethodMetadata(LarvalDispersal.LoadCMEMSCurrentsIntoSimulation,
     # dependency so that it will be imported before this tool runs. We have
     # noticed that if matplotlib is loaded after this tool runs, e.g. when
     # RunSimulation2012 is executed, that one of matplotlib's own imports of
-    # another package will fail. Because RunSimulation2012 is usually
-    # executed next, we import matplotlib here to maximize chance of
-    # success.
+    # another package will fail. Because RunSimulation2012 is usually executed
+    # next, we import matplotlib here to maximize chance of success.
 
-    dependencies=[ArcGISDependency(), ArcGISExtensionDependency('spatial'), PythonModuleDependency('numpy', cheeseShopName='numpy'), PythonModuleDependency('matplotlib', cheeseShopName='matplotlib')])
+    dependencies=[ArcGISDependency(3,6,0), ArcGISExtensionDependency('spatial'), PythonModuleDependency('numpy', cheeseShopName='numpy'), PythonModuleDependency('matplotlib', cheeseShopName='matplotlib')])
 
 CopyArgumentMetadata(LarvalDispersal.CreateSimulationFromArcGISRasters, 'cls', LarvalDispersal.LoadCMEMSCurrentsIntoSimulation, 'cls')
 
 AddArgumentMetadata(LarvalDispersal.LoadCMEMSCurrentsIntoSimulation, 'simulationDirectory',
     typeMetadata=DirectoryTypeMetadata(mustExist=True),
     description=_(
-"""Existing larval dispersal simulation directory that should recieve
-the currents.
+"""Existing larval dispersal simulation directory that should receive the
+currents.
 
 The directory must have been created using the Create Larval Dispersal
 Simulation tool.
@@ -1315,22 +1312,22 @@ If you have already loaded currents into the simulation, you can use this tool
 to add data for an additional range of dates. If you try to load currents for
 a range of dates that have been already loaded into the simulation, the
 downloads for those dates will be skipped."""),
-    arcGISDisplayName=_('Simulation directory to recieve currents data'))
+    arcGISDisplayName=_('Simulation directory to receive currents data'))
 
 AddArgumentMetadata(LarvalDispersal.LoadCMEMSCurrentsIntoSimulation, 'startDate',
     typeMetadata=DateTimeTypeMetadata(),
     description=_(
 """Start date for the currents to load into the simulation. Currents that
-occured on or after the start date and on or before the end date will be
-loaded into the simulation."""), 
+occurred on or after the start date and on or before the end date will be
+loaded into the simulation."""),
     arcGISDisplayName=_('Start date'))
 
 AddArgumentMetadata(LarvalDispersal.LoadCMEMSCurrentsIntoSimulation, 'endDate',
     typeMetadata=DateTimeTypeMetadata(),
     description=_(
 """End date for the currents to load into the simulation. Currents that
-occured on or after the start date and on or before the end date will be
-loaded into the simulation."""), 
+occurred on or after the start date and on or before the end date will be
+loaded into the simulation."""),
     arcGISDisplayName=_('End date'))
 
 CopyArgumentMetadata(CMEMSARCOArray.__init__, 'username', LarvalDispersal.LoadCMEMSCurrentsIntoSimulation, 'username')
@@ -1355,12 +1352,12 @@ AddArgumentMetadata(LarvalDispersal.LoadCMEMSCurrentsIntoSimulation, 'depth',
     description=_(
 """Depth layer to download.
 
-You must specify the exact depth of the layer, at full precision
-(without rounding). The default value is the shallowest layer of the default
-dataset ``cmems_mod_glo_phy_my_0.083deg_P1D-m``. For your covenience, when
-this tool runs it will log a list of depth layers for the dataset you
-specify. If your first attempt fails because the depth does not exist, copy
-one of the values from the log message and try again.
+You must specify the exact depth of the layer, at full precision without
+rounding. The default value is the shallowest layer of the default dataset
+``cmems_mod_glo_phy_my_0.083deg_P1D-m``. For your convenience, when this tool
+runs it will log a list of depth layers for the dataset you specify. If your
+first attempt fails because the depth does not exist, copy one of the values
+from the log message and try again.
 
 This tool was designed primarily to study larvae that float at or near the
 surface. If you are studying larvae that stay submerged, you can choose a
@@ -1419,7 +1416,7 @@ diffusion typically disperses larvae much more slowly than advection, these
 zero-velocity cells will act as larvae sinks that appear to trap most larvae
 that enter them.
 
-That situation is usually urealistic and undesirable, and when it happens the
+That situation is usually unrealistic and undesirable, and when it happens the
 simulator will issue a warning describing the problem. If you experience this
 problem you can instruct the tool to guess current values using one of the
 following algorithms:
@@ -1478,48 +1475,43 @@ information)."""),
 AddMethodMetadata(LarvalDispersal.RunSimulation2012,
     shortDescription=_('Executes a larval dispersal simulation using the Treml et al. (2012) algorithm.'),
     longDescription=_(
-"""This tool simulates larval dispersal for the date, duration, and
-settlement parameters you specify using the hydrodynamic dispersal
-approach described by Treml et. al (2012). The tool works by by
-simulating dispersal from each patch, one at at time. For the focal
-patch, the simulator releases 1.0 units of larvae at each cell that is
-fully occupied by suitable habitat (i.e. cells where the patch cover
-raster is 1.0) and proportionally less at partially occupied cells
-(e.g. 0.5 units at cells where the patch cover raster is 0.5). It then
-circulates larvae around the study area by applying the
-Multidimensional Positive Definite Advection Transport Algorithm
-(MPDATA) (Smolarkiewicz and Margolin 1998) to the ocean currents.
-Larvae settle according to the settlement parameters as they drift
-over patches (including the source patch, if it is eligible for
-settlement).
+"""This tool simulates larval dispersal for the date, duration, and settlement
+parameters you specify using the hydrodynamic dispersal approach described by
+Treml et. al (2012). The tool works by by simulating dispersal from each
+patch, one at at time. For the focal patch, the simulator releases 1.0 units
+of larvae at each cell that is fully occupied by suitable habitat (i.e. cells
+where the patch cover raster is 1.0) and proportionally less at partially
+occupied cells (e.g. 0.5 units at cells where the patch cover raster is 0.5).
+It then circulates larvae around the study area by applying the
+Multidimensional Positive Definite Advection Transport Algorithm (MPDATA)
+(Smolarkiewicz and Margolin 1998) to the ocean currents. Larvae settle
+according to the settlement parameters as they drift over patches (including
+the source patch, if it is eligible for settlement).
 
-Default values are provided for most parameters but you should
-carefully review the documentation for each and configure them
-according to your species and region of interest. You should also
-carefully examine any warning messages reported in green in the ArcGIS
-geoprocessing output window and adjust parameter values as needed to
-resolve potential problems.
+Default values are provided for most parameters but you should carefully
+review the documentation for each and configure them according to your species
+and region of interest. You should also carefully examine any warning messages
+reported in the ArcGIS geoprocessing output window and adjust parameter values
+as needed to resolve potential problems.
 
-It is often the case that the default Time Step parameter must be
-adjusted based on the spatial resolution of your analysis and the
-ocean currents present in your region of interest. We recommend that
-you first simulate dispersal from a single patch for a short period to
-test that the Time Step and other parameters are configured
-appropriately. To do this, set the Duration parameter to a small value
-such as 5 or 10 days and specify a single patch ID for the Patches
-That Disperse Larvae parameter. After carefully reviewing the output
-and adjusting parameters, increase the Duration to the final desired
-value and verify that it runs succesfully for the single patch. Then
-adjust the Patches That Disperse Larvae parameter to conduct the
+It is often the case that the default Time Step parameter must be adjusted
+based on the spatial resolution of your analysis and the ocean currents
+present in your region of interest. We recommend that you first simulate
+dispersal from a single patch for a short period to test that the Time Step
+and other parameters are configured appropriately. To do this, set the
+Duration parameter to a small value such as 5 or 10 days and specify a single
+patch ID for the Patches That Disperse Larvae parameter. After carefully
+reviewing the output and adjusting parameters, increase the Duration to the
+final desired value and verify that it runs successfully for the single patch.
+Then adjust the Patches That Disperse Larvae parameter to conduct the
 simulation for all patches. Depending the size of the study area, the
-duration, the time step, the number of patches, and other factors, the
-full simulation can take minutes to hours to complete.
+duration, the time step, the number of patches, and other factors, the full
+simulation can take minutes to hours to complete.
 
-The algorithm implemented by this tool provides several important
-improvements over the Treml et al. (2008) algorithm, such as
-mass-balanced larval settlement and a more accurate numerical approach
-for the advection step. The 2008 algorithm is obsolete and we
-recommend it no longer be used.
+The algorithm implemented by this tool provides several important improvements
+over the Treml et al. (2008) algorithm, such as mass-balanced larval
+settlement and a more accurate numerical approach for the advection step. The
+2008 algorithm is obsolete and we recommend it no longer be used.
 
 References:
 
@@ -1538,110 +1530,112 @@ conservation. Landscape Ecology 23: 19-36."""),
     isExposedAsArcGISTool=True,
     arcGISDisplayName=_('Run Larval Dispersal Simulation (2012 Algorithm)'),
     arcGISToolCategory=_('Connectivity Analysis\\Simulate Larval Dispersal'),
-    dependencies=[MatlabDependency(), ArcGISDependency(), ArcGISExtensionDependency('spatial'), PythonModuleDependency('numpy', cheeseShopName='numpy'), PythonModuleDependency('matplotlib', cheeseShopName='matplotlib')])
+    dependencies=[MatlabDependency(), ArcGISDependency(3,6,0), ArcGISExtensionDependency('spatial'), PythonModuleDependency('numpy', cheeseShopName='numpy'), PythonModuleDependency('matplotlib', cheeseShopName='matplotlib')])
 
 CopyArgumentMetadata(LarvalDispersal.CreateSimulationFromArcGISRasters, 'cls', LarvalDispersal.RunSimulation2012, 'cls')
 
 AddArgumentMetadata(LarvalDispersal.RunSimulation2012, 'simulationDirectory',
     typeMetadata=DirectoryTypeMetadata(mustExist=True),
     description=_(
-"""Existing larval dispersal simulation directory that has
-been loaded with ocean currents.
+"""Existing larval dispersal simulation directory that has been loaded with
+ocean currents.
 
 The directory must have been created using the Create Larval Dispersal
-Simulation tool and then loaded with ocean currents using one of the
-tools provided for this purpose."""),
+Simulation tool and then loaded with ocean currents using one of the tools
+provided for this purpose."""),
     arcGISDisplayName=_('Simulation directory'))
 
 AddArgumentMetadata(LarvalDispersal.RunSimulation2012, 'resultsDirectory',
     typeMetadata=DirectoryTypeMetadata(mustExist=True),
     description=_(
-
 """Existing directory to receive files containing the results of the
 simulation. To create GIS-compatible visualizations from the files, run the
 Visualize Larval Dispersal Simulation Results (2012 Algorithm) tool.
 
 The files written to the results directory are:
 
-Parameters.ini - a text file in Microsoft Windows .INI format that lists the
-parameters used to execute the simulation.
+``Parameters.ini`` - a text file in Microsoft Windows ``.INI`` format that
+lists the parameters used to execute the simulation.
 
-CompetencyCurve.png - a plot showing the proportion of larvae that are
+``CompetencyCurve.png`` - a plot showing the proportion of larvae that are
 competent to settle at each time step. The x axis units are days. The y axis
 ranges from 0 (no larvae are competent) to 1 (all larvae are competent). The
 competency curve is configured by the Competency Gamma a and Competency Gamma
 b parameters.
 
-Results.pickle - a file in Python pickle format that contains the following
-matrices. 
+``Results.pickle`` - a file in Python pickle format that contains the
+following matrices.
 
-* competencyCurve - a 1D numpy array, data type float32, of the values used to
-  produce CompetencyCurve.png.
+* ``competencyCurve`` - a 1D `numpy <https://numpy.org/>`__ array, data type
+  ``float32``, of the values used to produce ``CompetencyCurve.png``.
 
-* dispersalMatrix - a 3D numpy array, data type float32, that shows the
-  cumulative quantity of larvae dispersed from every source patch to every
-  destination patch, at each time the simulation is summarized. The matrix is
-  indexed [FROM, TO, t] where FROM represents the patch that is the source of
-  larvae, TO represents the patch that larvae have settled upon, and t
-  represents the summarization period. FROM and TO are 0-based indices into
-  metadata['sourceIDs'] and metadata['destIDs']. For example, if
-  metadata['sourceIDs'] and metadata['destIDs'] are both [3, 6, 8],
-  dispersalMatrix[1, 2, :] is the larvae released from patch 6 that settled
-  on patch 8. t=0 corresponds to the start of the simulation when no time
-  steps have executed. At t=0, the entire matrix will be zero because no
-  larvae will have settled yet. t=1 tallies the cumulative number of larvae
-  that have settled after one summarization period has elapsed. t=2 tallies
-  the cumulative quantity of larvae that have settled after two summarization
-  periods, and so on. The units of the matrix are arbitrary units of larvae,
-  where the value 1.0 corresponds to the quantity of larvae released at the
-  start of the simulation in one cell that is fully covered by suitable
-  habitat (i.e. the Patch Cover Raster has the value 1.0 in that cell).
+* ``dispersalMatrix`` - a 3D `numpy <https://numpy.org/>`__ array, data type
+  ``float32``, that shows the cumulative quantity of larvae dispersed from
+  every source patch to every destination patch, at each time the simulation
+  is summarized. The matrix is indexed [``from``, ``to``, ``t``] where
+  ``from`` represents the patch that is the source of larvae, ``to``
+  represents the patch that larvae have settled upon, and ``t`` represents the
+  summarization period. ``from`` and ``to`` are 0-based indices into
+  ``metadata['sourceIDs']`` and ``metadata['destIDs']``. For example, if
+  ``metadata['sourceIDs']`` and ``metadata['destIDs']`` are both ``[3, 6, 8]``,
+  ``dispersalMatrix[1, 2, :]`` is the larvae released from patch 6 that
+  settled on patch 8. ``t=0`` corresponds to the start of the simulation when
+  no time steps have executed. At ``t=0``, the entire matrix will be zero
+  because no larvae will have settled yet. ``t=1`` tallies the cumulative
+  number of larvae that have settled after one summarization period has
+  elapsed. ``t=2`` tallies the cumulative quantity of larvae that have settled
+  after two summarization periods, and so on. The units of the matrix are
+  arbitrary units of larvae, where the value 1.0 corresponds to the quantity
+  of larvae released at the start of the simulation in one cell that is fully
+  covered by suitable habitat (i.e. the Patch Cover Raster has the value 1.0
+  in that cell).
 
-* settledDensityMatrix - a 3D numpy array, data type float32, that shows the
-  cumulative quantity of larvae that have settled throughout the study area
-  at each summarization step. The matrix indices are [x,y,t]. t=0 corresponds
-  to the start of the simulation when no time steps have executed. At t=0, no
-  larvae will have settled yet, so all cells of the matrix will be zero. t=1
-  tallies the cumulative quantity of larvae that have settled after one
-  summarization period has elapsed. t=2 tallies the cumulative quantity of
-  larvae that have settled after two summarization periods, and so on. The
-  units of this matrix are the same as the dispersalMatrix.
+* ``settledDensityMatrix`` - a 3D `numpy <https://numpy.org/>`__ array, data
+  type ``float32``, that shows the cumulative quantity of larvae that have
+  settled throughout the study area at each summarization step. The matrix
+  indices are ``[x,y,t]``. ``t=0`` corresponds to the start of the simulation
+  when no time steps have executed. At ``t=0``, no larvae will have settled
+  yet, so all cells of the matrix will be zero. ``t=1`` tallies the cumulative
+  quantity of larvae that have settled after one summarization period has
+  elapsed. ``t=2`` tallies the cumulative quantity of larvae that have settled
+  after two summarization periods, and so on. The units of this matrix are the
+  same as the ``dispersalMatrix``.
 
-* suspendedDensityMatrix - a 3D numpy array, data type float32, that shows
-  the instantaneous quantity of larvae suspended in the water column (i.e.
-  those that have not settled or drifted off the edge of the map yet). The
-  indexing and units of this matrix work the same as the
-  settledDensityMatrix. At t=0, all larvae will be suspended in the water
-  column over their source patches. At t>1, some larvae will have drifted
-  into other cells.
+* ``suspendedDensityMatrix`` - a 3D `numpy <https://numpy.org/>`__ array, data
+  type ``float32``, that shows the instantaneous quantity of larvae suspended
+  in the water column (i.e. those that have not settled or drifted off the
+  edge of the map yet). The indexing and units of this matrix work the same as
+  the ``settledDensityMatrix``. At ``t=0``, all larvae will be suspended in
+  the water column over their source patches. At ``t>1``, some larvae will
+  have drifted into other cells.
 
-* metadata - a dictionary of the contents of the Parameters.ini file.
+* ``metadata`` - a dictionary of the contents of the ``Parameters.ini`` file.
+
 """),
     arcGISDisplayName=_('Results directory'))
 
 AddArgumentMetadata(LarvalDispersal.RunSimulation2012, 'startDate',
     typeMetadata=DateTimeTypeMetadata(),
     description=_(
-"""Start date of the simulation. The larvae are released from the
-patches on this date. The simulation must contain currents that
-include this date."""),
+"""Start date of the simulation. The larvae are released from the patches on
+this date. The simulation must contain currents that include this date."""),
     arcGISDisplayName=_('Start date'))
 
 AddArgumentMetadata(LarvalDispersal.RunSimulation2012, 'duration',
     typeMetadata=FloatTypeMetadata(mustBeGreaterThan=0.0),
     description=_(
-"""Duration of the simulation, in days. Typically this will be the
-pelagic larval duration (PLD) of the species you are studying.
+"""Duration of the simulation, in days. Typically this will be the pelagic
+larval duration (PLD) of the species you are studying.
 
-The simulation must contain currents that span the entire time range
-of the simulation.
+The simulation must contain currents that span the entire time range of the
+simulation.
 
-The simulation's run time and memory requirements scale linearly with
-the duration and the number of patches from which larvae are released.
-We recommend you first try a short simulation such as 5 days for a
-single patch to quickly validate that the parameters produce
-reasonable results without running out of memory. Then increase the
-duration and number of patches to the desired values."""),
+The simulation's run time and memory requirements scale linearly with the
+duration and the number of patches from which larvae are released. We
+recommend you first try a short simulation such as 5 days for a single patch
+to quickly validate that the parameters produce reasonable results without
+running out of memory. Then increase the duration and number of patches to the
+desired values."""),
     arcGISDisplayName=_('Duration'))
 
 AddArgumentMetadata(LarvalDispersal.RunSimulation2012, 'simulationTimeStep',
@@ -1649,79 +1643,77 @@ AddArgumentMetadata(LarvalDispersal.RunSimulation2012, 'simulationTimeStep',
     description=_(
 """Time step of the simulation, in hours.
 
-The time step defines the period at which larvae density is
-recalculated using the numerical advection-diffusion model. Smaller
-time steps increase the stability of the model and accuracy of the
-results but also the run time and computer memory requirements of the
-simulation.
+The time step defines the period at which larvae density is recalculated using
+the numerical advection-diffusion model. Smaller time steps increase the
+stability of the model and accuracy of the results but also the run time and
+computer memory requirements of the simulation.
 
-To check the model stability, this tool calculates a stability
-condition from the simulation time step, grid cell size, and maximum
-current velocity. If the stability condition is less than 2^(-1/2),
-approximately 0.7071, the simulation should be numerically stable. If
-the stability condition is greater than this value, the simulator will
-issue a warning but proceed with the simulation. To avoid anomalous
-results, you are strongly advised to reduce the time step until the
-stability condition is less than 0.7071.
+To check the model stability, this tool calculates a stability condition from
+the simulation time step, grid cell size, and maximum current velocity. If the
+stability condition is less than 2^(-1/2), approximately 0.7071, the
+simulation should be numerically stable. If the stability condition is greater
+than this value, the simulator will issue a warning but proceed with the
+simulation. To avoid anomalous results, you are strongly advised to reduce the
+time step until the stability condition is less than 0.7071.
 
-If the stability condition is substantially less than 0.7071, you can
-increase the simulation time step to reduce the execution time of the
-tool without sacrificing model stability (providing that you ensure
-the stability condition is less than 0.7071)."""),
+If the stability condition is substantially less than 0.7071, you can increase
+the simulation time step to reduce the execution time of the tool without
+sacrificing model stability (providing that you ensure the stability condition
+is less than 0.7071)."""),
     arcGISDisplayName=_('Time step'))
 
 AddArgumentMetadata(LarvalDispersal.RunSimulation2012, 'summarizationPeriod',
     typeMetadata=IntegerTypeMetadata(minValue=1),
     description=_(
-"""Period, expressed as a number of simulation time steps, at which
-the simulation results should be summarized. The first summarization
-will occur at the start of the simulation, and subsequent
-summarizations will occur every time the period elapses. For example,
-if the time step is 1 hour and the summarization period is 24,
-summarizations will occur every 24 hours.
+"""The period, expressed as a number of simulation time steps, at which the
+simulation results should be summarized. The first summarization will occur at
+the start of the simulation, and subsequent summarizations will occur every
+time the period elapses. For example, if the time step is 1 hour and the
+summarization period is 24, summarizations will occur every 24 hours.
 
-The summarization period governs two time-related processes of the
-simulation. Whether you choose a short summarization period or a long
-one depends on your preferences for these processes. Both processes
-are implemented by the Visualize Larval Dispersal Simulation Results
-tool, which you execute after the simulation is complete.
+The summarization period determines two time-related processes of the
+simulation:
 
-First, the summarization period determines the temporal frequency of
-summary visualizations, such as a time series of rasters that show the
-density of larvae throughout the study area as the simulation
-progresses. Here, the summarization period is mainly an asethetic
-choice, e.g. do you want density rasters to be produced at, say, a
-daily time step or something else? Your choice may depend on whether
-you intend to just examine a few time slices, in which case a long
-period is ok, or build a smooth animation, in which case a short
-period is better.
+1. The temporal frequency at which mortality will be applied. Mortality is an
+   optional biological process implemented by the Visualize Larval Dispersal
+   Simulation Results tool. If you intend to apply mortality, we recommend
+   that you choose a summarization period small enough that summarizations
+   occur at least once per day. Because mortality is applied before
+   settlement, if summarizations occur too infrequently, an unrealistically
+   large number of larvae may be killed by mortality before they have a chance
+   to settle. Please see the documentation for the Mortality Rate parameter of
+   the Visualize Larval Dispersal Simulation Results tool for more
+   information.
 
-Second, the summarization period determines the temporal frequency at
-which mortality will be applied. Mortality is an optional biological
-process implemented by the Visualize Larval Dispersal Simulation
-Results tool. If you intend to apply mortality, we recommend that you
-choose a summarization period small enough so that summarizations
-occur at least once per day. Because mortality is applied before
-settlement, if summarizations occur too infrequently, an
-unrealistically large number of larvae may be killed by mortality
-before they have a chance to settle. Please see the documentation for
-the Mortality Rate parameter of the Visualize Larval Dispersal
-Simulation Results tool for more information.
+1. The temporal frequency of rasters produced by the Visualize Larval
+   Dispersal Simulation Results tool that show the density of larvae
+   throughout the study area as the simulation progresses. Here, the
+   summarization period is mainly an aesthetic choice, e.g. do you want
+   density rasters to be produced at, say, a daily time step or something
+   else? Your choice may depend on whether you intend to examine just a few
+   time slices, in which case a long period is OK, or want to build a smooth
+   animation, in which case a short period is better, resulting in many
+   rasters each showing small changes.
 
-Visualization concerns aside, the only drawback to choosing a low
-summarization period is that the tool will require more memory to
-execute and utilize more disk space for the results. So long you as
-you have sufficient memory and disk space, there is no harm in setting
-a low summarization period."""),
+Whether you choose a short summarization period or a long one depends on your
+preferences for these processes. Both are implemented by the Visualize Larval
+Dispersal Simulation Results tool, which you execute after the simulation is
+complete.
+
+Visualization concerns aside, the main drawback to choosing a low
+summarization period is that the tool will require more memory to execute and
+utilize more disk space for the results. So long you as you have sufficient
+memory and disk space, there is no harm in setting a low summarization
+period."""),
     arcGISDisplayName=_('Simulation summarization period'))
 
 AddArgumentMetadata(LarvalDispersal.RunSimulation2012, 'a',
     typeMetadata=FloatTypeMetadata(minValue=0.0, canBeNone=True),
     description=_(
-"""Shape parameter of the gamma cumulative distribution function used
-to represent the onset of larval settlement competency. If this
-parameter is omitted (the default), the larvae will be immediately
-competent (i.e. as soon as they are released).
+"""Shape parameter (often known as alpha or a) of the gamma cumulative
+distribution function used to represent the onset of larval settlement
+competency. If this parameter is omitted (the default) or set to zero, the
+larvae will be immediately competent (i.e. as soon as they are released).
 
 The Gamma Competency a and b parameters control the shape of the
 cumulative distribution function. The function is computed from these
@@ -1736,35 +1728,39 @@ before, but they will not start to become competent until about 1.7
 days and nearly all will be competent by 2.3 days.
 
 To help you visualize the competency function, the tool creates a plot
-of it in the results directory."""),
+of it in the results directory.
+
+For more about the gamma cumulative distribution function, see
+`Wikipedia <https://en.wikipedia.org/wiki/Gamma_distribution>`__.
+"""),
     arcGISDisplayName=_('Competency gamma a'),
     arcGISCategory=_('Settlement parameters'))
 
 AddArgumentMetadata(LarvalDispersal.RunSimulation2012, 'b',
     typeMetadata=FloatTypeMetadata(mustBeGreaterThan=0.0, canBeNone=True),
     description=_(
-"""Scale parameter of the gamma cumulative distribution function used
-to represent the onset of larval settlement competency. Please see the
-documentation for the Competency Gamma a parameter for more
-information."""),
+"""Scale parameter (often known as theta or b) of the gamma cumulative
+distribution function used to represent the onset of larval settlement
+competency. Please see the documentation for the Competency Gamma a parameter
+for more information."""),
     arcGISDisplayName=_('Competency gamma b'),
     arcGISCategory=_('Settlement parameters'))
 
 AddArgumentMetadata(LarvalDispersal.RunSimulation2012, 'settlementRate',
     typeMetadata=FloatTypeMetadata(mustBeGreaterThan=0.0, maxValue=1.0),
     description=_(
-"""Rate at which competent larvae will settle when suspended over a
-patch, expressed as the proportion of larvae that will settle per day.
-For example, the default value 0.8 indicates that 80% of the larvae
-suspended over the patch for a day will settle.
+"""Rate at which competent larvae will settle when suspended over a patch,
+expressed as the proportion of larvae that will settle per day. For example,
+the default value 0.8 indicates that 80% of the larvae suspended over the
+patch for a day will settle.
 
 This parameter must be greater than 0 and less than or equal to 1.
 
-Only competent larvae may settle; incompetent larvae continue
-drifting. Larvae may only settle on patches that are eligible for
-settlement. If you specify values for the Patches Larvae Can Settle On
-parameter, only those patches will be elegible. (If you do not specify
-any values for that parameter, all patches are will be eligible.)"""),
+Only competent larvae may settle; incompetent larvae continue drifting. Larvae
+may only settle on patches that are eligible for settlement. If you specify
+values for the Patches Larvae Can Settle On parameter, only those patches will
+be eligible. (If you do not specify any values for that parameter, all patches
+are will be eligible.)"""),
     arcGISDisplayName=_('Settlement rate'),
     arcGISCategory=_('Settlement parameters'))
 
@@ -1774,41 +1770,40 @@ AddArgumentMetadata(LarvalDispersal.RunSimulation2012, 'useSensoryZone',
 """Specifies whether the larvae will settle using a sensory zone.
 
 If True, all larvae suspended over a patch cell will be candidates for
-settling, regardless of the proportion of that cell that is occupied
-by suitable habitat. Under this scheme, it is assumed that the larvae
-employ a sensory zone that allows them to detect and move to any
-suitable habitat that occurs within the cell they occupy.
+settling, regardless of the proportion of that cell that is occupied by
+suitable habitat. Under this scheme, it is assumed that the larvae employ a
+sensory zone that allows them to detect and move to any suitable habitat that
+occurs within the cell they occupy.
 
-If False, the default, the number of candidate larve will be
-proportional to the proportion of cell that is occupied by suitable
-habitat. Under this scheme, it is assumed that larvae are evenly
-distributed across the cell they occupy and that they do not employ a
-sensory zone, allowing only the larvae that are over the fraction of
-the cell occupied by suitable habitat to settle.
+If False, the default, the number of candidate larvae will be proportional to
+the proportion of cell that is occupied by suitable habitat. Under this
+scheme, it is assumed that larvae are evenly distributed across the cell they
+occupy and that they do not employ a sensory zone, allowing only the larvae
+that are over the fraction of the cell occupied by suitable habitat to settle.
 
-Only competent larvae may settle; incompetent larvae continue
-drifting. Larvae may only settle on patches that are eligible for
-settlement. If you specify values for the Patches Larvae Can Settle On
-parameter, only those patches will be elegible. (If you do not specify
-any values for that parameter, all patches are will be eligible.)"""),
+Only competent larvae may settle; incompetent larvae continue drifting. Larvae
+may only settle on patches that are eligible for settlement. If you specify
+values for the Patches Larvae Can Settle On parameter, only those patches will
+be eligible. (If you do not specify any values for that parameter, all patches
+are will be eligible.)"""),
     arcGISDisplayName=_('Use sensory zone'),
     arcGISCategory=_('Settlement parameters'))
 
 AddArgumentMetadata(LarvalDispersal.RunSimulation2012, 'sourcePatchIDs',
     typeMetadata=ListTypeMetadata(elementType=IntegerTypeMetadata(), canBeNone=True, minLength=1),
     description=_(
-"""List of IDs of patches from which larvae should be dispersed. If
-the list is empty, larvae will be dispersed from all patches except
-those listed for the Excluded Patches parameter."""),
+"""List of IDs of patches from which larvae should be dispersed. If the list
+is empty, larvae will be dispersed from all patches except those listed for
+the Excluded Patches parameter."""),
     arcGISDisplayName=_('Patches that disperse larvae'),
     arcGISCategory=_('Additional options'))
 
 AddArgumentMetadata(LarvalDispersal.RunSimulation2012, 'destPatchIDs',
     typeMetadata=ListTypeMetadata(elementType=IntegerTypeMetadata(), canBeNone=True, minLength=1),
     description=_(
-"""List of IDs of patches upon which larvae can settle. If the list
-is empty, larvae can settle on all patches except those listed for the
-Excluded Patches parameter."""),
+"""List of IDs of patches upon which larvae can settle. If the list is empty,
+larvae can settle on all patches except those listed for the Excluded Patches
+parameter."""),
     arcGISDisplayName=_('Patches larvae can settle on'),
     arcGISCategory=_('Additional options'))
 
@@ -1817,32 +1812,31 @@ AddArgumentMetadata(LarvalDispersal.RunSimulation2012, 'excludePatchIDs',
     description=_(
 """List of IDs of patches to exclude from the simulation.
 
-This parameter is ignored if the two previous parameters are both
-provided, in which case those parameters specify which patches are
-included in the simulation."""),
+This parameter is ignored if the two previous parameters are both provided, in
+which case those parameters specify which patches are included in the
+simulation."""),
     arcGISDisplayName=_('Excluded patches'),
     arcGISCategory=_('Additional options'))
 
 AddArgumentMetadata(LarvalDispersal.RunSimulation2012, 'diffusivity',
     typeMetadata=FloatTypeMetadata(minValue=0.0),
     description=_(
-"""The horizontal diffusivity coefficent, in meters squared per
-second, to use in the simulation.
+"""The horizontal diffusivity coefficient, in meters squared per second, to
+use in the simulation.
 
-It is recommended that you consult an oceanographer to determine this
-value. The original study from which this tool was developed (Treml et
-al. 2012) used the value 50. If you specify zero or omit this value,
-diffusion will not be performed, which will greatly reduce the
-simulation run time."""),
+It is recommended that you consult an oceanographer to determine this value.
+The original study from which this tool was developed (Treml et al. 2012) used
+the value 50. If you specify zero or omit this value, diffusion will not be
+performed, which will greatly reduce the simulation run time."""),
     arcGISDisplayName=_('Diffusivity'),
     arcGISCategory=_('Additional options'))
 
 AddArgumentMetadata(LarvalDispersal.RunSimulation2012, 'overwriteExisting',
     typeMetadata=BooleanTypeMetadata(),
     description=_(
-"""If True, the contents of the results directory will be
-overwritten, if it exists. If False, a ValueError will be raised if
-the contents already exist."""),
+"""If True, the contents of the results directory will be overwritten, if it
+exists. If False, a ValueError will be raised if the contents already
+exist."""),
     initializeToArcGISGeoprocessorVariable='env.overwriteOutput')
 
 AddResultMetadata(LarvalDispersal.RunSimulation2012, 'updatedResultsDirectory',
@@ -1855,26 +1849,22 @@ AddResultMetadata(LarvalDispersal.RunSimulation2012, 'updatedResultsDirectory',
 AddMethodMetadata(LarvalDispersal.VisualizeResults2012,
     shortDescription=_('Produces GIS outputs that visualize the results of a simulation executed with the Treml et al. (2012) algorithm.'),
     longDescription=_(
-"""Run this tool after the Run Larval Dispersal Simulation (2012
-Algorithm) tool to produce a time series of rasters showing larval
-density throughout the study area and a line feature class showing
-connections between patches. You many also optionally apply a
-mortality rate.
-
-This tool cannot be applied to a simulation executed with the Run
-Larval Dispersal Simulation (2008 Algorithm) tool.
+"""Run this tool after the Run Larval Dispersal Simulation (2012 Algorithm)
+tool to produce a time series of rasters showing larval density throughout the
+study area and a line feature class showing connections between patches. You
+many also optionally apply a mortality rate.
 
 References:
 
 Treml EA, Roberts J, Chao Y, Halpin P, Possingham HP, Riginos C (2012)
 Reproductive output and duration of the pelagic larval stage determine
-seascape-wide connectivity of marine populations. Integrative and
-Comparative Biology 52(4): 525-537."""),
+seascape-wide connectivity of marine populations. Integrative and Comparative
+Biology 52(4): 525-537."""),
     isExposedToPythonCallers=True,
     isExposedAsArcGISTool=True,
     arcGISDisplayName=_('Visualize Larval Dispersal Simulation Results (2012 Algorithm)'),
     arcGISToolCategory=_('Connectivity Analysis\\Simulate Larval Dispersal'),
-    dependencies=[ArcGISDependency(), ArcGISExtensionDependency('spatial'), PythonModuleDependency('numpy', cheeseShopName='numpy'), PythonModuleDependency('matplotlib', cheeseShopName='matplotlib')])
+    dependencies=[ArcGISDependency(3,6,0), ArcGISExtensionDependency('spatial'), PythonModuleDependency('numpy', cheeseShopName='numpy'), PythonModuleDependency('matplotlib', cheeseShopName='matplotlib')])
 
 CopyArgumentMetadata(LarvalDispersal.CreateSimulationFromArcGISRasters, 'cls', LarvalDispersal.VisualizeResults2012, 'cls')
 CopyArgumentMetadata(LarvalDispersal.RunSimulation2012, 'simulationDirectory', LarvalDispersal.VisualizeResults2012, 'simulationDirectory')
@@ -1882,19 +1872,18 @@ CopyArgumentMetadata(LarvalDispersal.RunSimulation2012, 'simulationDirectory', L
 AddArgumentMetadata(LarvalDispersal.VisualizeResults2012, 'resultsDirectory',
     typeMetadata=DirectoryTypeMetadata(mustExist=True),
     description=_(
-"""Directory in which the results of the simulation have been created
-by the Run Larval Dispersal Simulation (2012 Algorithm) tool."""),
+"""Directory in which the results of the simulation have been created by the
+Run Larval Dispersal Simulation (2012 Algorithm) tool."""),
     arcGISDisplayName=_('Results directory'))
 
 AddArgumentMetadata(LarvalDispersal.VisualizeResults2012, 'outputGDBName',
     typeMetadata=UnicodeStringTypeMetadata(minLength=1),
     description=_(
-"""Name of the output file geodatabase (.gdb) to create.
+"""Name of the output file geodatabase (``.gdb``) to create.
 
-The geodatabase will be created in the results directory. If it
-already exists, the tool will either overwrite it or fail with an
-error, depending on whether you have requested that outputs be
-overwritten."""),
+The geodatabase will be created in the results directory. If it already
+exists, the tool will either overwrite it or fail with an error, depending on
+whether you have requested that outputs be overwritten."""),
     arcGISDisplayName=_('Output geodatabase name'))
 
 AddArgumentMetadata(LarvalDispersal.VisualizeResults2012, 'mortalityRate',
@@ -1911,62 +1900,56 @@ and the mortality method is 'A', the proportion alive 1, 2, and 3 days after
 the larvae were released will be 0.9, 0.81, and 0.729, respectively.
 
 When mortality is used, the tool will create a plot named
-X_SurvivorshipCurve.png that shows the proportion of larvae alive over time,
-assuming all drift without settling. X is the name of the output geodatabase.
-If competency was used, the tool also creates a plot called
-X_SurvivorshipCurveWithCompetency.png that multiplies the survivorship curve
-by the competency curve, giving the number of larvae alive that are competent
-to settle.
+``X_SurvivorshipCurve.png`` that shows the proportion of larvae alive over
+time, assuming all drift without settling. ``X`` is the name of the output
+geodatabase. If competency was used, the tool also creates a plot called
+``X_SurvivorshipCurveWithCompetency.png`` that multiplies the survivorship
+curve by the competency curve, giving the number of larvae alive that are
+competent to settle at each point in time.
 
-The tool applies mortality at each summarization period, after larvae
-have moved but before they settle. For plausible results, it is
-therefore important to ensure the summarization period is small
-relative to between-patch transit times, or an unrealistically large
-fraction of larvae will be killed by mortality before they have the
-chance to settle.
+The tool applies mortality at each summarization period, after larvae have
+moved but before they settle. For plausible results, it is therefore important
+to ensure the summarization period is small relative to between-patch transit
+times, or an unrealistically large fraction of larvae will be killed by
+mortality before they have the chance to settle.
 
-For example, consider a situation in which larvae can drift from a
-source patch to destination patch in one day. Assume they are
-immediately competent and can therefore settle at the destination
-patch as soon as they arrive, with a settlement rate of 1.0. We would
-therefore expect that many larvae will have settle between the first
-and second day. But if the first summarization period does not elapse
-until day 10, survivorship will be calculated for all the larvae that
-settle within the first 10 days using t=10 in the equation above. This
-would effectively assume that it took all of these larvae 10 days to
-drift to the destination patch, during which time they were subject to
-10 days of mortality. Because it only took took them 1 or 2 days to
-drift and settle, the loss due to mortality will be unrealistically
-high, because they only should have been subject to 1 or 2 days of
-mortality.
+For example, consider a situation in which larvae can drift from a source
+patch to destination patch in one day. Assume they are immediately competent
+and can therefore settle at the destination patch as soon as they arrive, with
+a settlement rate of 1.0. We would therefore expect that many larvae will have
+settled between the first and second day. But if the first summarization
+period does not elapse until day 10, survivorship will be calculated for all
+the larvae that settle within the first 10 days using ``t=10`` in the equation
+above. This would effectively assume that it took all of these larvae 10 days
+to drift to the destination patch, during which time they were subject to 10
+days of mortality. Because it only took took them 1 or 2 days to drift and
+settle, the loss due to mortality will be unrealistically high, because they
+only should have been subject to 1 or 2 days of mortality.
 
-To ensure plausible results, when running the simulation we we
-recommend you configure the Summarization Period parameter so that
-summaries occur every 1 day or less, particularly if you have a high
-mortality rate. The most realistic results will be obtained by setting
-the Summarization Period parameter to 1, so that summaries occur for
-every time step of the simulation. However, if there are many time
-steps, as would occur if the Duration parameter is large and the Time
-Step parameter is small, there may not be sufficient memory for the
-simulation to execute. If so, the simulation may fail immediately with
-an "OUT OF MEMORY" error. In that case, you have little choice but to
-increase the Summarization Period.
+To ensure plausible results, when running the simulation we we recommend you
+configure the Summarization Period parameter so that summaries occur every 1
+day or less, particularly if you have a high mortality rate. The most
+realistic results will be obtained by setting the Summarization Period
+parameter to 1, so that summaries occur for every time step of the simulation.
+However, if there are many time steps, as would occur if the Duration
+parameter is large and the Time Step parameter is small, there may not be
+sufficient memory for the simulation to execute. If so, the simulation may
+fail immediately with an "OUT OF MEMORY" error. In that case, you have little
+choice but to increase the Summarization Period.
 
-For some readers, this discussion may prompt the question: why was
-mortality implemented in this post-hoc way, rather than as part of the
-execution of the simulation itself? If mortality were applied at each
-time step while the simulation was executing, rather than at each
-summarization step after the simulation is over, this problem could be
-avoided entirely.
+For some readers, this discussion may prompt the question: why was mortality
+implemented in this post-hoc way, rather than as part of the execution of the
+simulation itself? If mortality were applied at each time step while the
+simulation was executing, rather than at each summarization step after the
+simulation is over, couldn't this problem could be avoided entirely?
 
-The answer is that the approach of applying it after the simulation is
-over allows you to quickly test the effects of different mortality
-rates without rerunning the simulation, which can require hours if
-your simulation has a long duration or hundreds of patches. Mortality
-has a strong influence on connectivity (Treml et al. 2012). We have
-found it useful to perform this kind of sensitivity analysis when
-mortality rates are uncertain and optimized the design of the tool to
-facilitate this.
+The answer is that the approach of applying it after the simulation is over
+allows you to quickly test the effects of different mortality rates without
+rerunning the simulation, which can require hours if your simulation has a
+long duration or hundreds of patches. Mortality has a strong influence on
+connectivity (Treml et al. 2012). We have found it useful to perform this kind
+of sensitivity analysis when mortality rates are uncertain and optimized the
+design of the tool to facilitate this.
 
 References:
 
@@ -1979,27 +1962,28 @@ Comparative Biology 52(4): 525-537."""),
 AddArgumentMetadata(LarvalDispersal.VisualizeResults2012, 'mortalityMethod',
     typeMetadata=UnicodeStringTypeMetadata(allowedValues=['A', 'B'], makeUppercase=True),
     description=_(
-
 """Method used to calculate survivorship from the Mortality Rate parameter:
 
-* A - Survivorship will be calculated according to the expression
-  exp(log(1-L)*t). This is the default. Under this method, the number of
-  larvae killed between t and t+1 is the number alive at t multiplied by the
-  mortality rate L. Treml et al. (2012, 2015) and Schill et al. (2015) all
-  used this method.  For the mortality rate L=0.1 and t=1, 2, and 3 days, the
-  proportions of surviving larvae are 0.9, 0.81, and 0.729, respectively.
+* ``A`` - Survivorship will be calculated according to the expression
+  ``exp(log(1-L)*t)``. This is the default. Under this method, the number of
+  larvae killed between ``t`` and ``t+1`` is the number alive at ``t``
+  multiplied by the mortality rate ``L``. Treml et al. (2012, 2015) and Schill
+  et al. (2015) all used this method.  For the mortality rate L=0.1 and t=1,
+  2, and 3 days, the proportions of surviving larvae are 0.9, 0.81, and 0.729,
+  respectively.
 
-* B - Survivorship will be calculated according to the expression exp(-L*t).
-  This method assumes an exponential decline in the surviving population at a
-  constant rate. The formula is known as the survival function of the
-  exponential distribution, among other names. Connolly and Baird (2010)
-  presented this as their equation 8. For the mortality rate L=0.1 and t=1, 2,
-  and 3 days, the proportions of surviving larvae are 0.904837, 0.818731,
-  0.740818, respectively.
+* ``B`` - Survivorship will be calculated according to the expression
+  ``exp(-L*t)``. This method assumes an exponential decline in the surviving
+  population at a constant rate. The formula is known as the survival function
+  of the exponential distribution, among other names. Connolly and Baird
+  (2010) presented this as their equation 8. For the mortality rate L=0.1 and
+  t=1, 2, and 3 days, the proportions of surviving larvae are 0.904837,
+  0.818731, 0.740818, respectively.
 
-In these expressions, L is the mortality rate, t is the number of days elapsed
-since larvae were released, log(x) is the natural logarithm of x, and exp(x)
-is the mathematical constant e raised to the power of x.
+In these expressions, ``L`` is the mortality rate, ``t`` is the number of days
+elapsed since larvae were released, ``log(x)`` is the natural logarithm of
+``x``, and ``exp(x)`` is the mathematical constant ``e`` raised to the power
+of ``x``.
 
 References:
 
@@ -2025,22 +2009,22 @@ Diversity and Distributions 21(4): 465-476.
 AddArgumentMetadata(LarvalDispersal.VisualizeResults2012, 'createDensityRasters',
     typeMetadata=BooleanTypeMetadata(),
     description=_(
-"""If this option is enabled (the default) the tool will create in
-the output geodatabase a time series of rasters showing the density of
-larvae throughout the study area as the simulation progresses.
+"""If this option is enabled (the default) the tool will create in the output
+geodatabase a time series of rasters showing the density of larvae throughout
+the study area as the simulation progresses.
 
-The first raster will be created at the start of the simulation,
-before any larvae have moved. Subsequent rasters will be created each
-time the summarization period elapses. The rasters will be named
-Density_YYYYMMDD_HHMM where YYYY, MM, DD, HH, and MM are the year,
-month, day, hour, and minute.
+The first raster will be created at the start of the simulation, before any
+larvae have moved. Subsequent rasters will be created each time the
+summarization period elapses. The rasters will be named
+``Density_YYYYMMDD_HHMM`` where ``YYYY``, ``MM``, ``DD``, ``HH``, and ``MM``
+are the year, month, day, hour, and minute.
 
-The units of the rasters are the quantity of larvae per grid cell,
-relative to the maximum possible quantity that can occupy a cell at
-the start of the simulation when larvae are first released. The value
-1.0 corresponds to the quantity of larvae released at the start of the
-simulation in one cell that is fully covered by suitable habitat (i.e.
-the Patch Cover Raster has the value 1.0 in that cell)."""),
+The units of the rasters are the quantity of larvae per grid cell, relative to
+the maximum possible quantity that can occupy a cell at the start of the
+simulation when larvae are first released. The value 1.0 corresponds to the
+quantity of larvae released at the start of the simulation in one cell that is
+fully covered by suitable habitat (i.e. the Patch Cover Raster has the value
+1.0 in that cell)."""),
     arcGISDisplayName=_('Create density rasters'))
 
 AddArgumentMetadata(LarvalDispersal.VisualizeResults2012, 'minimumDensity',
@@ -2048,17 +2032,16 @@ AddArgumentMetadata(LarvalDispersal.VisualizeResults2012, 'minimumDensity',
     description=_(
 """Minimum value that a density raster cell must be to not be masked.
 
-You may set this parameter as low as zero. If you set it to zero, the
-density rasters will be produced with no masking. The results may seem
-surprising. For most simulations, larvae will have spread throughout
-the entire study area, albeit in very small quantities for most cells,
-via the diffusion component of the hydrodynamic calculations.
-Diffiusion occurs equally in all directions at the rate specified by
-the Diffusivity parameter. Given enough time, an infinitesimal
-fraction of larvae from any given patch can theoretically spread
+You may set this parameter as low as zero. If you set it to zero, the density
+rasters will be produced with no masking. The results may seem surprising. For
+most simulations, larvae will have spread throughout the entire study area,
+albeit in very small quantities for most cells, via the diffusion component of
+the hydrodynamic calculations. Diffusion occurs equally in all directions at
+the rate specified by the Diffusivity parameter. Given enough time, an
+infinitesimal fraction of larvae from any given patch can theoretically spread
 throughout the entire ocean simply by diffusion. To avoid a confusing
-visualization, use this parameter to mask the extremely density values
-that result from diffiusion."""),
+visualization, use this parameter to mask the extremely density values that
+result from diffusion."""),
     arcGISDisplayName=_('Minimum density value'))
 
 AddArgumentMetadata(LarvalDispersal.VisualizeResults2012, 'useCompetencyForDensityRasters',
@@ -2096,21 +2079,22 @@ of the patch; the size does not relate to the degree of connectivity.
 
 Each line has four attributes:
 
-* FromPatchID - source patch that released larvae.
+* ``FromPatchID`` - source patch that released larvae.
 
-* ToPatchID - destination patch that larvae settled on.
+* ``ToPatchID`` - destination patch that larvae settled on.
 
-* Quantity - quantity of larvae that settled. The units are relative to the
-  maximum possible quantity that can occupy a cell at the start of the
+* ``Quantity`` - quantity of larvae that settled. The units are relative to
+  the maximum possible quantity that can occupy a cell at the start of the
   simulation when larvae are first released. The value 1.0 corresponds to the
   quantity of larvae released at the start of the simulation in one cell that
   is fully covered by suitable habitat (i.e. the Patch Cover Raster has the
   value 1.0 in that cell).
 
-* Probability - probability that a larva released by the source patch settled
-  on the destination patch. This is computed by dividing the Quantity (above)
-  by the total amount of larvae released by the source patch at the start of
-  the simulation.
+* ``Probability`` - probability that a larva released by the source patch
+  settled on the destination patch. This is computed by dividing the Quantity
+  (above) by the total amount of larvae released by the source patch at the
+  start of the simulation.
+
 """),
     arcGISDisplayName=_('Create connections feature class'))
 
@@ -2140,9 +2124,9 @@ then filter weak connections later? This is a valid approach. The main reason
 not to do this is it may take the tool a long time to draw so many lines.
 Whether or not this is a problem depends on the number of patches you have.
 Assuming each patch can be both a source and sink for larvae, the number of
-possible connections is 2 * P^2, where P is the number of patches. So if you
-only have 20 patches, at most 800 lines will be drawn, a relatively small
-number. But if you have 500 patches, as many as 500,000 lines will be
+possible connections is ``2 * P^2``, where ``P`` is the number of patches. So
+if you only have 20 patches, at most 800 lines will be drawn, a relatively
+small number. But if you have 500 patches, as many as 500,000 lines will be
 drawn."""),
     arcGISDisplayName=_('Minimum dispersal threshold'))
 
@@ -2152,20 +2136,20 @@ AddArgumentMetadata(LarvalDispersal.VisualizeResults2012, 'minimumDispersalType'
 """Type of minimum dispersal threshold that will be used to determine whether
 a line should be drawn from a source patch to a destination patch. One of:
 
-* Quantity - the minimum absolute quantity of larvae released by the source
-  patch that must settle at the destination patch. A cell that is 100%
-  covered by suitable habitat will release 1 unit of larvae, while one that
-  is only 50% covered will release 0.5 units of larvae.
+* ``Quantity`` - the minimum absolute quantity of larvae released by the
+  source patch that must settle at the destination patch. A cell that is 100%
+  covered by suitable habitat will release 1 unit of larvae, while one that is
+  only 50% covered will release 0.5 units of larvae.
 
-* Probability - the minimum probability that a larva released by the source
-  patch will settle at the destination patch. For each source-destination
-  pair, the probability is computed by dividing the absolute quantity of
-  larvae from the source that settled on the destination by the total
-  absolute quantity of larvae released by the source. For example, consider a
-  source comprised of 5 cells that are 100% covered and 3 cells that are 50%
-  covered. The total quantity of larvae released will be 6.5 units. If a
-  destination patch receives in 0.52 units of larvae, totaled across all of
-  its cells, then the probability is 0.52 / 6.5 = 0.08.
+* ``Probability`` - the minimum probability that a larva released by the
+  source patch will settle at the destination patch. For each
+  source-destination pair, the probability is computed by dividing the
+  absolute quantity of larvae from the source that settled on the destination
+  by the total absolute quantity of larvae released by the source. For
+  example, consider a source comprised of 5 cells that are 100% covered and 3
+  cells that are 50% covered. The total quantity of larvae released will be
+  6.5 units. If a destination patch receives in 0.52 units of larvae, totaled
+  across all of its cells, then the probability is 0.52 / 6.5 = 0.08.
 
 """),
     arcGISDisplayName=_('Minimum dispersal threshold type'))
@@ -2173,9 +2157,9 @@ a line should be drawn from a source patch to a destination patch. One of:
 AddArgumentMetadata(LarvalDispersal.VisualizeResults2012, 'overwriteExisting',
     typeMetadata=BooleanTypeMetadata(),
     description=_(
-"""If True, the output geodatabase will be deleted and recreated, if
-it exists. If False, a ValueError will be raised if the output
-geodatabase exists."""),
+"""If True, the output geodatabase will be deleted and recreated, if it
+exists. If False, a ValueError will be raised if the output geodatabase
+exists."""),
     initializeToArcGISGeoprocessorVariable='env.overwriteOutput')
 
 AddResultMetadata(LarvalDispersal.VisualizeResults2012, 'updatedResultsDirectory',
@@ -2186,9 +2170,8 @@ AddResultMetadata(LarvalDispersal.VisualizeResults2012, 'updatedResultsDirectory
 # Public method: LarvalDispersal.VisualizeMultipleResults2012
 
 AddMethodMetadata(LarvalDispersal.VisualizeMultipleResults2012,
-    shortDescription=_('Produces a line feature class that combines and visualizes multiple runs of a connectivity simulation executed with the Treml et al. (2012) algorithm.'),
+    shortDescription=_('Produces GIS outputs that summarize multiple connectivity simulation runs executed with the Treml et al. (2012) algorithm.'),
     longDescription=_(
-
 """It is often useful to execute the Run Larval Dispersal Simulation tool for
 different time periods to investigate how variations in ocean currents affect
 connectivity. The Visualize Multiple Larval Dispersal Simulation Results tool
@@ -2202,10 +2185,6 @@ You many also optionally apply a mortality rate. The same mortality rate will
 be applied to all simulations prior to combining them and computing the
 summary statistic.
 
-This tool can only be be applied to a simulations executed with the Run Larval
-Dispersal Simulation (2012 Algorithm) tool. It will not work on simulations
-executed with the 2008 algorithm.
-
 References:
 
 Treml EA, Roberts J, Chao Y, Halpin P, Possingham HP, Riginos C (2012)
@@ -2216,7 +2195,7 @@ Comparative Biology 52(4): 525-537."""),
     isExposedAsArcGISTool=True,
     arcGISDisplayName=_('Visualize Multiple Larval Dispersal Simulation Results (2012 Algorithm)'),
     arcGISToolCategory=_('Connectivity Analysis\\Simulate Larval Dispersal'),
-    dependencies=[ArcGISDependency(), ArcGISExtensionDependency('spatial'), PythonModuleDependency('numpy', cheeseShopName='numpy'), PythonModuleDependency('matplotlib', cheeseShopName='matplotlib')])
+    dependencies=[ArcGISDependency(3,6,0), ArcGISExtensionDependency('spatial'), PythonModuleDependency('numpy', cheeseShopName='numpy'), PythonModuleDependency('matplotlib', cheeseShopName='matplotlib')])
 
 CopyArgumentMetadata(LarvalDispersal.VisualizeResults2012, 'cls', LarvalDispersal.VisualizeMultipleResults2012, 'cls')
 CopyArgumentMetadata(LarvalDispersal.VisualizeResults2012, 'simulationDirectory', LarvalDispersal.VisualizeMultipleResults2012, 'simulationDirectory')
@@ -2224,8 +2203,8 @@ CopyArgumentMetadata(LarvalDispersal.VisualizeResults2012, 'simulationDirectory'
 AddArgumentMetadata(LarvalDispersal.VisualizeMultipleResults2012, 'resultsDirectories',
     typeMetadata=ListTypeMetadata(elementType=DirectoryTypeMetadata(mustExist=True), minLength=1),
     description=_(
-"""List of one or more results directories created by the Run Larval
-Dispersal Simulation (2012 Algorithm) tool."""),
+"""List of one or more results directories created by the Run Larval Dispersal
+Simulation (2012 Algorithm) tool."""),
     arcGISDisplayName=_('Results directories'))
 
 AddArgumentMetadata(LarvalDispersal.VisualizeMultipleResults2012, 'outputConnections',
@@ -2254,27 +2233,28 @@ creates them as follows:
    experienced sufficient self recruitment (larvae released by the patch
    settled at that same patch), a circular line will be drawn from the patch's
    centroid to itself. For convenience of visualization, the size of the
-   circle is scaled to the length of the "minor  axis" of the zonal geometry
+   circle is scaled to the length of the "minor axis" of the zonal geometry
    of the patch; the size does not relate to the degree of connectivity.
 
 Each line has four attributes:
 
-* FromPatchID - source patch that released larvae.
+* ``FromPatchID`` - source patch that released larvae.
 
-* ToPatchID - destination patch that larvae settled on.
+* ``ToPatchID`` - destination patch that larvae settled on.
 
-* Quantity - quantity of larvae that settled. The units are relative to the
-  maximum possible quantity that can occupy a cell at the start of the
+* ``Quantity`` - quantity of larvae that settled. The units are relative to
+  the maximum possible quantity that can occupy a cell at the start of the
   simulation when larvae are first released. The value 1.0 corresponds to the
   quantity of larvae released at the start of the simulation in one cell that
   is fully covered by suitable habitat (i.e. the Patch Cover Raster has the
   value 1.0 in that cell).
 
-* Probability - probability that a larva released by the source patch settled
-  on the destination patch. This is computed by dividing the Quantity (above)
-  by the total amount of larvae released by the source patch at the start of
-  the simulation. (Note: probabilities are first computed for each simulation,
-  then the summary statistic is applied.)
+* ``Probability`` - probability that a larva released by the source patch
+  settled on the destination patch. This is computed by dividing the Quantity
+  (above) by the total amount of larvae released by the source patch at the
+  start of the simulation. (Note: probabilities are first computed for each
+  simulation, then the summary statistic is applied.)
+
 """),
     direction='Output',
     arcGISDisplayName=_('Output line feature class'))

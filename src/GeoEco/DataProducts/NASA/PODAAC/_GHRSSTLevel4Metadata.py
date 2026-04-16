@@ -497,7 +497,7 @@ AddMethodMetadata(GHRSSTLevel4.CannyEdgesAsArcGISRasters,
     isExposedAsArcGISTool=True,
     arcGISDisplayName=_('Find Canny Fronts in GHRSST L4 SST'),
     arcGISToolCategory=_('Data Products\\NASA JPL PO.DAAC\\GHRSST L4 SST'),
-    dependencies=[ArcGISDependency(), MatlabDependency(), PythonModuleDependency('numpy', cheeseShopName='numpy'), PythonModuleDependency('requests', cheeseShopName='requests'), PythonModuleDependency('netCDF4', cheeseShopName='netCDF4')])
+    dependencies=[ArcGISDependency(3,6,0), MatlabDependency(), PythonModuleDependency('numpy', cheeseShopName='numpy'), PythonModuleDependency('requests', cheeseShopName='requests'), PythonModuleDependency('netCDF4', cheeseShopName='netCDF4')])
 
 CopyArgumentMetadata(GHRSSTLevel4.CreateArcGISRasters, 'cls', GHRSSTLevel4.CannyEdgesAsArcGISRasters, 'cls')
 CopyArgumentMetadata(GHRSSTLevel4.CreateArcGISRasters, 'username', GHRSSTLevel4.CannyEdgesAsArcGISRasters, 'username')
