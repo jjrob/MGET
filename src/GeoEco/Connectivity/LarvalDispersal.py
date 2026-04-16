@@ -19,14 +19,15 @@ from ..DataManagement.ArcGISRasters import ArcGISRaster as ArcGISRaster2
 from ..DataManagement.Directories import Directory, TemporaryDirectory
 from ..DataManagement.Fields import Field
 from ..DataManagement.Files import File
+from ..DataProducts.CMEMS import CMEMSARCOArray
 from ..Datasets import Grid, NumpyGrid, QueryableAttribute
 from ..Datasets.ArcGIS import ArcGISWorkspace, ArcGISRaster, ArcGISTable
 from ..Datasets.Virtual import GridSliceCollection, MaskedGrid
 from ..DynamicDocString import DynamicDocString
 from ..Internationalization import _
-from ..Logging import Logger
+from ..Logging import Logger, ProgressReporter
 from ..Types import *
-
+from ..Matlab import MatlabDependency, MatlabWorkerProcess
 
 class LarvalDispersal(object):
     __doc__ = DynamicDocString()
@@ -96,41 +97,39 @@ class LarvalDispersal(object):
 
             # Copy the patch IDs raster into the PatchData directory.
 
-            ArcGISRaster2.Copy(patchIDsRaster, os.path.join(simulationDirectory, 'PatchData', 'patch_ids'))
+            ArcGISRaster2.Copy(patchIDsRaster, os.path.join(simulationDirectory, 'PatchData', 'patch_ids.img'))
 
             # Copy the patch cover raster into the PatchData directory,
-            # setting the NoData values and non-patch cells to 0 in the process.
+            # setting the NoData values and non-patch cells to 0 in the
+            # process.
 
-            if GeoprocessorManager.GetArcGISMajorVersion() >= 10:
-                mapAlgebraExpression = 'float(con(isnull( [%(raster1)s] ) == 1 || isnull( [%(raster2)s] ) == 1, 0.0, [%(raster1)s] ))' % {'raster1': patchCoverRaster, 'raster2': patchIDsRaster}
-            else:
-                mapAlgebraExpression = 'float(con(isnull( %(raster1)s ) == 1 || isnull( %(raster2)s ) == 1, 0.0, %(raster1)s ))' % {'raster1': patchCoverRaster, 'raster2': patchIDsRaster}
-            gp.SingleOutputMapAlgebra_sa(mapAlgebraExpression, os.path.join(simulationDirectory, 'PatchData', 'patch_areas'))
+            import arcpy.sa
+
+            r1 = arcpy.sa.Raster(patchCoverRaster)
+            r2 = arcpy.sa.Raster(patchIDsRaster)
+            r3 = arcpy.sa.Raster(waterMaskRaster)
+
+            r4 = arcpy.sa.Con(arcpy.sa.IsNull(r1) | arcpy.sa.IsNull(r2), 0.0, r1)
+            r4.save(os.path.join(simulationDirectory, 'PatchData', 'patch_areas.img'))
 
             # Copy the water mask raster into the PatchData directory,
-            # normalizing it to integer values where 1 is water, 0 is
-            # land.
+            # normalizing it to integer values where 1 is water, 0 is land.
 
-            if GeoprocessorManager.GetArcGISMajorVersion() >= 10:
-                mapAlgebraExpression = 'con(isnull( [%(raster)s] ) || [%(raster)s] == 0, 0, 1)' % {'raster': waterMaskRaster}
-            else:
-                mapAlgebraExpression = 'con(isnull( %(raster)s ) || %(raster)s == 0, 0, 1)' % {'raster': waterMaskRaster}
-            gp.SingleOutputMapAlgebra_sa(mapAlgebraExpression, os.path.join(simulationDirectory, 'PatchData', 'water_mask'))
+            r5 = arcpy.sa.Con(arcpy.sa.IsNull(r3) | r3 == 0, 0, 1)
+            r5.save(os.path.join(simulationDirectory, 'PatchData', 'water_mask.img'))
 
-            # Create the patch_geometry file by calling Spatial
-            # Analyst's Zonal Geometry As Table tool. (Note that this
-            # tool will create a .dbf file no matter what, even if we
-            # give it a .csv or .txt extension. This is very annoying,
-            # because we can't read it easily without going through a
-            # database API, which is slow.)
+            # Create the patch_geometry file by calling Spatial Analyst's
+            # Zonal Geometry As Table tool. (Note that this tool will create
+            # a .dbf file no matter what, even if we give it a .csv or .txt
+            # extension. This is very annoying, because we can't read it
+            # easily without going through a database API, which is slow.)
 
-            gp.ZonalGeometryAsTable_sa(os.path.join(simulationDirectory, 'PatchData', 'patch_ids'), 'Value', os.path.join(simulationDirectory, 'PatchData', 'patch_geometry.dbf'), describePatchIDsRaster.MeanCellWidth)
+            arcpy.sa.ZonalGeometryAsTable(os.path.join(simulationDirectory, 'PatchData', 'patch_ids.img'), 'Value', os.path.join(simulationDirectory, 'PatchData', 'patch_geometry.dbf'), describePatchIDsRaster.MeanCellWidth)
 
-            # Create the directories that will hold the currents
-            # rasters.
+            # Create the directories that will hold the currents rasters.
 
             Directory.Create(os.path.join(simulationDirectory, 'Currents'))
-            Directory.Create(os.path.join(simulationDirectory, 'Currents', ''))
+            Directory.Create(os.path.join(simulationDirectory, 'Currents', 'u'))
             Directory.Create(os.path.join(simulationDirectory, 'Currents', 'v'))
 
             # Create the config file that stores properties of the
@@ -141,17 +140,67 @@ class LarvalDispersal(object):
             scp.set('Simulation', 'Crosses180', str(crosses180))
             scp.set('Simulation', 'CurrentsLoaded', str(False))
             scp.set('Simulation', 'CurrentsProduct', '')
-            f = open(os.path.join(simulationDirectory, 'Simulation.ini'), 'w')
-            try:
+            with open(os.path.join(simulationDirectory, 'Simulation.ini'), 'w') as f:
                 scp.write(f)
-            finally:
-                try:
-                    f.close()
-                except:
-                    pass
 
         finally:
             Logger.SetLogInfoAsDebug(oldLogInfoAsDebug)
+
+    @classmethod
+    def LoadCMEMSCurrentsIntoSimulation(cls, simulationDirectory, startDate, endDate, username, password, datasetID='cmems_mod_glo_phy_my_0.083deg_P1D-m', depth=0.49402499198913574, rotationOffset=None, resamplingTechnique='CUBIC', interpolationMethod=None):
+        cls.__doc__.Obj.ValidateMethodInvocation()
+
+        # Parse and validate the Simulation.ini file.
+
+        scp, crosses180, currentsLoaded, currentsProduct = cls._ReadCurrentsInfoFromSimulationINI(simulationDirectory)
+
+        # If the simulation already has currents loaded in it from a different
+        # product, report an error.
+
+        thisCurrentsProduct = 'CMEMS %s %r m (resampling=%s, interpolation=%s)' % (datasetID, depth, resamplingTechnique.lower(), interpolationMethod.lower())
+
+        if currentsLoaded and currentsProduct != thisCurrentsProduct:
+            Logger.RaiseException(ValueError(_('Cannot load %(prod1)s currents data into the simulation in directory %(dir)s because that simulation already has %(prod2)s currents data loaded into it. You can load additional %(prod2)s data, if you like, but to use %(prod1)s data, you must create a new simulation.') % {'dir': simulationDirectory, 'prod1': thisCurrentsProduct, 'prod2': currentsProduct}))
+
+        # First, log some helpful information about this dataset.
+
+        grid = CMEMSARCOArray(username=username, password=password, datasetID=datasetID, variableShortName='uo')
+
+        if grid.Dimensions != 'tzyx':
+            raise ValueError(_('CMEMS dataset %(datasetID)s has the dimensions "%(dim)s". It must have the dimensions "tzyx". Please check the Copernicus website and select 4D ocean currents dataset.') % {'datasetID': datasetID, 'dim': grid.Dimensions})
+
+        Logger.Info(_('CMEMS dataset %(datasetID)s has a cell size of %(cellSize)r and a temporal resolution of %(TIncrement)g %(TIncrementUnit)ss') % {'datasetID': datasetID, 'cellSize': grid.GetLazyPropertyValue('CoordIncrements')[-1], 'TIncrement': grid.GetLazyPropertyValue('TIncrement'), 'TIncrementUnit': grid.GetLazyPropertyValue('TIncrementUnit')})
+        Logger.Info(_('The spatial extent is: left = %(left)r, right = %(right)r, bottom = %(bottom)r, top = %(top)r') % {'left': float(grid.MinCoords['x', 0]), 'right': float(grid.MaxCoords['x', -1]), 'bottom': float(grid.MinCoords['y', 0]), 'top': float(grid.MaxCoords['y', -1])})
+        Logger.Info(_('The first time slice starts on %(first)s, the last slice starts on %(last)s') % {'first': grid.MinCoords['t', 0].strftime('%Y-%m-%d %H:%M:%S'), 'last': grid.MinCoords['t', -1].strftime('%Y-%m-%d %H:%M:%S')})
+
+        # Now download and create CMEMS current rasters in a CMEMS-specific
+        # directory. These will have the CMEMS projection, extent, and cell
+        # size. We still need to project them to the simulation's projection,
+        # extent, and cell size.
+
+        currentsDirectory = os.path.join(simulationDirectory, 'OriginalCMEMSCurrents')
+        Directory.Create(currentsDirectory)
+
+        CMEMSARCOArray.CreateArcGISRasters(username=username, password=password, datasetID=datasetID, variableShortName='uo', outputWorkspace=currentsDirectory,
+                                           rotationOffset=rotationOffset, minDepth=depth, maxDepth=depth, startDate=startDate, endDate=endDate,
+                                           rasterNameExpressions=['u', '%%Y', 'u%%Y%%m%%d_%%H%%M.img'])
+
+        CMEMSARCOArray.CreateArcGISRasters(username=username, password=password, datasetID=datasetID, variableShortName='vo', outputWorkspace=currentsDirectory,
+                                           rotationOffset=rotationOffset, minDepth=depth, maxDepth=depth, startDate=startDate, endDate=endDate,
+                                           rasterNameExpressions=['v', '%%Y', 'v%%Y%%m%%d_%%H%%M.img'])
+
+        # Record in the Simulation.ini file that we downloaded some currents
+        # and then project, snap, and clip them to the projection, extent,
+        # and cell size of the patch IDs raster.
+
+        maxSecondsBetweenCurrentsImages = (grid.MinCoords['t', 1] - grid.MinCoords['t', 0]).total_seconds()
+
+        cls._FinishLoadingCurrents(simulationDirectory, scp, thisCurrentsProduct, 'Center', maxSecondsBetweenCurrentsImages, currentsDirectory, resamplingTechnique, interpolationMethod)
+
+        # Return successfully.
+
+        return simulationDirectory
+
 
     @classmethod
     def _FinishLoadingCurrents(cls, simulationDirectory, scp, currentsProduct, currentsDateType, maxSecondsBetweenCurrentsImages, originalCurrentsDirectory, resamplingTechnique, interpolationMethod):
@@ -163,35 +212,29 @@ class LarvalDispersal(object):
         scp.set('Simulation', 'CurrentsLoaded', str(True))
         scp.set('Simulation', 'CurrentsProduct', currentsProduct)
         scp.set('Simulation', 'CurrentsDateType', currentsDateType)
-        scp.set('Simulation', 'MaxSecondsBetweenCurrentsImages', str(maxSecondsBetweenCurrentsImages))
-        f = open(os.path.join(simulationDirectory, 'Simulation.ini'), 'w')
-        try:
+        scp.set('Simulation', 'MaxSecondsBetweenCurrentsImages', repr(maxSecondsBetweenCurrentsImages))
+        with open(os.path.join(simulationDirectory, 'Simulation.ini'), 'w') as f:
             scp.write(f)
-        finally:
-            try:
-                f.close()
-            except:
-                pass
 
-        # Create a temporary copy of the water mask with land set to
-        # No Data.
+        # Create a temporary copy of the water mask with land set to No Data.
+
+        import arcpy.sa
+
+        r1 = arcpy.sa.Raster(os.path.join(simulationDirectory, 'PatchData', 'water_mask.img'))
+        r2 = arcpy.sa.SetNull(r1 == 0, r1)
 
         tempDir = TemporaryDirectory()
+        newWaterMask = os.path.join(tempDir.Path, 'water_mask.img')
+        r2.save(newWaterMask)
 
-        gp = GeoprocessorManager.GetWrappedGeoprocessor()
+        # Using the new water mask as a template, project and clip the current
+        # rasters to the patch rasters' coordinate system, cell size, and
+        # extent.
 
-        waterMask = os.path.join(simulationDirectory, 'PatchData', 'water_mask')
-        newWaterMask = os.path.join(tempDir.Path, 'water_mask')
-        gp.SingleOutputMapAlgebra_sa('setnull(%s == 0, %s)' % (waterMask, waterMask), newWaterMask)
-
-        # Using the new water mask as a template, project and clip the
-        # current rasters to the patch rasters' coordinate system, cell
-        # size, and extent.
-
-        ArcGISRaster2.FindAndProjectRastersToTemplate(originalCurrentsDirectory,
-                                                      os.path.join(simulationDirectory, 'Currents'),
-                                                      newWaterMask,
-                                                      resamplingTechnique,
+        ArcGISRaster2.FindAndProjectRastersToTemplate(inputWorkspace=originalCurrentsDirectory,
+                                                      outputWorkspace=os.path.join(simulationDirectory, 'Currents'),
+                                                      templateRaster=newWaterMask,
+                                                      resamplingTechnique=resamplingTechnique,
                                                       wildcard='*.img',
                                                       searchTree=True,
                                                       interpolationMethod=interpolationMethod,
@@ -206,18 +249,11 @@ class LarvalDispersal(object):
             Logger.RaiseException(ValueError(_('The directory %(dir)s does not appear to be a properly-initialized larval dispersal simulation directory: it does not contain a file called Simulation.ini. Please create a simulation directory using the Create Larval Dispersal Simulation tool and try again.') % {'dir': simulationDirectory}))
 
         scp = ConfigParser()
-        f = open(os.path.join(simulationDirectory, 'Simulation.ini'), 'r')
-        try:
-            try: 
-                scp.readfp(f, os.path.join(simulationDirectory, 'Simulation.ini'))
-            except:
-                Logger.LogExceptionAsError(_('The directory %(dir)s does not appear to be a properly-initialized larval dispersal simulation directory: the file Simulation.ini in that directory could not be parsed. Please create a simulation directory using the Create Larval Dispersal Simulation tool and try again.') % {'dir': simulationDirectory})
-                raise
-        finally:
-            try:
-                f.close()
-            except:
-                pass
+        try: 
+            scp.read([os.path.join(simulationDirectory, 'Simulation.ini')])
+        except:
+            Logger.LogExceptionAsError(_('The directory %(dir)s does not appear to be a properly-initialized larval dispersal simulation directory: the file Simulation.ini in that directory could not be parsed. Please create a simulation directory using the Create Larval Dispersal Simulation tool and try again.') % {'dir': simulationDirectory})
+            raise
 
         try:
             crosses180 = scp.getboolean('Simulation', 'Crosses180')
@@ -238,477 +274,6 @@ class LarvalDispersal(object):
             raise
 
         return scp, crosses180, currentsLoaded, currentsProduct
-
-    @classmethod
-    def RunSimulation(cls, simulationDirectory, outputDirectory, startDate, duration=30.0, simulationTimeStep=2.4, summarizationPeriod=10, initialLarvaeDensity=10000.0, densityRasterCutoff=0.1, diffusivity=50.0, includePatchIDs=None, excludePatchIDs=None, overwriteExisting=False):
-        cls.__doc__.Obj.ValidateMethodInvocation()
-
-        # Perform additional validation.
-
-        if includePatchIDs is not None and excludePatchIDs is not None:
-            Logger.RaiseException(ValueError(_('You cannot specify both a list of patches to include and a list of patches to exclude. You must specify one, or the other, or neither.')))
-
-        from GeoEco.DatabaseAccess.ArcGIS import ArcGIS91DatabaseConnection
-        from GeoEco.DatabaseAccess.InMemory import InMemoryDatabaseConnection
-
-        arcGISConn = ArcGIS91DatabaseConnection()
-        inMemoryConn = InMemoryDatabaseConnection()
-        
-        if includePatchIDs is not None:
-            inMemoryConn.ImportTable(arcGISConn, os.path.join(simulationDirectory, 'PatchData', 'patch_geometry.dbf'), 'patch_geometry', ['VALUE', 'XCENTROID', 'YCENTROID'], where='"VALUE" IN (%s)' % ', '.join(map(str, includePatchIDs)), orderBy=['VALUE'], directions=['Ascending'])
-            if inMemoryConn.GetRowCount('patch_geometry') <= 0:
-                Logger.RaiseException(ValueError(_('The list of patch IDs to include in the simulation does contain any IDs that also exist in the simulation directory %(dir)s. Please specify at least one existing patch ID.') % {'dir': simulationDirectory}))
-                
-        elif excludePatchIDs is not None:
-            inMemoryConn.ImportTable(arcGISConn, os.path.join(simulationDirectory, 'PatchData', 'patch_geometry.dbf'), 'patch_geometry', ['VALUE', 'XCENTROID', 'YCENTROID'], where='"VALUE" NOT IN (%s)' % ', '.join(map(str, excludePatchIDs)), orderBy=['VALUE'], directions=['Ascending'])
-            if inMemoryConn.GetRowCount('patch_geometry') <= 0:
-                Logger.RaiseException(ValueError(_('The list of patch IDs to exclude from the simulation excluded all of the patches in the simulation directory %(dir)s. Please remove some IDs from this list so that at least one patch will be included in the simulation.') % {'dir': simulationDirectory}))
-
-        else:
-            inMemoryConn.ImportTable(arcGISConn, os.path.join(simulationDirectory, 'PatchData', 'patch_geometry.dbf'), 'patch_geometry', ['VALUE', 'XCENTROID', 'YCENTROID'], orderBy=['VALUE'], directions=['Ascending'])
-            if inMemoryConn.GetRowCount('patch_geometry') <= 0:
-                Logger.RaiseException(ValueError(_('The patch data in simulation directory %(dir)s does not contain any patches. Please recreate the simulation using input rasters that contain at least one patch.') % {'dir': simulationDirectory}))
-
-        # Read the Simulation.ini file, the patch rasters, the current
-        # rasters, etc.
-
-        describePatchIDsRaster, patchIDsImage, patchCoverImage, waterMaskImage, waterMaskNoDataValue, uImages, vImages, uvIndexForTimestep, cellSize, maxSecondsBetweenCurrentsImages, currentsStartDate = cls._PrepareToRunSimulation(simulationDirectory, duration, simulationTimeStep, startDate)
-
-        # Calculate and report the maximum Courant number. Issue a
-        # warning if it is greater than or equal to 1.0 because the
-        # simulation is likely to be unstable. Provide an estimate of
-        # the largest time step that would allow the Courant number to
-        # be less than 1.0.
-
-        import numpy
-        
-        hasData = numpy.logical_and(numpy.logical_not(numpy.isnan(uImages)), numpy.logical_not(numpy.isnan(vImages)))
-        maxVelocity = max(numpy.max(uImages[hasData]), numpy.max(vImages[hasData]))
-        maxCourant = maxVelocity * (simulationTimeStep*3600) / cellSize
-
-        if maxCourant <= 0.25:
-            Logger.Info(_('The maximum Courant number is %(mc)f, which is less than or equal to 0.25. The simulation is likely to be numerically stable.') % {'mc': maxCourant})
-        else:
-            maxTimeStep = cellSize / maxVelocity / 3600 * 0.25
-            if maxCourant <= 0.5:
-                Logger.Warning(_('The maximum Courant number is %(mc)f, which is greater than 0.25 and less than or equal to 0.5. The simulation may exhibit some instability. Please review the results carefully. To improve the chance that the simulation will be stable, we recommend you reduce the time step to %(mts)g or less, so that the maximum Courant number is less than or equal to 0.25.') % {'mc': maxCourant, 'mts': maxTimeStep})
-            else:
-                Logger.Warning(_('The maximum Courant number is %(mc)f, which is greater than 0.5. The simulation is likely to be unstable. Please review the results carefully. To improve the chance that the simulation will be stable, we recommend you reduce the time step to %(mts)g or less, so that the maximum Courant number is less than or equal to 0.25.') % {'mc': maxCourant, 'mts': maxTimeStep})
-
-        # Create a temporary directory and write the arrays to it in
-        # binary format.
-
-        patchIDs = inMemoryConn.GetFieldValues('patch_geometry', 'VALUE')
-
-        tempDir = TemporaryDirectory()
-
-        try:
-            patchIDsArray = numpy.array(patchIDs)
-            patchIDsDataType = patchIDsArray.dtype.name
-            patchIDsFile = os.path.join(tempDir.Path, 'PatchIDs.bin')
-            patchIDsArray.tofile(patchIDsFile)
-
-            patchIDsImageDataType = patchIDsImage.dtype.name
-            patchIDsImageFile = os.path.join(tempDir.Path, 'PatchIDsImage.bin')
-            patchIDsImage.tofile(patchIDsImageFile)
-
-            patchCoverImageDataType = patchCoverImage.dtype.name
-            patchCoverImageFile = os.path.join(tempDir.Path, 'PatchCoverImage.bin')
-            patchCoverImage.tofile(patchCoverImageFile)
-
-            waterMaskImageDataType = waterMaskImage.dtype.name
-            waterMaskImageFile = os.path.join(tempDir.Path, 'waterMaskImage.bin')
-            waterMaskImage[Grid.numpy_equal_nan(waterMaskImage, waterMaskNoDataValue)] = 0
-            waterMaskImage.tofile(waterMaskImageFile)
-
-            uImagesDataType = uImages.dtype.name
-            uImagesFile = os.path.join(tempDir.Path, 'uImages.bin')
-            uImages.tofile(uImagesFile)
-
-            vImagesDataType = vImages.dtype.name
-            vImagesFile = os.path.join(tempDir.Path, 'vImages.bin')
-            vImages.tofile(vImagesFile)
-
-            uvIndexForTimestepArray = numpy.array(uvIndexForTimestep) + 1
-            uvIndexForTimestepDataType = uvIndexForTimestepArray.dtype.name
-            uvIndexForTimestepFile = os.path.join(tempDir.Path, 'UVIndexForTimestep.bin')
-            uvIndexForTimestepArray.tofile(uvIndexForTimestepFile)
-
-            # Execute RunLarvalDispersal2008.py to run the simulation.
-            # This script calls MATLAB functions. We prefer to call
-            # those functions directly right here but there is a
-            # continuing incompatibility between MATLAB DLLs and
-            # ArcGIS DLLs (they both try to load their own
-            # incompatible versions of xerces-c_2_7.dll) so we have to
-            # do it in a separate process.
-
-            y, x, t = uImages.shape
-            del uImages, vImages
-
-            dispersalMatrixFile = os.path.join(tempDir.Path, 'DispersalMatrix.bin')
-            densityImagesFile = os.path.join(tempDir.Path, 'DensityImages.bin')
-
-            from GeoEco.DataManagement.Processes import ChildProcess
-
-            ChildProcess.ExecuteProgram(ChildProcess.GetPythonExecutable(),
-                                        arguments=[os.path.join(os.path.dirname(__file__), 'RunLarvalDispersal2008.py'),
-                                                   repr(t),
-                                                   repr(y),
-                                                   repr(x),
-                                                   patchIDsFile,
-                                                   patchIDsDataType,
-                                                   patchIDsImageFile,
-                                                   patchIDsImageDataType,
-                                                   patchCoverImageFile,
-                                                   patchCoverImageDataType,
-                                                   waterMaskImageFile,
-                                                   waterMaskImageDataType,
-                                                   uImagesFile,
-                                                   uImagesDataType,
-                                                   vImagesFile,
-                                                   vImagesDataType,
-                                                   repr(cellSize),
-                                                   repr(simulationTimeStep * 3600.0),       # Convert from hours to seconds.
-                                                   repr(initialLarvaeDensity / 1000000.0),
-                                                   repr(summarizationPeriod),
-                                                   repr(diffusivity),
-                                                   uvIndexForTimestepFile,
-                                                   uvIndexForTimestepDataType,
-                                                   dispersalMatrixFile,
-                                                   densityImagesFile],
-                                        stdoutLogLevel='Info',
-                                        windowState='invisible',
-                                        maxRunTime=None)
-
-            # Read the output files.
-
-            dispersalMatrix = numpy.fromfile(dispersalMatrixFile, 'float32')
-            dispersalMatrix = dispersalMatrix.reshape(len(patchIDs), len(patchIDs), -1)    # -1 instructs numpy to infer the third dimension
-
-            densityImages = numpy.fromfile(densityImagesFile, 'float32')
-            densityImages = densityImages.reshape(patchIDsImage.shape[0], patchIDsImage.shape[1], -1)
-
-        finally:
-            del tempDir
-
-        # The DisperseLarvae function returns densities in particles
-        # per square meter. Convert to particles per square km.
-        #
-        # TODO: January 2016: Shouldn't this be divide by 1000000 not
-        # multiply by 1000000? If so, it just means the final are off
-        # by a factor of 10^12 (!!!) but are still correct relative to
-        # each other. I am not inclined to investigate this further,
-        # as the 2008 algorithm is obsolete and replaced by the 2012
-        # algorithm.
-
-        densityImages *= 1000000.0
-
-        # Mask cells that are land and that have a density that is
-        # below the threshold.
-
-        densityImages[waterMaskImage == 0, :] = 0
-        if densityRasterCutoff is not None:
-            densityImages[densityImages < initialLarvaeDensity * densityRasterCutoff / 100.0] = 0
-
-        # Create the output personal geodatabase in the output
-        # directory.
-
-        gp = GeoprocessorManager.GetWrappedGeoprocessor()
-
-        outputGDB = os.path.join(outputDirectory, 'ConnectivityGeodatabase.mdb')
-        if gp.Exists(outputGDB):
-            if not overwriteExisting:
-                Logger.RaiseException(ValueError(_('The output geodatabase %s already exists. Please delete it or specify that existing outputs should be overwritten and try again.') % outputGDB))
-            gp.Delete_management(outputGDB)
-
-        gp.CreatePersonalGDB_management(outputDirectory, 'ConnectivityGeodatabase.mdb')
-
-        # Create the edge list feature class.
-
-        gp.CreateFeatureclass_management(outputGDB, 'Edges', 'POLYLINE', None, 'DISABLED', 'DISABLED', gp.CreateSpatialReference_management(describePatchIDsRaster.SpatialReference).getOutput(0).split(';')[0])
-        gp.AddField_management(os.path.join(outputGDB, 'Edges'), 'FromPatchID', 'LONG')
-        gp.AddField_management(os.path.join(outputGDB, 'Edges'), 'ToPatchID', 'LONG')
-        gp.AddField_management(os.path.join(outputGDB, 'Edges'), 'MaxDispersal', 'FLOAT')
-
-        # Populate the edge list feature class.
-
-        maxDispersal = dispersalMatrix[:,:,1:].max(2)
-        for fromPatch in range(len(patchIDs)):
-            for toPatch in range(len(patchIDs)):
-                if fromPatch != toPatch:
-                    maxDispersal[fromPatch, toPatch] /= dispersalMatrix[fromPatch, fromPatch, 0]
-                else:
-                    maxDispersal[fromPatch, toPatch] = 0
-
-        nonZeroEdges = sum(sum(maxDispersal > 0.0001))
-        xCentroids = inMemoryConn.GetFieldValues('patch_geometry', 'XCENTROID')
-        yCentroids = inMemoryConn.GetFieldValues('patch_geometry', 'YCENTROID')
-        shapeFieldName = gp.Describe(os.path.join(outputGDB, 'Edges')).ShapeFieldName
-
-        if nonZeroEdges > 0:
-            Logger.Info(_('Writing %i edges to the edge list in the output geodatabase...') % nonZeroEdges)
-            cur = arcGISConn.OpenInsertCursor(os.path.join(outputGDB, 'Edges'), rowCount=nonZeroEdges)
-            for fromPatch in range(len(patchIDs)):
-                for toPatch in range(len(patchIDs)):
-                    if maxDispersal[fromPatch, toPatch] > 0.0001:
-                        point = gp.CreateObject('Point')
-                        line = gp.CreateObject('Array')
-                        point.X = xCentroids[fromPatch]
-                        point.Y = yCentroids[fromPatch]
-                        line.Add(point)
-                        point.X = xCentroids[toPatch]
-                        point.Y = yCentroids[toPatch]
-                        line.Add(point)
-                        cur.SetValue(shapeFieldName, line)
-                        cur.SetValue('FromPatchID', patchIDs[fromPatch])
-                        cur.SetValue('ToPatchID', patchIDs[toPatch])
-                        cur.SetValue('MaxDispersal', float(maxDispersal[fromPatch, toPatch]))        # Must convert from numpy float to Python float
-                        cur.InsertRow()
-        else:
-            Logger.Warning(_('The edge list in the output geodatabase will be empty because none of the patches are connected.'))
-
-        # Create the DensityRasters subdirectory, if it does not
-        # already exist.
-        
-        if not Directory.Exists(os.path.join(outputDirectory, 'DensityRasters'))[0]:
-            Directory.Create(os.path.join(outputDirectory, 'DensityRasters'))
-
-        # If the directory already exists and the caller requested
-        # that we overwrite existing outputs, delete any existing
-        # density rasters.
-
-        elif overwriteExisting:
-            oldLogInfoAsDebug = Logger.GetLogInfoAsDebug()
-            Logger.SetLogInfoAsDebug(True)
-            try:
-                ArcGISRaster2.FindAndDelete(os.path.join(outputDirectory, 'DensityRasters'), '*')
-            finally:
-                Logger.SetLogInfoAsDebug(oldLogInfoAsDebug)
-
-        # Create the density rasters in the subdirectory.
-
-        coordinateSystem = gp.CreateSpatialReference_management(describePatchIDsRaster.SpatialReference).getOutput(0).split(';')[0]
-
-        Logger.Info(_('Writing %i density rasters to the output directory...') % densityImages.shape[2])
-        progressReporter = ProgressReporter(progressMessage1=_('Still writing density rasters: %(elapsed)s elapsed, %(opsCompleted)i rasters written, %(perOp)s per raster, %(opsRemaining)i remaining, estimated completion time: %(etc)s.'),
-                                            completionMessage=_('Finished writing density rasters: %(elapsed)s elapsed, %(opsCompleted)i rasters written, %(perOp)s per raster.'))
-        progressReporter.Start(densityImages.shape[2])
-
-        for i in range(densityImages.shape[2]):
-            oldLogInfoAsDebug = Logger.GetLogInfoAsDebug()
-            Logger.SetLogInfoAsDebug(True)
-            try:
-                ArcGISRaster2.FromNumpyArray(densityImages[:,:,i].copy(),    # Copy is currently needed because the current implementation of ArcGISRaster2.FromNumpyArray requires the array to be in C order.
-                                             os.path.join(outputDirectory, 'DensityRasters', (startDate + datetime.timedelta(seconds=simulationTimeStep*3600.0*summarizationPeriod*i)).strftime('d%Y%j%H%M.img')),
-                                             EnvelopeTypeMetadata.ParseFromArcGISString(describePatchIDsRaster.Extent)[0],
-                                             EnvelopeTypeMetadata.ParseFromArcGISString(describePatchIDsRaster.Extent)[1],
-                                             cellSize,
-                                             nodataValue=0,
-                                             coordinateSystem=coordinateSystem,
-                                             buildPyramids=densityImages.shape[0] > 1024 or densityImages.shape[2] > 1024,
-                                             overwriteExisting=overwriteExisting)
-            finally:
-                Logger.SetLogInfoAsDebug(oldLogInfoAsDebug)
-
-            progressReporter.ReportProgress()
-
-        # Return successfully.
-
-        return outputDirectory
-
-    @classmethod
-    def _PrepareToRunSimulation(cls, simulationDirectory, duration, simulationTimeStep, startDate):
-
-        # Parse and validate the Simulation.ini file.
-
-        if not os.path.isfile(os.path.join(simulationDirectory, 'Simulation.ini')):
-            Logger.RaiseException(ValueError(_('The directory %(dir)s does not appear to be a properly-initialized larval dispersal simulation directory: it does not contain a file called Simulation.ini. Please create a simulation directory using the Create Larval Dispersal Simulation tool and try again.') % {'dir': simulationDirectory}))
-
-        scp = ConfigParser()
-        f = open(os.path.join(simulationDirectory, 'Simulation.ini'), 'r')
-        try:
-            try: 
-                scp.readfp(f, os.path.join(simulationDirectory, 'Simulation.ini'))
-            except:
-                Logger.LogExceptionAsError(_('The directory %(dir)s does not appear to be a properly-initialized larval dispersal simulation directory: the file Simulation.ini in that directory could not be parsed. Please create a simulation directory using the Create Larval Dispersal Simulation tool and try again.') % {'dir': simulationDirectory})
-                raise
-        finally:
-            try:
-                f.close()
-            except:
-                pass
-
-        try:
-            crosses180 = scp.getboolean('Simulation', 'Crosses180')
-        except:
-            Logger.LogExceptionAsError(_('The directory %(dir)s does not appear to be a properly-initialized larval dispersal simulation directory: failed to parse a boolean option named Crosses180 from the file Simulation.ini in that directory. Please create a simulation directory using the Create Larval Dispersal Simulation tool and try again.') % {'dir': simulationDirectory})
-            raise
-
-        try:
-            currentsLoaded = scp.getboolean('Simulation', 'CurrentsLoaded')
-        except:
-            Logger.LogExceptionAsError(_('The directory %(dir)s does not appear to be a properly-initialized larval dispersal simulation directory: failed to parse a boolean option named CurrentsLoaded from the file Simulation.ini in that directory. Please create a simulation directory using the Create Larval Dispersal Simulation tool and try again.') % {'dir': simulationDirectory})
-            raise
-        if not currentsLoaded:
-            Logger.RaiseException(ValueError(_('The larval dispersal simulation in directory %(dir)s does not contain any ocean currents data. Please load ocean currents into it using a tool designed for this purpose, and try again.') % {'dir': simulationDirectory}))
-
-        try:
-            currentsProduct = str(scp.get('Simulation', 'CurrentsProduct'))
-        except:
-            Logger.LogExceptionAsError(_('The directory %(dir)s does not appear to be a properly-initialized larval dispersal simulation directory: failed to parse a string option named CurrentsProduct from the file Simulation.ini in that directory. Please create a simulation directory using the Create Larval Dispersal Simulation tool, load ocean currents into it using a tool designed for this purpose, and try again.') % {'dir': simulationDirectory})
-            raise
-
-        try:
-            currentsDateType = str(scp.get('Simulation', 'CurrentsDateType'))
-        except:
-            Logger.LogExceptionAsError(_('The directory %(dir)s does not appear to be a properly-initialized larval dispersal simulation directory: failed to parse a string option named CurrentsProduct from the file Simulation.ini in that directory. Please create a simulation directory using the Create Larval Dispersal Simulation tool, load ocean currents into it using a tool designed for this purpose, and try again.') % {'dir': simulationDirectory})
-            raise
-        if currentsDateType.lower() not in ['center']:
-            Logger.RaiseException(ValueError(_('The directory %(dir)s does not appear to be a properly-initialized larval dispersal simulation directory: the CurrentsDataType option in the Simulation.ini file has the unknown value %(val)s. Please create a simulation directory using the Create Larval Dispersal Simulation tool, load ocean currents into it using a tool designed for this purpose, and try again.') % {'dir': simulationDirectory, 'val': currentsDateType}))
-
-        try:
-            maxSecondsBetweenCurrentsImages = scp.getint('Simulation', 'MaxSecondsBetweenCurrentsImages')
-        except:
-            Logger.LogExceptionAsError(_('The directory %(dir)s does not appear to be a properly-initialized larval dispersal simulation directory: failed to parse an integer option named MaxSecondsBetweenCurrentsImages from the file Simulation.ini in that directory. Please create a simulation directory using the Create Larval Dispersal Simulation tool, load ocean currents into it using a tool designed for this purpose, and try again.') % {'dir': simulationDirectory})
-            raise
-        if maxSecondsBetweenCurrentsImages <= 0:
-            Logger.RaiseException(ValueError(_('The directory %(dir)s does not appear to be a properly-initialized larval dispersal simulation directory: the MaxSecondsBetweenCurrentsImages option in the Simulation.ini file is less than or equal to zero. It must be greater than zero. Please create a simulation directory using the Create Larval Dispersal Simulation tool, load ocean currents into it using a tool designed for this purpose, and try again.') % {'dir': simulationDirectory}))
-
-        # Validate other input parameters.
-
-        if duration - simulationTimeStep/24 <= 0:
-            Logger.RaiseException(ValueError(_('The time step must be shorter than or equal to the simulation duration.')))
-
-        # Build lists of the currents rasters that are loaded into the
-        # simulation, and validate that we have currents for the start
-        # date and duration specified by the caller.
-
-        uRasters = glob.glob(os.path.join(simulationDirectory, 'Currents', '', '*', 'u[0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9].img'))
-        uRasters.sort()
-        vRasters = glob.glob(os.path.join(simulationDirectory, 'Currents', 'v', '*', 'v[0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9].img'))
-        vRasters.sort()
-
-        if len(uRasters) <= 0:
-            Logger.RaiseException(ValueError(_('The larval dispersal simulation in directory %(dir)s does not contain any ocean currents data. Please load ocean currents into it using a tool designed for this purpose, and try again.') % {'dir': simulationDirectory}))
-        if len(uRasters) != len(vRasters):
-            Logger.RaiseException(ValueError(_('The ocean currents data in the larval dispersal simulation in directory %(dir)s appears to be incompletely loaded. The number of "" rasters does not equal the number of "v" rasters, indicating that the load operation did not complete successfully. Please try loading ocean currents again, and then try to run the simulation.') % {'dir': simulationDirectory}))
-
-        rasterDates = []
-
-        for i in range(len(uRasters)):
-            uRasterName = os.path.basename(uRasters[i])
-            if uRasterName[1:] != os.path.basename(vRasters[i])[1:]:
-                Logger.RaiseException(ValueError(_('The ocean currents data in the larval dispersal simulation in directory %(dir)s appears to be incompletely loaded. The "" raster %(r1)s could not be matched up with a "v" raster with the same date (the next available "v" raster is %(r2)s). Please try loading ocean currents again, and then try to run the simulation.') % {'dir': simulationDirectory, 'r1': uRasters[i], 'r2': vRasters[i]}))
-            rasterDates.append(datetime.datetime(int(uRasterName[1:5]), 1, 1) + datetime.timedelta(days=int(uRasterName[5:8]) - 1, hours=int(uRasterName[8:10]), minutes=int(uRasterName[10:12])))
-
-        if currentsDateType.lower() == 'center':
-            currentsDateStartDelta = datetime.timedelta(seconds=maxSecondsBetweenCurrentsImages / 2)
-            currentsDateEndDelta = datetime.timedelta(seconds=maxSecondsBetweenCurrentsImages / 2)
-        else:
-            Logger.RaiseException(NotImplementedError(_('This tool does not currently support a CurrentsDateType of "%(type)s". Please contact the author of this tool for assistance.') % {'type': currentsDateType}))
-
-        if startDate < rasterDates[0] - currentsDateStartDelta:
-            Logger.RaiseException(ValueError(_('The start date of the simulation (%(start)s) occurs too far before the date of the first ocean currents image (%(date)s) that is loaded in the larval dispersal simulation in directory %(dir)s. To fix this problem, either move the start date forward or load some older ocean currents data into the simulation, so that the start date matches up with the currents data.') % {'dir': simulationDirectory, 'start': str(startDate), 'date': str(rasterDates[0])}))
-
-        if startDate > rasterDates[-1] + currentsDateEndDelta:
-            Logger.RaiseException(ValueError(_('The start date of the simulation (%(start)s) occurs too far after the date of the last ocean currents image (%(date)s) that is loaded in the larval dispersal simulation in directory %(dir)s. To fix this problem, either move the start date backward or load some more recent ocean currents data into the simulation, so that the start date matches up with the currents data.') % {'dir': simulationDirectory, 'start': str(startDate), 'date': str(rasterDates[-1])}))
-
-        endDate = startDate + datetime.timedelta(days=duration)
-
-        if endDate > rasterDates[-1] + currentsDateEndDelta:
-            Logger.RaiseException(ValueError(_('The end date of the simulation (%(end)s) occurs too far after the date of the last ocean currents image (%(date)s) that is loaded in the larval dispersal simulation in directory %(dir)s. To fix this problem, either move the start date backward, reduce the duration of the simulation, or load some more recent ocean currents data into the simulation, so that the end date matches up with the currents data.') % {'dir': simulationDirectory, 'end': str(endDate), 'date': str(rasterDates[-1])}))
-
-        startRasterIndex = 0
-        while startDate > rasterDates[startRasterIndex] + currentsDateEndDelta:
-            startRasterIndex += 1
-
-        endRasterIndex = startRasterIndex
-        while endDate > rasterDates[endRasterIndex] + currentsDateEndDelta:
-            endRasterIndex += 1
-            if rasterDates[endRasterIndex] - rasterDates[endRasterIndex-1] > datetime.timedelta(seconds=maxSecondsBetweenCurrentsImages):
-                Logger.RaiseException(ValueError(_('The ocean currents data that is loaded in the larval dispersal simulation in directory %(dir)s has a data gap in the range of dates between the simulation start date (%(start)s) and end date (%(end)s). A gap of %(gap)s occurs between %(d1)s and %(d2)s, which is larger than the maximum time permitted between images (%(max)s) for %(prod)s data. To fix this problem, either adjust the start date or duration, or load ocean currents data into the simulation that fills the gap.') % {'dir': simulationDirectory, 'start': str(startDate), 'end': str(endDate), 'gap': str(rasterDates[endRasterIndex] - rasterDates[endRasterIndex-1]), 'd1': rasterDates[endRasterIndex-1], 'd2': rasterDates[endRasterIndex], 'max': datetime.timedelta(seconds=maxSecondsBetweenCurrentsImages), 'prod': currentsProduct}))
-
-        # Read the patch rasters into 2D numpy arrays.
-
-        Logger.Info(_('Reading habitat patch data...'))
-
-        patchIDsImage, patchIDsNoDataValue = ArcGISRaster2.ToNumpyArray(os.path.join(simulationDirectory, 'PatchData', 'patch_ids'))
-        patchIDsNoDataValue = int(patchIDsNoDataValue)
-        patchCoverImage = ArcGISRaster2.ToNumpyArray(os.path.join(simulationDirectory, 'PatchData', 'patch_areas'))[0]
-        waterMaskImage, waterMaskNoDataValue = ArcGISRaster2.ToNumpyArray(os.path.join(simulationDirectory, 'PatchData', 'water_mask'))
-
-        # Read the ocean currents into parallel lists of 2D numpy
-        # arrays.
-
-        import numpy
-
-        imagesToRead = (endRasterIndex - startRasterIndex + 1) * 2
-        Logger.Info(_('Reading %i ocean currents images...') % imagesToRead)
-        progressReporter = ProgressReporter(progressMessage1=_('Still reading: %(elapsed)s elapsed, %(opsCompleted)i images read, %(perOp)s per image, %(opsRemaining)i remaining, estimated completion time: %(etc)s.'),
-                                            completionMessage=_('Finished reading: %(elapsed)s elapsed, %(opsCompleted)i images read, %(perOp)s per image.'))
-        progressReporter.Start(imagesToRead)
-
-        uImageList = []
-        vImageList = []
-        uvDateList = []
-
-        i = startRasterIndex
-        while i >= startRasterIndex and i <= endRasterIndex:
-            imageDate = rasterDates[i]
-            uvDateList.append(imageDate)
-            
-            image, noDataValue = ArcGISRaster2.ToNumpyArray(os.path.join(simulationDirectory, 'Currents', '', str(imageDate.year), imageDate.strftime('u%Y%j%H%M.img')))
-            image[Grid.numpy_equal_nan(image, noDataValue)] = numpy.nan
-            uImageList.append(image)
-            progressReporter.ReportProgress()
-            
-            image, noDataValue = ArcGISRaster2.ToNumpyArray(os.path.join(simulationDirectory, 'Currents', 'v', str(imageDate.year), imageDate.strftime('v%Y%j%H%M.img')))
-            image[Grid.numpy_equal_nan(image, noDataValue)] = numpy.nan
-            vImageList.append(image)
-            progressReporter.ReportProgress()
-            
-            i += 1
-
-        # Stack the numpy arrays into two 3D arrays that we will pass
-        # to the MATLAB function.
-        #
-        # Note that with numpy, it appears that 2D arrays are
-        # traditionally indexed [y,x] but that 3D arrays are [y,x,t].
-        # This is what is output by numpy's dstack function. This is
-        # kind of screwy, because when you print a 3D numpy array, it
-        # looks much better if ordered [t,y,x] than [y,x,t]. But
-        # MATLAB was the inspiration for numpy and [y,x,t] is
-        # traditional in MATLAB as well. Finally, Eric Treml's
-        # original MATLAB code used [y,x,z].
-
-        uImages = numpy.dstack(tuple(uImageList))
-        del uImageList
-        
-        vImages = numpy.dstack(tuple(vImageList))
-        del vImageList
-
-        # Build a list that specifies the t index into the 3D arrays
-        # for each time step. Note that when we pass this list to
-        # MATLAB, we must increment all of the indices by 1, because
-        # MATLAB uses 1-based indexing (Python uses 0-based).
-
-        numTimeSteps = int(math.ceil(duration / (simulationTimeStep/24)))
-        uvIndexForTimestep = [0]
-        for i in range(1, numTimeSteps):
-            if startDate + datetime.timedelta(hours=simulationTimeStep*i) <= uvDateList[uvIndexForTimestep[-1]] + currentsDateEndDelta:
-                uvIndexForTimestep.append(uvIndexForTimestep[-1])
-            else:
-                uvIndexForTimestep.append(uvIndexForTimestep[-1] + 1)
-
-        # Look up the cell size of the rasters.
-
-        gp = GeoprocessorManager.GetWrappedGeoprocessor()
-        describePatchIDsRaster = gp.Describe(os.path.join(simulationDirectory, 'PatchData', 'patch_ids'))
-        cellSize = describePatchIDsRaster.MeanCellWidth
-
-        # Return successfully.
-
-        return describePatchIDsRaster, patchIDsImage, patchCoverImage, waterMaskImage, waterMaskNoDataValue, uImages, vImages, uvIndexForTimestep, cellSize, maxSecondsBetweenCurrentsImages, uvDateList[0] - currentsDateStartDelta
 
     @classmethod
     def RunSimulation2012(cls, simulationDirectory, resultsDirectory, startDate, duration, simulationTimeStep=1.0, summarizationPeriod=24, a=None, b=None, settlementRate=0.80, useSensoryZone=False, sourcePatchIDs=None, destPatchIDs=None, excludePatchIDs=None, diffusivity=50.0, overwriteExisting=False):
@@ -744,7 +309,8 @@ class LarvalDispersal(object):
             Logger.RaiseException(ValueError(_('At least one patch appears in both the list of Patches That Larvae Can Settle On and the list of Excluded Patches. This is not allowed. Please edit the lists so that the following patches only appear in list one or the other: %(IDs)s') % {'IDs': ', '.join([str(patchID) for patchID in set(destPatchIDs).intersection(set(excludePatchIDs))])}))
 
         table = ArcGISTable(os.path.join(simulationDirectory, 'PatchData', 'patch_geometry.dbf'))
-        patchIDs = table.Query(fields=['VALUE'], orderBy='VALUE ASC', reportProgress=False)['VALUE']
+        patchIDs = table.Query(fields=['VALUE'], reportProgress=False)['VALUE']
+        patchIDs.sort()
 
         if len(patchIDs) <= 0:
             Logger.RaiseException(ValueError(_('The patch data in simulation directory %(dir)s does not contain any patches. Please recreate the simulation using input rasters that contain at least one patch.') % {'dir': simulationDirectory}))
@@ -792,114 +358,304 @@ class LarvalDispersal(object):
 
         waterMaskImage[Grid.numpy_equal_nan(waterMaskImage, waterMaskNoDataValue)] = 0
 
-        # Create a temporary directory and write the arrays and other
-        # parameters to a pickle file.
+        # Start MATLAB and run the simulation. Because the simulation is
+        # likely to run for a long time and require a lot of memory, we start
+        # our own MatlabWorkerProcess and ensure it exits when we are done,
+        # rather than using SharedMatlabWorkerProcess, which might stick
+        # around and hold memory that is no longer needed.
 
         import numpy
 
-        tempDir = TemporaryDirectory()
+        Logger.Info('Preparing to run the larval dispersal simulation.')
 
+        with MatlabWorkerProcess() as matlab:
+            (competencyCurve, 
+             dispersalMatrix, 
+             settledDensityMatrix, 
+             suspendedDensityMatrix, 
+             metadata) = matlab.DisperseLarvae2012(    # Note: it seems we can't use keyword arguments below (except nargout)
+                'A',
+                startDate,
+                duration,
+                simulationTimeStep / 24.,    # Convert from hours to days
+                summarizationPeriod,
+                a,
+                b,
+                settlementRate,
+                useSensoryZone,
+                diffusivity,
+                numpy.array(sourcePatchIDs, dtype="uint16"),
+                numpy.array(destPatchIDs, dtype="uint16"),
+                numpy.array(patchIDsImage, dtype="uint16"),
+                patchCoverImage,
+                waterMaskImage,
+                cellSize,
+                uImages,
+                vImages,
+                numpy.array([]),
+                numpy.array([]),
+                currentsStartDate,
+                maxSecondsBetweenCurrentsImages / 86400.,    # Convert from seconds to days
+                nargout=5     # This is a required keyword argument; if we omit it, only the first output will be returned.
+            )
+
+        # MATLAB returns some things as 2D arrays that should actually have
+        # fewer dimensions. Flatten them.
+
+        competencyCurve = competencyCurve.flatten()
+
+        for key in metadata:
+            if isinstance(metadata[key], numpy.ndarray):
+                metadata[key] = metadata[key].flatten().tolist()
+
+        # The MATLAB code that produces the competencyCurve creates that array
+        # starting at t=1, i.e. after one time step has elapsed. Prepend an
+        # element for t=0, when the larvae have just been released. If
+        # competency is 1 at t=1, it indicates that compentency was not used
+        # for the simulation. In this case, use 1 for t=0. Otherwise
+        # (if competency was used), use 0 for t=0.
+
+        if competencyCurve[0] == 1:
+            competencyCurve = numpy.insert(competencyCurve, 0, 1)
+        else:
+            competencyCurve = numpy.insert(competencyCurve, 0, 0)
+
+        # Write the Parameters.ini file.
+
+        scp = ConfigParser()
+        scp.add_section('Parameters')
+        scp.add_section('Results')
+
+        for key in sorted(metadata.keys()):
+            section = 'Parameters' if key in ['cellSize', 'competencyGammaA', 'competencyGammaB', 'currentsTimeStep', 'destIDs', 'diffusivity', 'releaseDate', 'releaseModel', 'settlementRate', 'simulationDuration', 'simulationTimeStep', 'sourceIDs', 'summarizationPeriod', 'useSensoryZone'] else 'Results'
+            value = repr(metadata[key]) if not isinstance(metadata[key], numpy.ndarray) else repr(metadata[key].flatten().tolist())
+            scp.set(section, key, value)
+
+        with open(parametersINIFile, 'w') as f:
+            scp.write(f)
+
+        # Write the competency plot.
+
+        figSize = (4., 2.5)
+        dpi = 1000.
+        fontSize = 10.
+
+        import numpy
+        import matplotlib
+        import matplotlib.pyplot as plt
+
+        matplotlib.rcParams.update({'font.size': fontSize})
+        
+        fig = plt.figure(figsize=figSize, dpi=dpi)
         try:
-            inputsFile = os.path.join(tempDir.Path, 'Outputs.pickle')
-            f = open(inputsFile, 'wb')
-            try:
-                pickle.dump([startDate,
-                             duration,
-                             simulationTimeStep / 24.0,      # Convert from hours to days
-                             summarizationPeriod,
-                             a,
-                             b,
-                             settlementRate,
-                             useSensoryZone,
-                             diffusivity,
-                             numpy.array(sourcePatchIDs),
-                             numpy.array(destPatchIDs),
-                             patchIDsImage,
-                             patchCoverImage,
-                             waterMaskImage,
-                             cellSize,
-                             uImages,
-                             vImages,
-                             currentsStartDate,
-                             maxSecondsBetweenCurrentsImages / 86400.],    # Convert from seconds to days
-                            f)
-            finally:
-                f.close()
-
-            # Execute RunLarvalDispersal2012.py to run the simulation.
-            # This script calls MATLAB functions. We prefer to call
-            # those functions directly right here but there is a
-            # continuing incompatibility between MATLAB DLLs and
-            # ArcGIS DLLs (they both try to load their own
-            # incompatible versions of xerces-c_2_7.dll) so we have to
-            # do it in a separate process.
-
-            from GeoEco.DataManagement.Processes import ChildProcess
-
-            ChildProcess.ExecuteProgram(ChildProcess.GetPythonExecutable(),
-                                        arguments=[os.path.join(os.path.dirname(__file__), 'RunLarvalDispersal2012.py'), inputsFile, resultsFile],
-                                        stdoutLogLevel='Info',
-                                        windowState='invisible',
-                                        maxRunTime=None)
-
-            # Read the output file.
-
-            f = open(resultsFile, 'rb')
-            try:
-                competencyCurve, dispersalMatrix, settledDensityMatrix, suspendedDensityMatrix, metadata = pickle.load(f)
-            finally:
-                f.close()
-
-            # Write the Parameters.ini file.
-
-            scp = ConfigParser()
-            scp.add_section('Parameters')
-            scp.add_section('Results')
-
-            for key in sorted(metadata.keys()):
-                if key in ['cellSize', 'competencyGammaA', 'competencyGammaB', 'currentsTimeStep', 'destIDs', 'diffusivity', 'releaseDate', 'releaseModel', 'settlementRate', 'simulationDuration', 'simulationTimeStep', 'sourceIDs', 'summarizationPeriod', 'useSensoryZone']:
-                    scp.set('Parameters', key, repr(metadata[key]))
-                else:
-                    scp.set('Results', key, repr(metadata[key]))
-
-            f = open(parametersINIFile, 'w')
-            try:
-                scp.write(f)
-            finally:
-                f.close()
-
-            # Write the competency plot.
-
-            figSize = (4., 2.5)
-            dpi = 1000.
-            fontSize = 10.
-
-            import numpy
-            import matplotlib
-            import matplotlib.pyplot as plt
-
-            matplotlib.rcParams.update({'font.size': fontSize})
-            
-            fig = plt.figure(figsize=figSize, dpi=dpi)
-            try:
-                ax = fig.add_subplot(111)
-                days = numpy.arange(len(competencyCurve)) * simulationTimeStep / 24
-                ax.plot(days, competencyCurve, 'k')
-                ax.set_xlabel('Elapsed time (days)')
-                ax.set_ylabel('Competency')
-                ax.set_ylim([-0.1,1.1])
-                ax.set_xlim([-1,max(days) + 1])
-                plt.tight_layout()
-                plt.savefig(competencyCurveFile, dpi=dpi)
-            finally:
-                plt.close(fig)
-
+            ax = fig.add_subplot(111)
+            days = numpy.arange(len(competencyCurve)) * simulationTimeStep / 24
+            ax.plot(days, competencyCurve, 'k')
+            ax.set_xlabel('Elapsed time (days)')
+            ax.set_ylabel('Competency')
+            ax.set_ylim([-0.03,1.03])
+            ax.set_xlim([0-max(days)*0.03,max(days)*1.03])
+            ax.grid(True, which='major', linewidth=0.3, alpha=0.25)
+            plt.tight_layout()
+            plt.savefig(competencyCurveFile, dpi=dpi)
         finally:
-            del tempDir
+            plt.close(fig)
+
+        # Write the results file.
+
+        with open(resultsFile, 'wb') as f:
+            pickle.dump([competencyCurve, dispersalMatrix, settledDensityMatrix, suspendedDensityMatrix, metadata], f)
 
         # Return successfully.
 
         return resultsDirectory
+
+    @classmethod
+    def _PrepareToRunSimulation(cls, simulationDirectory, duration, simulationTimeStep, startDate):
+
+        # Parse and validate the Simulation.ini file.
+
+        if not os.path.isfile(os.path.join(simulationDirectory, 'Simulation.ini')):
+            Logger.RaiseException(ValueError(_('The directory %(dir)s does not appear to be a properly-initialized larval dispersal simulation directory: it does not contain a file called Simulation.ini. Please create a simulation directory using the Create Larval Dispersal Simulation tool and try again.') % {'dir': simulationDirectory}))
+
+        scp = ConfigParser()
+
+        with open(os.path.join(simulationDirectory, 'Simulation.ini'), 'r') as f:
+            try: 
+                scp.read([os.path.join(simulationDirectory, 'Simulation.ini')])
+            except:
+                Logger.LogExceptionAsError(_('The directory %(dir)s does not appear to be a properly-initialized larval dispersal simulation directory: the file Simulation.ini in that directory could not be parsed. Please create a simulation directory using the Create Larval Dispersal Simulation tool and try again.') % {'dir': simulationDirectory})
+                raise
+
+            try:
+                crosses180 = scp.getboolean('Simulation', 'Crosses180')
+            except:
+                Logger.LogExceptionAsError(_('The directory %(dir)s does not appear to be a properly-initialized larval dispersal simulation directory: failed to parse a boolean option named Crosses180 from the file Simulation.ini in that directory. Please create a simulation directory using the Create Larval Dispersal Simulation tool and try again.') % {'dir': simulationDirectory})
+                raise
+
+            try:
+                currentsLoaded = scp.getboolean('Simulation', 'CurrentsLoaded')
+            except:
+                Logger.LogExceptionAsError(_('The directory %(dir)s does not appear to be a properly-initialized larval dispersal simulation directory: failed to parse a boolean option named CurrentsLoaded from the file Simulation.ini in that directory. Please create a simulation directory using the Create Larval Dispersal Simulation tool and try again.') % {'dir': simulationDirectory})
+                raise
+            if not currentsLoaded:
+                Logger.RaiseException(ValueError(_('The larval dispersal simulation in directory %(dir)s does not contain any ocean currents data. Please load ocean currents into it using a tool designed for this purpose, and try again.') % {'dir': simulationDirectory}))
+
+            try:
+                currentsProduct = str(scp.get('Simulation', 'CurrentsProduct'))
+            except:
+                Logger.LogExceptionAsError(_('The directory %(dir)s does not appear to be a properly-initialized larval dispersal simulation directory: failed to parse a string option named CurrentsProduct from the file Simulation.ini in that directory. Please create a simulation directory using the Create Larval Dispersal Simulation tool, load ocean currents into it using a tool designed for this purpose, and try again.') % {'dir': simulationDirectory})
+                raise
+
+            try:
+                currentsDateType = str(scp.get('Simulation', 'CurrentsDateType'))
+            except:
+                Logger.LogExceptionAsError(_('The directory %(dir)s does not appear to be a properly-initialized larval dispersal simulation directory: failed to parse a string option named CurrentsProduct from the file Simulation.ini in that directory. Please create a simulation directory using the Create Larval Dispersal Simulation tool, load ocean currents into it using a tool designed for this purpose, and try again.') % {'dir': simulationDirectory})
+                raise
+            if currentsDateType.lower() not in ['center']:
+                Logger.RaiseException(ValueError(_('The directory %(dir)s does not appear to be a properly-initialized larval dispersal simulation directory: the CurrentsDataType option in the Simulation.ini file has the unknown value %(val)s. Please create a simulation directory using the Create Larval Dispersal Simulation tool, load ocean currents into it using a tool designed for this purpose, and try again.') % {'dir': simulationDirectory, 'val': currentsDateType}))
+
+            try:
+                maxSecondsBetweenCurrentsImages = scp.getfloat('Simulation', 'MaxSecondsBetweenCurrentsImages')
+            except:
+                Logger.LogExceptionAsError(_('The directory %(dir)s does not appear to be a properly-initialized larval dispersal simulation directory: failed to parse an integer option named MaxSecondsBetweenCurrentsImages from the file Simulation.ini in that directory. Please create a simulation directory using the Create Larval Dispersal Simulation tool, load ocean currents into it using a tool designed for this purpose, and try again.') % {'dir': simulationDirectory})
+                raise
+            if maxSecondsBetweenCurrentsImages <= 0:
+                Logger.RaiseException(ValueError(_('The directory %(dir)s does not appear to be a properly-initialized larval dispersal simulation directory: the MaxSecondsBetweenCurrentsImages option in the Simulation.ini file is less than or equal to zero. It must be greater than zero. Please create a simulation directory using the Create Larval Dispersal Simulation tool, load ocean currents into it using a tool designed for this purpose, and try again.') % {'dir': simulationDirectory}))
+
+        # Validate other input parameters.
+
+        if duration - simulationTimeStep/24 <= 0:
+            Logger.RaiseException(ValueError(_('The time step must be shorter than or equal to the simulation duration.')))
+
+        # Build lists of the currents rasters that are loaded into the
+        # simulation, and validate that we have currents for the start date
+        # and duration specified by the caller.
+
+        uRasters = glob.glob(os.path.join(simulationDirectory, 'Currents', 'u', '*', 'u[0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9]_[0-9][0-9][0-9][0-9].img'))
+        uRasters.sort()
+        vRasters = glob.glob(os.path.join(simulationDirectory, 'Currents', 'v', '*', 'v[0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9]_[0-9][0-9][0-9][0-9].img'))
+        vRasters.sort()
+
+        if len(uRasters) <= 0:
+            Logger.RaiseException(ValueError(_('The larval dispersal simulation in directory %(dir)s does not contain any ocean currents data. Please load ocean currents into it using a tool designed for this purpose, and try again.') % {'dir': simulationDirectory}))
+        if len(uRasters) != len(vRasters):
+            Logger.RaiseException(ValueError(_('The ocean currents data in the larval dispersal simulation in directory %(dir)s appears to be incompletely loaded. The number of "" rasters does not equal the number of "v" rasters, indicating that the load operation did not complete successfully. Please try loading ocean currents again, and then try to run the simulation.') % {'dir': simulationDirectory}))
+
+        rasterDates = []
+
+        for i in range(len(uRasters)):
+            uRasterName = os.path.basename(uRasters[i])
+            if uRasterName[1:] != os.path.basename(vRasters[i])[1:]:
+                Logger.RaiseException(ValueError(_('The ocean currents data in the larval dispersal simulation in directory %(dir)s appears to be incompletely loaded. The "" raster %(r1)s could not be matched up with a "v" raster with the same date (the next available "v" raster is %(r2)s). Please try loading ocean currents again, and then try to run the simulation.') % {'dir': simulationDirectory, 'r1': uRasters[i], 'r2': vRasters[i]}))
+            rasterDates.append(datetime.datetime(int(uRasterName[1:5]), int(uRasterName[5:7]), int(uRasterName[7:9]), int(uRasterName[10:12]), int(uRasterName[12:14]), 0))
+
+        if currentsDateType.lower() == 'center':
+            currentsDateStartDelta = datetime.timedelta(seconds=maxSecondsBetweenCurrentsImages / 2)
+            currentsDateEndDelta = datetime.timedelta(seconds=maxSecondsBetweenCurrentsImages / 2)
+        else:
+            Logger.RaiseException(NotImplementedError(_('This tool does not currently support a CurrentsDateType of "%(type)s". Please contact the author of this tool for assistance.') % {'type': currentsDateType}))
+
+        if startDate < rasterDates[0] - currentsDateStartDelta:
+            Logger.RaiseException(ValueError(_('The start date of the simulation (%(start)s) occurs too far before the date of the first ocean currents image (%(date)s) that is loaded in the larval dispersal simulation in directory %(dir)s. To fix this problem, either move the start date forward or load some older ocean currents data into the simulation, so that the start date matches up with the currents data.') % {'dir': simulationDirectory, 'start': str(startDate), 'date': str(rasterDates[0])}))
+
+        if startDate > rasterDates[-1] + currentsDateEndDelta:
+            Logger.RaiseException(ValueError(_('The start date of the simulation (%(start)s) occurs too far after the date of the last ocean currents image (%(date)s) that is loaded in the larval dispersal simulation in directory %(dir)s. To fix this problem, either move the start date backward or load some more recent ocean currents data into the simulation, so that the start date matches up with the currents data.') % {'dir': simulationDirectory, 'start': str(startDate), 'date': str(rasterDates[-1])}))
+
+        endDate = startDate + datetime.timedelta(days=duration)
+
+        if endDate > rasterDates[-1] + currentsDateEndDelta:
+            Logger.RaiseException(ValueError(_('The end date of the simulation (%(end)s) occurs too far after the date of the last ocean currents image (%(date)s) that is loaded in the larval dispersal simulation in directory %(dir)s. To fix this problem, either move the start date backward, reduce the duration of the simulation, or load some more recent ocean currents data into the simulation, so that the end date matches up with the currents data.') % {'dir': simulationDirectory, 'end': str(endDate), 'date': str(rasterDates[-1])}))
+
+        startRasterIndex = 0
+        while startDate > rasterDates[startRasterIndex] + currentsDateEndDelta:
+            startRasterIndex += 1
+
+        endRasterIndex = startRasterIndex
+        while endDate > rasterDates[endRasterIndex] + currentsDateEndDelta:
+            endRasterIndex += 1
+            if rasterDates[endRasterIndex] - rasterDates[endRasterIndex-1] > datetime.timedelta(seconds=maxSecondsBetweenCurrentsImages):
+                Logger.RaiseException(ValueError(_('The ocean currents data that is loaded in the larval dispersal simulation in directory %(dir)s has a data gap in the range of dates between the simulation start date (%(start)s) and end date (%(end)s). A gap of %(gap)s occurs between %(d1)s and %(d2)s, which is larger than the maximum time permitted between images (%(max)s) for %(prod)s data. To fix this problem, either adjust the start date or duration, or load ocean currents data into the simulation that fills the gap.') % {'dir': simulationDirectory, 'start': str(startDate), 'end': str(endDate), 'gap': str(rasterDates[endRasterIndex] - rasterDates[endRasterIndex-1]), 'd1': rasterDates[endRasterIndex-1], 'd2': rasterDates[endRasterIndex], 'max': datetime.timedelta(seconds=maxSecondsBetweenCurrentsImages), 'prod': currentsProduct}))
+
+        # Read the patch rasters into 2D numpy arrays.
+
+        Logger.Info(_('Reading habitat patch data...'))
+
+        patchIDsImage, patchIDsNoDataValue = ArcGISRaster2.ToNumpyArray(os.path.join(simulationDirectory, 'PatchData', 'patch_ids.img'))
+        patchIDsNoDataValue = int(patchIDsNoDataValue)
+        patchCoverImage = ArcGISRaster2.ToNumpyArray(os.path.join(simulationDirectory, 'PatchData', 'patch_areas.img'))[0]
+        waterMaskImage, waterMaskNoDataValue = ArcGISRaster2.ToNumpyArray(os.path.join(simulationDirectory, 'PatchData', 'water_mask.img'))
+
+        # Read the ocean currents into parallel lists of 2D numpy arrays.
+
+        import numpy
+
+        imagesToRead = (endRasterIndex - startRasterIndex + 1) * 2
+        Logger.Info(_('Reading %i ocean currents images...') % imagesToRead)
+        progressReporter = ProgressReporter(progressMessage1=_('Still reading: %(elapsed)s elapsed, %(opsCompleted)i images read, %(perOp)s per image, %(opsRemaining)i remaining, estimated completion time: %(etc)s.'),
+                                            completionMessage=_('Finished reading: %(elapsed)s elapsed, %(opsCompleted)i images read, %(perOp)s per image.'))
+        progressReporter.Start(imagesToRead)
+
+        uImageList = []
+        vImageList = []
+        uvDateList = []
+
+        i = startRasterIndex
+        while i >= startRasterIndex and i <= endRasterIndex:
+            imageDate = rasterDates[i]
+            uvDateList.append(imageDate)
+            
+            image, noDataValue = ArcGISRaster2.ToNumpyArray(os.path.join(simulationDirectory, 'Currents', 'u', str(imageDate.year), imageDate.strftime('u%Y%m%d_%H%M.img')))
+            image[Grid.numpy_equal_nan(image, noDataValue)] = numpy.nan
+            uImageList.append(image)
+            progressReporter.ReportProgress()
+            
+            image, noDataValue = ArcGISRaster2.ToNumpyArray(os.path.join(simulationDirectory, 'Currents', 'v', str(imageDate.year), imageDate.strftime('v%Y%m%d_%H%M.img')))
+            image[Grid.numpy_equal_nan(image, noDataValue)] = numpy.nan
+            vImageList.append(image)
+            progressReporter.ReportProgress()
+            
+            i += 1
+
+        # Stack the numpy arrays into two 3D arrays that we will pass to the
+        # MATLAB function.
+        #
+        # Note that with numpy, it appears that 2D arrays are traditionally
+        # indexed [y,x] but that 3D arrays are [y,x,t]. This is what is
+        # output by numpy's dstack function. This is kind of screwy, because
+        # when you print a 3D numpy array, it looks much better if ordered
+        # [t,y,x] than [y,x,t]. But MATLAB was the inspiration for numpy and
+        # [y,x,t] is traditional in MATLAB as well. Finally, Eric Treml's
+        # original MATLAB code used [y,x,z].
+
+        uImages = numpy.dstack(tuple(uImageList))
+        del uImageList
+        
+        vImages = numpy.dstack(tuple(vImageList))
+        del vImageList
+
+        # Build a list that specifies the t index into the 3D arrays for each
+        # time step. Note that when we pass this list to MATLAB, we must
+        # increment all of the indices by 1, because MATLAB uses 1-based
+        # indexing (Python uses 0-based).
+
+        numTimeSteps = int(math.ceil(duration / (simulationTimeStep/24)))
+        uvIndexForTimestep = [0]
+        for i in range(1, numTimeSteps):
+            if startDate + datetime.timedelta(hours=simulationTimeStep*i) <= uvDateList[uvIndexForTimestep[-1]] + currentsDateEndDelta:
+                uvIndexForTimestep.append(uvIndexForTimestep[-1])
+            else:
+                uvIndexForTimestep.append(uvIndexForTimestep[-1] + 1)
+
+        # Look up the cell size of the rasters.
+
+        gp = GeoprocessorManager.GetWrappedGeoprocessor()
+        describePatchIDsRaster = gp.Describe(os.path.join(simulationDirectory, 'PatchData', 'patch_ids.img'))
+        cellSize = describePatchIDsRaster.MeanCellWidth
+
+        # Return successfully.
+
+        return describePatchIDsRaster, patchIDsImage, patchCoverImage, waterMaskImage, waterMaskNoDataValue, uImages, vImages, uvIndexForTimestep, cellSize, maxSecondsBetweenCurrentsImages, uvDateList[0] - currentsDateStartDelta
 
     @classmethod
     def VisualizeResults2012(cls, simulationDirectory, resultsDirectory, outputGDBName, mortalityRate=None, mortalityMethod='A', createDensityRasters=True, minimumDensity=0.00001, useCompetencyForDensityRasters=False, createConnectionsFeatureClass=True, minimumDispersal=0.00001, minimumDispersalType='Quantity', overwriteExisting=False):
@@ -915,18 +671,15 @@ class LarvalDispersal(object):
         if not os.path.isfile(resultsFile):
             raise ValueError(_('The file Results.pickle does not exist in the results directory "%(dir)s". Did you run the simulation yet?') % {'dir': resultsDirectory})
 
-        if not outputGDBName.lower().endswith('.mdb') and not outputGDBName.lower().endswith('.gdb'):
+        if not outputGDBName.lower().endswith('.gdb'):
             outputGDBName = outputGDBName + '.gdb'
 
         # Read the Results.pickle.
 
         Logger.Info(_('Reading the simulation results from %s.') % resultsFile)
 
-        f = open(resultsFile, 'rb')
-        try:
+        with open(resultsFile, 'rb') as f:
             competencyCurve, dispersalMatrix, settledDensityMatrix, suspendedDensityMatrix, metadata = pickle.load(f)
-        finally:
-            f.close()
 
         # If the caller provided a mortality rate, compute the fraction of
         # larvae that will be alive at each summarization step of the
@@ -957,8 +710,9 @@ class LarvalDispersal(object):
                 ax.plot(days, fractionAlive, 'k')
                 ax.set_xlabel('Elapsed time (days)')
                 ax.set_ylabel('Proportion Surviving')
-                ax.set_ylim([-0.1,1.1])
-                ax.set_xlim([-1,max(days) + 1])
+                ax.set_ylim([-0.03,1.03])
+                ax.set_xlim([0-max(days)*0.03,max(days)*1.03])
+                ax.grid(True, which='major', linewidth=0.3, alpha=0.25)
                 plt.tight_layout()
                 plt.savefig(outputPNG, dpi=dpi)
             finally:
@@ -979,8 +733,9 @@ class LarvalDispersal(object):
                     ax.plot(days, survivingAndCompetent, 'k')
                     ax.set_xlabel('Elapsed time (days)')
                     ax.set_ylabel('Proportion Surviving\nand Competent')
-                    ax.set_ylim([-0.1,1.1])
-                    ax.set_xlim([-1,max(days) + 1])
+                    ax.set_ylim([-0.03,1.03])
+                    ax.set_xlim([0-max(days)*0.03,max(days)*1.03])
+                    ax.grid(True, which='major', linewidth=0.3, alpha=0.25)
                     plt.tight_layout()
                     plt.savefig(outputPNG, dpi=dpi)
                 finally:
@@ -998,16 +753,12 @@ class LarvalDispersal(object):
             gp.Delete_management(outputGDB)
 
         Logger.Info(_('Creating the output geodatabase %s.') % outputGDB)
-
-        if outputGDBName[-4:].lower() == '.mdb':
-            gp.CreatePersonalGDB_management(resultsDirectory, outputGDBName)
-        else:
-            gp.CreateFileGDB_management(resultsDirectory, outputGDBName)
+        gp.CreateFileGDB_management(resultsDirectory, outputGDBName)
 
         # Look up the properties of the patch IDs raster, so we can
         # use them when producing our outputs.
 
-        describePatchIDsRaster = gp.Describe(os.path.join(simulationDirectory, 'PatchData', 'patch_ids'))
+        describePatchIDsRaster = gp.Describe(os.path.join(simulationDirectory, 'PatchData', 'patch_ids.img'))
         coordinateSystem = gp.CreateSpatialReference_management(describePatchIDsRaster.SpatialReference).getOutput(0).split(';')[0]
         cellSize = describePatchIDsRaster.MeanCellWidth
         left, bottom, right, top = EnvelopeTypeMetadata.ParseFromArcGISString(describePatchIDsRaster.Extent)
@@ -1070,15 +821,15 @@ class LarvalDispersal(object):
                                          tIncrementUnit='day',
                                          tCornerCoordType='center',
                                          physicalDimensions='yxt',
-                                         physicalDimensionsFlipped=(False, True, False))
+                                         physicalDimensionsFlipped=(False, False, False))
 
-            waterMaskGrid = ArcGISRaster(os.path.join(simulationDirectory, 'PatchData', 'water_mask')).QueryDatasets(reportProgress=False)[0]
+            waterMaskGrid = ArcGISRaster(os.path.join(simulationDirectory, 'PatchData', 'water_mask.img')).QueryDatasets(reportProgress=False)[0]
 
             totalDensityGrid = MaskedGrid(totalDensityGrid, [waterMaskGrid], ['!='], [1])
 
             outputWorkspace = ArcGISWorkspace(outputGDB,
                                               ArcGISRaster,
-                                              pathParsingExpressions=['Density_(?P<Year>\d\d\d\d)(?P<Month>\d\d)(?P<Day>\d\d)_(?P<Hour>\d\d)(?P<Minute>\d\d)'],
+                                              pathParsingExpressions=[r'Density_(?P<Year>\d\d\d\d)(?P<Month>\d\d)(?P<Day>\d\d)_(?P<Hour>\d\d)(?P<Minute>\d\d)'],
                                               pathCreationExpressions=['Density_%%Y%%m%%d_%%H%%M'],
                                               queryableAttributes=(QueryableAttribute('DateTime', 'DateTime', DateTimeTypeMetadata()),))
 
@@ -1120,14 +871,6 @@ class LarvalDispersal(object):
         # Iterate through the results directory, reading each Results.pickle,
         # and populating a slice of a 3D matrix we'll use to compute the
         # requested summary statistic.
-        #
-        # At the time of this writing, MGET only runs under 32-bit Python. In
-        # principle, we should probably implement the statistical calculation
-        # using online algorithms rather than reading them all into memory and
-        # then computing the statistic. But it is unlikely that normal MGET
-        # users will conduct enough simulations to cause a memory problem. For
-        # example, 100 simulations with 512 habitat patches will require only
-        # 100 MB of memory to hold the 3D array.
 
         import numpy
 
@@ -1153,11 +896,8 @@ class LarvalDispersal(object):
 
                 Logger.Debug(_('Reading the simulation results from %s.') % resultsFile)
 
-                f = open(resultsFile, 'rb')
-                try:
+                with open(resultsFile, 'rb') as f:
                     competencyCurve, dispersalMatrix, settledDensityMatrix, suspendedDensityMatrix, metadata = pickle.load(f)
-                finally:
-                    f.close()
 
                 del competencyCurve, settledDensityMatrix, suspendedDensityMatrix
 
@@ -1186,9 +926,9 @@ class LarvalDispersal(object):
                 # TimeStep]. The last time slice represents the cumulative
                 # quantity of larvae released by FromPatchID that settled on
                 # ToPatchID, not accounting for mortality. If the caller did
-                # not supply a mortality rate, just use this time slice as the
-                # settlement matrix for this result directory. Otherwise apply
-                # the mortality rate.
+                # not supply a mortality rate, just use this time slice as
+                # the settlement matrix for this result directory. Otherwise
+                # apply the mortality rate.
 
                 if mortalityRate is None:
                     settlementMatrices[:,:,resultIndex] = dispersalMatrix[:,:,-1]
@@ -1208,31 +948,29 @@ class LarvalDispersal(object):
             # Compute the desired summary statistic on both the
             # settlementMatrices and probabilityMatrices.
 
-            from GeoEco.AssimilatedModules import nanfunctions      # MGET's internal copy of nanfunctions from numpy. It was introduced in numpy 1.8 but MGET is backwards compatible to previous versions of numpy, so we assimilated this.
-
             if summaryStatistic == 'maximum':
-                settlementSummaryMatrix = nanfunctions.nanmax(settlementMatrices, axis=2)
-                probabilitySummaryMatrix = nanfunctions.nanmax(probabilityMatrices, axis=2)
+                settlementSummaryMatrix = numpy.nanmax(settlementMatrices, axis=2)
+                probabilitySummaryMatrix = numpy.nanmax(probabilityMatrices, axis=2)
 
             elif summaryStatistic == 'mean':
-                settlementSummaryMatrix = nanfunctions.nanmean(settlementMatrices, axis=2)
-                probabilitySummaryMatrix = nanfunctions.nanmean(probabilityMatrices, axis=2)
+                settlementSummaryMatrix = numpy.nanmean(settlementMatrices, axis=2)
+                probabilitySummaryMatrix = numpy.nanmean(probabilityMatrices, axis=2)
 
             elif summaryStatistic == 'median':
-                settlementSummaryMatrix = nanfunctions.nanmedian(settlementMatrices, axis=2)
-                probabilitySummaryMatrix = nanfunctions.nanmedian(probabilityMatrices, axis=2)
+                settlementSummaryMatrix = numpy.nanmedian(settlementMatrices, axis=2)
+                probabilitySummaryMatrix = numpy.nanmedian(probabilityMatrices, axis=2)
 
             elif summaryStatistic == 'minimum':
-                settlementSummaryMatrix = nanfunctions.nanmin(settlementMatrices, axis=2)
-                probabilitySummaryMatrix = nanfunctions.nanmin(probabilityMatrices, axis=2)
+                settlementSummaryMatrix = numpy.nanmin(settlementMatrices, axis=2)
+                probabilitySummaryMatrix = numpy.nanmin(probabilityMatrices, axis=2)
 
             elif summaryStatistic == 'range':
-                settlementSummaryMatrix = nanfunctions.nanmax(settlementMatrices, axis=2) - nanfunctions.nanmin(settlementMatrices, axis=2)
-                probabilitySummaryMatrix = nanfunctions.nanmax(probabilityMatrices, axis=2) - nanfunctions.nanmin(settlementMatrices, axis=2)
+                settlementSummaryMatrix = numpy.nanmax(settlementMatrices, axis=2) - numpy.nanmin(settlementMatrices, axis=2)
+                probabilitySummaryMatrix = numpy.nanmax(probabilityMatrices, axis=2) - numpy.nanmin(settlementMatrices, axis=2)
 
             elif summaryStatistic == 'standard deviation':
-                settlementSummaryMatrix = nanfunctions.nanstd(settlementMatrices, axis=2, ddof=1)
-                probabilitySummaryMatrix = nanfunctions.nanstd(probabilityMatrices, axis=2, ddof=1)
+                settlementSummaryMatrix = numpy.nanstd(settlementMatrices, axis=2, ddof=1)
+                probabilitySummaryMatrix = numpy.nanstd(probabilityMatrices, axis=2, ddof=1)
 
             else:
                 raise RuntimeError(_('Programming error in this tool: Unknown summaryStatistic "%(ss)s". Please contact the MGET development team for assistance.') % {'ss': summaryStatistic})
@@ -1269,11 +1007,11 @@ class LarvalDispersal(object):
         import numpy
 
         if larvaeReleasedForPatch is None:
-            patchIDsImage, patchIDsNoDataValue = ArcGISRaster2.ToNumpyArray(os.path.join(simulationDirectory, 'PatchData', 'patch_ids'))
+            patchIDsImage, patchIDsNoDataValue = ArcGISRaster2.ToNumpyArray(os.path.join(simulationDirectory, 'PatchData', 'patch_ids.img'))
             patchIDsNoDataValue = int(patchIDsNoDataValue)
             patchIDsImage[Grid.numpy_equal_nan(patchIDsImage, patchIDsNoDataValue)] = 0    # Force this to zero. If it is the max value, e.g. 65535, the numpy.bincount function below will not work as we want.
 
-            patchCoverImage = ArcGISRaster2.ToNumpyArray(os.path.join(simulationDirectory, 'PatchData', 'patch_areas'))[0]
+            patchCoverImage = ArcGISRaster2.ToNumpyArray(os.path.join(simulationDirectory, 'PatchData', 'patch_areas.img'))[0]
 
             larvaeReleasedForPatch = numpy.bincount(patchIDsImage.flatten(), weights=patchCoverImage.flatten())
 
@@ -1324,7 +1062,7 @@ class LarvalDispersal(object):
 
         gp = GeoprocessorManager.GetWrappedGeoprocessor()
 
-        describePatchIDsRaster = gp.Describe(os.path.join(simulationDirectory, 'PatchData', 'patch_ids'))
+        describePatchIDsRaster = gp.Describe(os.path.join(simulationDirectory, 'PatchData', 'patch_ids.img'))
         coordinateSystem = gp.CreateSpatialReference_management(describePatchIDsRaster.SpatialReference).getOutput(0).split(';')[0]
 
         outputWorkspace = ArcGISWorkspace(outputWorkspace,
@@ -1387,7 +1125,6 @@ class LarvalDispersal(object):
 from ..ArcGIS import ArcGISDependency
 from ..ArcGIS import ArcGISDependency, ArcGISExtensionDependency
 from ..Dependencies import PythonModuleDependency
-from ..Matlab import MatlabDependency
 from ..Metadata import *
 
 AddModuleMetadata(shortDescription=_('Implements Eric Treml\'s larval dispersal analysis.'))
@@ -1472,15 +1209,12 @@ realistic. Conducting the analysis at a substantially finer resolution
 than the ocean currents data will introduce an unknown degree of
 uncertainty into the results.
 
-Second, the memory required to run the simulation and the speed at
-which it runs are directly related to the number of rows and columns
-of the analysis. At present, this tool can only run as a 32-bit
-process, which means that in practice it can only access 2 or 3 GB of
-memory. Large rasters can cause the tool to fail with an "OUT OF
-MEMORY" error. Even if this does not happen, they can greatly increase
-the run time of the tool. In general, we recommend the dimensions of
-the analysis be less than 1000x1000 cells; ideally it should be less
-than 500x500 cells.
+Second, the memory required to run the simulation and the speed at which it
+runs are directly related to the number of rows and columns of the analysis.
+Large rasters can cause the tool to fail with an "OUT OF MEMORY" error. Even
+if this does not happen, they can greatly increase the run time of the tool.
+In general, we recommend the dimensions of the analysis be less than
+1000x1000 cells; ideally it should be less than 500x500 cells.
 
 To rescale your patch IDs raster to a coarser resolution, consider
 using the ArcGIS Spatial Analyst Block Statistics tool, setting
@@ -1547,248 +1281,197 @@ if it exists. If False, a ValueError will be raised if the simulation
 directory exists."""),
     initializeToArcGISGeoprocessorVariable='env.overwriteOutput')
 
-# Public method: LarvalDispersal.RunSimulation
+# Public method: LarvalDispersal.LoadCMEMSCurrentsIntoSimulation
 
-AddMethodMetadata(LarvalDispersal.RunSimulation,
-    shortDescription=_('Executes a larval dispersal simulation using the Treml et al. (2008) algorithm.'),
-    longDescription=_(
-"""The algorithm implemented by this tool is obsolete, and this tool
-is provided only for backwards compatibility for users who are
-currently conducting experiments using the 2008 algorithm. For all new
-experiments, we recommend you use the most recent algorithm, which
-contains numerous improvements over the 2008 algorithm.
-
-Treml EA, Halpin PN, Urban DL, Pratson LF (2008) Modeling population
-connectivity by ocean currents, a graph-theoretic approach for marine
-conservation. Landscape Ecology 23: 19-36."""),
+AddMethodMetadata(LarvalDispersal.LoadCMEMSCurrentsIntoSimulation,
+    shortDescription=_('Downloads ocean currents from Copernicus Marine Service (CMEMS) into a larval dispersal simulation for a specified range of dates.'),
     isExposedToPythonCallers=True,
     isExposedAsArcGISTool=True,
-    arcGISDisplayName=_('Run Larval Dispersal Simulation (2008 Algorithm)'),
+    arcGISDisplayName=_('Load CMEMS Currents Into Larval Dispersal Simulation'),
     arcGISToolCategory=_('Connectivity Analysis\\Simulate Larval Dispersal'),
-    dependencies=[ArcGISDependency(), ArcGISExtensionDependency('spatial'), MatlabDependency(), PythonModuleDependency('numpy', cheeseShopName='numpy')])
+    
+    # Although this tool does not require matplotlib, we included it as a
+    # dependency so that it will be imported before this tool runs. We have
+    # noticed that if matplotlib is loaded after this tool runs, e.g. when
+    # RunSimulation2012 is executed, that one of matplotlib's own imports of
+    # another package will fail. Because RunSimulation2012 is usually
+    # executed next, we import matplotlib here to maximize chance of
+    # success.
 
-CopyArgumentMetadata(LarvalDispersal.CreateSimulationFromArcGISRasters, 'cls', LarvalDispersal.RunSimulation, 'cls')
+    dependencies=[ArcGISDependency(), ArcGISExtensionDependency('spatial'), PythonModuleDependency('numpy', cheeseShopName='numpy'), PythonModuleDependency('matplotlib', cheeseShopName='matplotlib')])
 
-AddArgumentMetadata(LarvalDispersal.RunSimulation, 'simulationDirectory',
+CopyArgumentMetadata(LarvalDispersal.CreateSimulationFromArcGISRasters, 'cls', LarvalDispersal.LoadCMEMSCurrentsIntoSimulation, 'cls')
+
+AddArgumentMetadata(LarvalDispersal.LoadCMEMSCurrentsIntoSimulation, 'simulationDirectory',
     typeMetadata=DirectoryTypeMetadata(mustExist=True),
     description=_(
-"""Existing larval dispersal simulation directory that has
-been loaded with ocean currents.
+"""Existing larval dispersal simulation directory that should recieve
+the currents.
 
 The directory must have been created using the Create Larval Dispersal
-Simulation tool and then loaded with ocean currents using one of the
-tools provided for this purpose.
+Simulation tool.
 
-The simulation may take hours to complete, due to the complex
-mathematics involved. The run time is goverened by the size of your
-study area, the resolution of the analysis, the number of patches
-included in the simulation, and the duration and time step of the
-simulation."""),
-    arcGISDisplayName=_('Simulation directory'))
+If you have already loaded currents into the simulation, you can use this tool
+to add data for an additional range of dates. If you try to load currents for
+a range of dates that have been already loaded into the simulation, the
+downloads for those dates will be skipped."""),
+    arcGISDisplayName=_('Simulation directory to recieve currents data'))
 
-AddArgumentMetadata(LarvalDispersal.RunSimulation, 'outputDirectory',
-    typeMetadata=DirectoryTypeMetadata(mustExist=True),
-    description=_(
-"""Output directory to receive the results of the simulation.
-
-The directory must already exist. Within it, the simulator creates:
-
-* DensityRasters - this subdirectory will contain a time series of
-  rasters that represent snapshots of the larvae density throughout
-  the study area, in particles per square km. A raster will be created
-  each time the simulation is summarized; the summarization frequency
-  is controlled by the Simulation Summarization Period parameter. The
-  rasters' names will be of the form dYYYYDDDHHMM, where YYYY is the
-  year, DDD is the day of the year (e.g. February 1 is day 032), HH is
-  the hour, and MM is the minute.
-
-* Edges feature class in ConnectivityGeodatabase.mdb - this line
-  feature class shows which patches are connected by larval dispersal.
-  Each line represents a direction link between two patches. The
-  FromPatchID and ToPatchID fields specify the IDs of the source patch
-  and sink patch, respectively. The MaxDispersal field shows the
-  maximum quantity of larvae from the source patch found over the sink
-  patch during the series of simulation summaries. The quantity is
-  expressed as the fraction of larvae initially released from the
-  source patch that are over the sink patch, and ranges from 0.0 to 1.0.
-  For example, the value 0.01 means that 1% of the larvae initially
-  released by the source patch were found over the sink patch, when
-  dispersal from the source to the sink peaked.
-"""),
-    arcGISDisplayName=_('Output directory'))
-
-AddArgumentMetadata(LarvalDispersal.RunSimulation, 'startDate',
+AddArgumentMetadata(LarvalDispersal.LoadCMEMSCurrentsIntoSimulation, 'startDate',
     typeMetadata=DateTimeTypeMetadata(),
     description=_(
-"""Start date of the simulation.
-
-The larvae are released from the patches on this date. Selecting an
-appropriate value requires knowledge of the reproductive biology of
-the species you are studying."""),
+"""Start date for the currents to load into the simulation. Currents that
+occured on or after the start date and on or before the end date will be
+loaded into the simulation."""), 
     arcGISDisplayName=_('Start date'))
 
-AddArgumentMetadata(LarvalDispersal.RunSimulation, 'duration',
-    typeMetadata=FloatTypeMetadata(mustBeGreaterThan=0.0),
+AddArgumentMetadata(LarvalDispersal.LoadCMEMSCurrentsIntoSimulation, 'endDate',
+    typeMetadata=DateTimeTypeMetadata(),
     description=_(
-"""Duration of the simulation, in days. Larger values require more
-computer memory and require more processing time."""),
-    arcGISDisplayName=_('Duration'))
+"""End date for the currents to load into the simulation. Currents that
+occured on or after the start date and on or before the end date will be
+loaded into the simulation."""), 
+    arcGISDisplayName=_('End date'))
 
-AddArgumentMetadata(LarvalDispersal.RunSimulation, 'simulationTimeStep',
-    typeMetadata=FloatTypeMetadata(minValue=0.0),
+CopyArgumentMetadata(CMEMSARCOArray.__init__, 'username', LarvalDispersal.LoadCMEMSCurrentsIntoSimulation, 'username')
+CopyArgumentMetadata(CMEMSARCOArray.__init__, 'password', LarvalDispersal.LoadCMEMSCurrentsIntoSimulation, 'password')
+
+AddArgumentMetadata(LarvalDispersal.LoadCMEMSCurrentsIntoSimulation, 'datasetID',
+    typeMetadata=UnicodeStringTypeMetadata(minLength=1),
     description=_(
-"""Time step of the simulation, in hours.
+"""CMEMS Dataset ID to access. You can find the Dataset ID by going to the
+`Copernicus Marine Data Store <https://data.marine.copernicus.eu/products>`__,
+viewing your product of interest, clicking on Data Access, and scrolling to
+the Dataset ID table. The dataset must have 4 dimensions: longitude, latitude,
+depth, and time (in any order).
 
-The time step defines the simulated time period at which larvae
-density is recalculated using a Eulerian advection/diffusion model.
-Smaller time steps increase the stability of the model and accuracy of
-the results but also the run time and computer memory requirements of
-the simulation. The original study from which this tool was developed
-(Treml et al. 2008) used a time step of 2.4 hours.
+The default ``cmems_mod_glo_phy_my_0.083deg_P1D-m``, the Global Ocean Physics
+Reanalysis at daily resolution, is a good choice when you don't know of
+something better for your area of interest."""),
+    arcGISDisplayName=_('CMEMS Dataset ID'))
 
-To check the model stability, this tool reports the effective Courant
-number for the model, calculated from the simulation time step, grid
-cell size, and average current velocity. The Courant number reflects
-the portion of a cell that the larvae will traverse by advection in
-one time step. If the Courant number is greater than 1, the model is
-likely to be unstable and inaccurate. If it is significantly less than
-1 (e.g. 0.1), it is likely to be stable and accurate."""),
-    arcGISDisplayName=_('Time step'),
-    arcGISCategory=_('Simulation options'))
-
-AddArgumentMetadata(LarvalDispersal.RunSimulation, 'summarizationPeriod',
-    typeMetadata=IntegerTypeMetadata(minValue=1),
+AddArgumentMetadata(LarvalDispersal.LoadCMEMSCurrentsIntoSimulation, 'depth',
+    typeMetadata=FloatTypeMetadata(minValue=0.),
     description=_(
-"""Period, expressed as a number of simulation time steps, at which
-the simulation should be summarized.
+"""Depth layer to download.
 
-The period specifies how frequently summarization should occur. The
-first summarization occurs at the start of the simulation, and
-subsequent summarizations occur every time the period elapses. For
-example, if the time step is 1 hour and the summarization period is
-24, summarizations occur every 24 hours.
+You must specify the exact depth of the layer, at full precision
+(without rounding). The default value is the shallowest layer of the default
+dataset ``cmems_mod_glo_phy_my_0.083deg_P1D-m``. For your covenience, when
+this tool runs it will log a list of depth layers for the dataset you
+specify. If your first attempt fails because the depth does not exist, copy
+one of the values from the log message and try again.
 
-The summarization procedure governs the production of simulation
-outputs. Please see the documentation of the Output Directory
-parameter for more information."""),
-    arcGISDisplayName=_('Simulation summarization period'),
-    arcGISCategory=_('Simulation options'))
+This tool was designed primarily to study larvae that float at or near the
+surface. If you are studying larvae that stay submerged, you can choose a
+deeper depth, but be aware of two important points:
 
-AddArgumentMetadata(LarvalDispersal.RunSimulation, 'initialLarvaeDensity',
-    typeMetadata=FloatTypeMetadata(minValue=1.0),
+* This tool assumes the larvae remain at that depth for the entire simulation.
+  It does not implement vertical migration or other behaviors that might be
+  appropriate for your species.
+
+* The spatial extent of available currents data will shrink as depth
+  increases. For example, if you choose a deep depth such as 250 m, there
+  will be no data available for regions close to shore because the ocean is
+  typically shallower than 250 m in those regions. Data for very deep depths
+  may only be available many kilometers from shore. If your species remains
+  suspended just above the seafloor regardless of the seafloor's depth, you
+  can use the depth value 20000 to represent this, and the tool will download
+  whatever layer is the deepest at each latitude and longitude.
+
+"""),
+    arcGISDisplayName=_('CMEMS Dataset ID'))
+
+CopyArgumentMetadata(CMEMSARCOArray.CreateArcGISRasters, 'rotationOffset', LarvalDispersal.LoadCMEMSCurrentsIntoSimulation, 'rotationOffset')
+
+AddArgumentMetadata(LarvalDispersal.LoadCMEMSCurrentsIntoSimulation, 'resamplingTechnique',
+    typeMetadata=UnicodeStringTypeMetadata(makeLowercase=True, allowedValues=['NEAREST', 'BILINEAR', 'CUBIC']),
     description=_(
-"""Density of larvae, in particles per square km, released at the
-start of the simulation. 
+"""Resampling algorithm to be used when projecting the ocean currents
+data to the coordinate system and cell size of the simulation. One of:
 
-The original study from which this tool was developed (Treml et al.
-2008) used 10,000 particles per square km. This is consistent with
-previous studies (Cowen et al. 2000; James et al. 2002; Largier 2003)
-and was selected based on exploratory modeling efforts using densities
-ranging from 1,000 to 100,000 particles per square km. For particular
-taxa, these initial densities may need to be larger or smaller, based
-on the specific fecundity and density characteristics of that species
-of interest (Richmond 1987; Largier 2003)."""),
-    arcGISDisplayName=_('Initial larvae density'),
-    arcGISCategory=_('Simulation options'))
+* ``NEAREST`` - `Nearest neighbor assignment
+  <http://en.wikipedia.org/wiki/Nearest-neighbor_interpolation>`__.
 
-AddArgumentMetadata(LarvalDispersal.RunSimulation, 'densityRasterCutoff',
-    typeMetadata=FloatTypeMetadata(minValue=0.0, maxValue=100.0, canBeNone=True),
+* ``BILINEAR`` - `Bilinear interpolation
+  <http://en.wikipedia.org/wiki/Bilinear_interpolation>`__.
+
+* ``CUBIC`` - Cubic convolution, also known as `bicubic interpolation
+  <http://en.wikipedia.org/wiki/Bicubic_interpolation>`__. This method, the
+  default, is slower but we believe it produces more accurate values.
+
+The projection is accomplished with the ArcGIS
+:arcpy_management:`Project-Raster` tool. Please see the documentation for that
+tool for more information."""),
+    arcGISDisplayName=_('Resampling technique'))
+
+AddArgumentMetadata(LarvalDispersal.LoadCMEMSCurrentsIntoSimulation, 'interpolationMethod',
+    typeMetadata=UnicodeStringTypeMetadata(makeLowercase=True, allowedValues=['Del2a', 'Del2b', 'Del2c', 'Del4', 'Spring'], canBeNone=True),
     description=_(
-"""Minimum larvae density, expressed as a percentage of the initial
-larvae density, that a larvae density raster cell must be to not be
-masked.
+"""Method to use to guess ocean current values for cells marked as water by
+the simulation's water mask but for which no estimate is available in the
+currents data.
 
-This parameter is a percent of the initial larvae density. For
-example, if the initial larvae density is 10000 particles per km and
-this parameter is 1, a density of 100 particles per km will be used as
-the cutoff. Larvae density cells that are less than this value will
-set to NoData.
+By default, this option is disabled and cells marked as water that do not have
+any currents data are assumed to have a current velocity of zero. Larvae
+within these cells cannot exit by advection, only by diffusion. Because
+diffusion typically disperses larvae much more slowly than advection, these
+zero-velocity cells will act as larvae sinks that appear to trap most larvae
+that enter them.
 
-This parameter does not affect the computations performed during the
-simulation. It only affects the production of density rasters after
-the simulation is complete, and is provided as a convenience for
-visualization.
+That situation is usually urealistic and undesirable, and when it happens the
+simulator will issue a warning describing the problem. If you experience this
+problem you can instruct the tool to guess current values using one of the
+following algorithms:
 
-If you set this parameter to 0, the density rasters will be produced
-with no masking. The results may seem surprising. For most
-simulations, larvae will have spread throughout the entire study area,
-albeit in very small quantities for most cells. This is a surprising
-effect of the diffusion component of the Eularian hydrodynamic
-calculations. Diffiusion occurs equally in all directions at the rate
-specified by the Diffusivity parameter. Given enough time, an
-infinitesimal fraction of larvae from any given patch can theoretically
-spread throughout the entire ocean simply by diffusion. To avoid a
-confusing visualization, use this parameter to mask the extremely
-density values that result from diffiusion."""),
-    arcGISDisplayName=_('Cutoff percentage for larvae density rasters'),
-    arcGISCategory=_('Simulation options'))
+* ``Del2a`` - Laplacian interpolation and linear extrapolation. We recommend
+  you use this method unless you have a specific reason to select one of the
+  others.
 
-##AddArgumentMetadata(LarvalDispersal.RunSimulation, 'deathRate',
-##    typeMetadata=FloatTypeMetadata(minValue=0.0, maxValue=1.0, canBeNone=True),
-##    description=_(
-##"""Death rate of the larvae, as proportion of the population that
-##dies per day.
-##
-##Reliable mortality estimates for invertebrate larvae are rare due to
-##the difficulty in sampling and identifying the same larval cohort in
-##the plankton through time (Rumrill 1990; Morgan 1995). In a review of
-##larval mortality rates, Rumrill (1990) showed that this parameter
-##varied greatly between invertebrate species, from 0.016 to .357 per
-##day, with an average of .223 per day. A recent study on several
-##Pacific corals measuring larval survival, recruitment rates, and gene
-##flow, reports the mortality of a broadcast-spawning coral to be around
-##4 - 6% per day (Nishikawa et al. 2003; Nishikawa and Sakai 2005).  For
-##this reason, the study from which this tool was developed (Treml et
-##al. 2008) used a constant mortality of 6% per day. Although this rate
-##is lower than the 18% per day reported for reef fish (Cowen et al.
-##2000; James et al. 2002), it may be more representative of
-##invertebrate taxa (Rumrill 1990, Ellien et al. 2004)."""),
-##    arcGISDisplayName=_('Larvae death rate'),
-##    arcGISCategory=_('Simulation options'))
+* ``Del2b`` - Same as ``Del2a`` but does not build as large a linear system of
+  equations. May be faster than ``Del2a`` at the cost of some accuracy.
 
-AddArgumentMetadata(LarvalDispersal.RunSimulation, 'diffusivity',
-    typeMetadata=FloatTypeMetadata(minValue=0.0),
-    description=_(
-"""The diffusion coefficent, in meters squared per second, to use in
-the simulation.
+* ``Del2c`` - Same as ``Del2a`` but solves a direct linear system of equations
+  for the NoData values. Faster than both ``Del2a`` and ``Del2b`` but is the
+  least robust to noise on the boundaries of NoData cells and least able to
+  interpolate accurately for smooth surfaces.
 
-It is recommended that you consult an oceanographer to determine this
-value. The original study from which this tool was developed (Treml et
-al. 2008) used the value 50."""),
-    arcGISDisplayName=_('Diffusivity'),
-    arcGISCategory=_('Simulation options'))
+* ``Del4`` - Same as ``Del2a`` but instead of the Laplace operator (also
+  called the ∇\\ :sup:`2` operator) it uses the biharmonic operator (also
+  called the ∇\\ :sup:`4` operator). May result in more accurate
+  interpolations, at some cost in speed.
 
-AddArgumentMetadata(LarvalDispersal.RunSimulation, 'includePatchIDs',
-    typeMetadata=ListTypeMetadata(elementType=IntegerTypeMetadata(), canBeNone=True, minLength=1),
-    description=_(
-"""List of IDs of the patches to include in the simulation. If the list
-is empty, all of the patches will be included, unless some patches are
-listed in the "exclude patches" parameter."""),
-    arcGISDisplayName=_('IDs of patches to include in the simulation'),
-    arcGISCategory=_('Simulation options'))
+* ``Spring`` - Uses a spring metaphor. Assumes springs (with a nominal length
+  of zero) connect each cell with every neighbor (horizontally, vertically and
+  diagonally). Since each cell tries to be like its neighbors, extrapolation
+  is as a constant function where this is consistent with the neighboring
+  nodes.
 
-AddArgumentMetadata(LarvalDispersal.RunSimulation, 'excludePatchIDs',
-    typeMetadata=ListTypeMetadata(elementType=IntegerTypeMetadata(), canBeNone=True, minLength=1),
-    description=_(
-"""List of IDs of the patches to exclude from the simulation. This list
-may only be provided if the "include patches" list is omitted (an error
-will be reported if both lists are provided). If this list is
-provided, all of the patches will be included in the simulation except
-those in this list."""),
-    arcGISDisplayName=_('IDs of patches to exclude from the simulation'),
-    arcGISCategory=_('Simulation options'))
+Be advised that this option should be considered a last resort. When ocean
+current values are missing for a region, it is because the original data
+provider does not know how to estimate or model the currents in that region.
+If it was simply a matter of using one of the methods above, they would have
+already done so. These methods produce estimates that are likely to be
+inaccurate and should only be used when you are willing to accept those
+inaccuracies because there is no other way to proceed.
 
-AddArgumentMetadata(LarvalDispersal.RunSimulation, 'overwriteExisting',
-    typeMetadata=BooleanTypeMetadata(),
-    description=_(
-"""If True, the outputs will be overwritten, if it exists. If False,
-a ValueError will be raised if the outputs exist."""),
-    initializeToArcGISGeoprocessorVariable='env.overwriteOutput')
+Although this option can fill NoData clusters of any size, you should apply
+common sense when using it. The larger the cluster, the less accurate the
+guessed values will be.
 
-AddResultMetadata(LarvalDispersal.RunSimulation, 'updatedOutputDirectory',
-    typeMetadata=DirectoryTypeMetadata(),
-    description=_('Updated output directory.'),
-    arcGISDisplayName=_('Updated output directory'))
+If you receive and OUT OF MEMORY error when utilizing this parameter, try
+switching to the Del2b or Del2c algorithm. If you still receive OUT OF MEMORY
+when using Del2c, the analysis resolution is too fine for the spatial extent
+you wish to simulate. You must recreate the simulation with either a coarser
+resolution or a smaller spatial extent. You are welcome to contact the MGET
+development team for advice. In general, we recommend the simulation rasters
+span no more than 1000x1000 cells, ideally less than 500x500.
+
+Thanks to John D'Errico for providing the code that implements the
+mathematical algorithms described here (click `here
+<http://www.mathworks.com/matlabcentral/fileexchange/4551>`__ for more
+information)."""),
+    arcGISDisplayName=_('Method for estimating missing currents values'))
 
 # Public method: LarvalDispersal.RunSimulation2012
 
@@ -1855,7 +1538,7 @@ conservation. Landscape Ecology 23: 19-36."""),
     isExposedAsArcGISTool=True,
     arcGISDisplayName=_('Run Larval Dispersal Simulation (2012 Algorithm)'),
     arcGISToolCategory=_('Connectivity Analysis\\Simulate Larval Dispersal'),
-    dependencies=[ArcGISDependency(), ArcGISExtensionDependency('spatial'), PythonModuleDependency('numpy', cheeseShopName='numpy'), PythonModuleDependency('matplotlib', cheeseShopName='matplotlib')])
+    dependencies=[MatlabDependency(), ArcGISDependency(), ArcGISExtensionDependency('spatial'), PythonModuleDependency('numpy', cheeseShopName='numpy'), PythonModuleDependency('matplotlib', cheeseShopName='matplotlib')])
 
 CopyArgumentMetadata(LarvalDispersal.CreateSimulationFromArcGISRasters, 'cls', LarvalDispersal.RunSimulation2012, 'cls')
 
@@ -2206,17 +1889,12 @@ by the Run Larval Dispersal Simulation (2012 Algorithm) tool."""),
 AddArgumentMetadata(LarvalDispersal.VisualizeResults2012, 'outputGDBName',
     typeMetadata=UnicodeStringTypeMetadata(minLength=1),
     description=_(
-"""Name of the output geodatabase to create.
+"""Name of the output file geodatabase (.gdb) to create.
 
 The geodatabase will be created in the results directory. If it
 already exists, the tool will either overwrite it or fail with an
 error, depending on whether you have requested that outputs be
-overwritten.
-
-If desired, you may include the extension .mdb or .gdb as part of the
-name, to direct the tool to create a personal or file geodatabase,
-respectively. If you do not include an extension, the tool will create
-a file geodatabase by default."""),
+overwritten."""),
     arcGISDisplayName=_('Output geodatabase name'))
 
 AddArgumentMetadata(LarvalDispersal.VisualizeResults2012, 'mortalityRate',
@@ -2227,7 +1905,7 @@ day. It must be greater than 0 and less than 1. Expressed as a percentage
 killed per day, the value 0.1 corresponds to 10%.
 
 If omitted (the default), larvae will not be subject to mortality. If
-provided, surviorship will be calculated according to the Mortality Method
+provided, survivorship will be calculated according to the Mortality Method
 parameter using this mortality rate. For example, if the mortality rate is 0.1
 and the mortality method is 'A', the proportion alive 1, 2, and 3 days after
 the larvae were released will be 0.9, 0.81, and 0.729, respectively.
@@ -2253,7 +1931,7 @@ immediately competent and can therefore settle at the destination
 patch as soon as they arrive, with a settlement rate of 1.0. We would
 therefore expect that many larvae will have settle between the first
 and second day. But if the first summarization period does not elapse
-until day 10, survivorship will be calcuated for all the larvae that
+until day 10, survivorship will be calculated for all the larvae that
 settle within the first 10 days using t=10 in the equation above. This
 would effectively assume that it took all of these larvae 10 days to
 drift to the destination patch, during which time they were subject to
@@ -2314,7 +1992,7 @@ AddArgumentMetadata(LarvalDispersal.VisualizeResults2012, 'mortalityMethod',
 * B - Survivorship will be calculated according to the expression exp(-L*t).
   This method assumes an exponential decline in the surviving population at a
   constant rate. The formula is known as the survival function of the
-  expoential distribution, among other names. Connolly and Baird (2010)
+  exponential distribution, among other names. Connolly and Baird (2010)
   presented this as their equation 8. For the mortality rate L=0.1 and t=1, 2,
   and 3 days, the proportions of surviving larvae are 0.904837, 0.818731,
   0.740818, respectively.
@@ -2442,44 +2120,53 @@ AddArgumentMetadata(LarvalDispersal.VisualizeResults2012, 'minimumDispersal',
 """Minimum dispersal threshold that must be met or exceeded for the tool to
 draw a line connecting the source patch to a destination patch.
 
-The threshold can be specified as either a minumum quantity of larvae released
+The threshold can be specified as either a minimum quantity of larvae released
 by the source that must settle at the destination, or as the minimum
 probability that a larva released by the source will settle at the
 destination. The Minimum Dispersal Threshold Type parameter specifies which
 kind of threshold is used.
 
-This parameter must be greater than zero. If you set it to a very
-small value, almost all patches will be connected. This result may
-seem surprising. For most simulations, larvae will have spread
-throughout the entire study area, albeit in very small quantities for
-most cells, via the diffusion component of the hydrodynamic
-calculations. Diffiusion occurs equally in all directions at the rate
-specified by the Diffusivity parameter. Given enough time, an
-infinitesimal fraction of larvae from any given patch can
-theoretically spread throughout the entire ocean simply by diffusion.
+This parameter must be greater than zero. If you set it to a very small value,
+almost all patches will have lines drawn between them. This result may seem
+surprising. For most simulations, larvae will have spread throughout the
+entire study area, albeit in very small quantities for most cells, via the
+diffusion component of the hydrodynamic calculations. Diffusion occurs
+equally in all directions at the rate specified by the Diffusivity parameter.
+Given enough time, an infinitesimal fraction of larvae from any given patch
+can theoretically spread throughout the entire ocean simply by diffusion.
 
-An important question is: why not set this parameter to a very small
-value and then filter weak connections later? This is a valid
-approach. The main reason not to do this is it may take the tool a
-long time to draw so many lines. Whether or not this is a problem
-depends on the number of patches you have. Assuming each patch can be
-both a source and sink for larvae, the number of possible connections
-is 2 * P^2, where P is the number of patches. So if you only have 20
-patches, at most 800 lines will be drawn, a relatively small number.
-But if you have 500 patches, as many as 500,000 lines will be
+An important question is: why not set this parameter to a very small value and
+then filter weak connections later? This is a valid approach. The main reason
+not to do this is it may take the tool a long time to draw so many lines.
+Whether or not this is a problem depends on the number of patches you have.
+Assuming each patch can be both a source and sink for larvae, the number of
+possible connections is 2 * P^2, where P is the number of patches. So if you
+only have 20 patches, at most 800 lines will be drawn, a relatively small
+number. But if you have 500 patches, as many as 500,000 lines will be
 drawn."""),
     arcGISDisplayName=_('Minimum dispersal threshold'))
 
 AddArgumentMetadata(LarvalDispersal.VisualizeResults2012, 'minimumDispersalType',
     typeMetadata=UnicodeStringTypeMetadata(makeLowercase=True, allowedValues=['Quantity', 'Probability']),
     description=_(
-"""Type of minimum dispersal threshold that will be used. One of:
+"""Type of minimum dispersal threshold that will be used to determine whether
+a line should be drawn from a source patch to a destination patch. One of:
 
-* Quantity - minimum quantity of larvae released by the source patch that
-  must settle at the destination patch.
+* Quantity - the minimum absolute quantity of larvae released by the source
+  patch that must settle at the destination patch. A cell that is 100%
+  covered by suitable habitat will release 1 unit of larvae, while one that
+  is only 50% covered will release 0.5 units of larvae.
 
-* Probability - minimum probability that a larva released by the source patch
-  will settle at the destination patch.
+* Probability - the minimum probability that a larva released by the source
+  patch will settle at the destination patch. For each source-destination
+  pair, the probability is computed by dividing the absolute quantity of
+  larvae from the source that settled on the destination by the total
+  absolute quantity of larvae released by the source. For example, consider a
+  source comprised of 5 cells that are 100% covered and 3 cells that are 50%
+  covered. The total quantity of larvae released will be 6.5 units. If a
+  destination patch receives in 0.52 units of larvae, totaled across all of
+  its cells, then the probability is 0.52 / 6.5 = 0.08.
+
 """),
     arcGISDisplayName=_('Minimum dispersal threshold type'))
 

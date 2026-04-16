@@ -171,11 +171,11 @@ class MatlabFunctions(object):
             if len(result) == 1:
                 resultStr += ','
             if isinstance(result, tuple):
-                resultStr = '(' + resultStr + ')'
+                resultStr = 'a tuple: (' + resultStr + ')'
             else:
-                resultStr = '[' + resultStr + ']'
+                resultStr = 'a list: [' + resultStr + ']'
         else:
-            resultStr = f'{result!r:.255}'
+            resultStr = f'a {type(result)}: {result!r:.255}'
 
         MatlabFunctions._Log(logging.DEBUG, '%.255s() returned %s' % (funcName, resultStr), loggingQueue)
 

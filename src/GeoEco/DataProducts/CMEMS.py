@@ -968,6 +968,8 @@ class CMEMSARCOArray(Grid):
             # If rasterNameExpressions is None, we will determine a default
             # value. First, do some preliminary work related to this.
 
+            outputWorkspaceIsDir = False
+
             if rasterNameExpressions is None:
 
                 # If the grid contains a t dimension, determine the

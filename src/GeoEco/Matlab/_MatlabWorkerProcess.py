@@ -448,10 +448,11 @@ class MatlabWorkerProcess(object):
     @staticmethod
     def _StoreNumpyArrayInSHM(a, sharedMemoryInstances):
         import numpy
-        shm = multiprocessing.shared_memory.SharedMemory(create=True, size=a.nbytes)
+        shm = multiprocessing.shared_memory.SharedMemory(create=True, size=max(a.nbytes, 1))    # a.nbytes will be 0 if the array is empty but we must allocate at least 1 byte
         sharedMemoryInstances.append(shm)
-        b = numpy.ndarray(a.shape, dtype=a.dtype, buffer=shm.buf)
-        b[:] = a[:]
+        if a.nbytes > 0:
+            b = numpy.ndarray(a.shape, dtype=a.dtype, buffer=shm.buf)
+            b[:] = a[:]
         return _SharedNumpyArray(name=shm.name, dtype=a.dtype, shape=a.shape)
 
     @staticmethod
@@ -483,10 +484,25 @@ class MatlabWorkerProcess(object):
         import numpy
         sharedNumpyArray.sharedMemory = multiprocessing.shared_memory.SharedMemory(name=sharedNumpyArray.name)
         try:
+            # If the shape is all zeros, just return an numpy array with that
+            # shape and dtype without accessing the shared memory.
+
+            if numpy.all(numpy.asarray(sharedNumpyArray.shape) == 0):
+                return numpy.ndarray(sharedNumpyArray.shape, dtype=sharedNumpyArray.dtype)
+
+            # The shape is non-zero. If we're not supposed to copy the shared
+            # memory buffer, just construct a numpy array around it.
+
             a = numpy.ndarray(sharedNumpyArray.shape, dtype=sharedNumpyArray.dtype, buffer=sharedNumpyArray.sharedMemory.buf)
             if not copy:
                 return a
-            b = numpy.zeros(sharedNumpyArray.shape, dtype=sharedNumpyArray.dtype)   # I'm not 100% confident copy.deepcopy() will allocate a new buffer, so I'm explicitly creating a new array and copying its values
+
+            # If we are supposed to copy the shared memory buffer, allocate a
+            # new array and copy the buffer into it. (I considered using
+            # copy.deecopy(), but I'm not 100% sconfident it will actually
+            # allocate a new buffer, so I'm doing it myself.)
+
+            b = numpy.zeros(sharedNumpyArray.shape, dtype=sharedNumpyArray.dtype)
             b[:] = a[:]
             return b
         except:

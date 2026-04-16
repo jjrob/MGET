@@ -2165,8 +2165,7 @@ raster's coordinate system. One of:
 * ``CUBIC`` - Cubic convolution, also known as `bicubic interpolation
   <http://en.wikipedia.org/wiki/Bicubic_interpolation>`__.
 
-* ``MAJORITY`` - Majority resampling. This method requires ArcGIS 9.3 or
-  later.
+* ``MAJORITY`` - Majority resampling.
 
 The ``NEAREST`` and ``MAJORITY`` algorithms should be used for categorical
 data, such as a land use classification. It is not recommended that ``NEAREST`` or
