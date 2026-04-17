@@ -1379,7 +1379,7 @@ deeper depth, but be aware of two important points:
   whatever layer is the deepest at each latitude and longitude.
 
 """),
-    arcGISDisplayName=_('CMEMS Dataset ID'))
+    arcGISDisplayName=_('Depth'))
 
 CopyArgumentMetadata(CMEMSARCOArray.CreateArcGISRasters, 'rotationOffset', LarvalDispersal.LoadCMEMSCurrentsIntoSimulation, 'rotationOffset')
 
