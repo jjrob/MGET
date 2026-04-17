@@ -1470,6 +1470,11 @@ mathematical algorithms described here (click `here
 information)."""),
     arcGISDisplayName=_('Method for estimating missing currents values'))
 
+AddResultMetadata(LarvalDispersal.LoadCMEMSCurrentsIntoSimulation, 'updatedSimulationDirectory',
+    typeMetadata=DirectoryTypeMetadata(),
+    description=_('Updated simulation directory.'),
+    arcGISDisplayName=_('Updated simulation directory'))
+
 # Public method: LarvalDispersal.RunSimulation2012
 
 AddMethodMetadata(LarvalDispersal.RunSimulation2012,

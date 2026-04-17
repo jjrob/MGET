@@ -755,7 +755,7 @@ class ArcGISRaster(object):
 
             try:
                 if csWithoutName != icsWithoutName:
-                    Logger.Debug(_('The template raster\'s coordinate system is not the same as the input raster\'s. Setting gp.env.extent to the extent of the template in the input raster\'s coordinate system.'))
+                    Logger.Debug(_(f'ProjectToTemplate: The coordinate system of the template raster "{templateRaster}" is not the same as that of the input raster "{inputRaster}". Setting gp.env.extent to the extent of the template in the input raster\'s coordinate system.'))
 
                     # Transform all of the cells along the bottom, top, left, and
                     # right edges of the template raster to the input raster's
@@ -833,6 +833,7 @@ class ArcGISRaster(object):
 
                     clipToInputExtent = '%r %r %r %r' % (left, bottom, right, top)
                 else:
+                    Logger.Debug(_(f'ProjectToTemplate: The template "{templateRaster}" and input "{inputRaster}" rasters have the same coordinate system.'))
                     clipToInputExtent = extent
                 
                 # Unfortunately Project Raster will not necessarily create a
@@ -869,10 +870,31 @@ class ArcGISRaster(object):
                 # upper left of the output cell. To work around this, I changed
                 # the code to use the Resample tool instead, which does not
                 # exhibit this behavior.
+                #
+                # Update: April 2026: Apparently some version of ArcGIS Pro
+                # switched the behavior of certain tools so that they
+                # interpret a user-provided extent that simply specifies
+                # left, bottom, right, and top as being in the coordinate
+                # system of the ArcGIS Pro Map Project, which is usually a
+                # Web Mercator system, rather than the coordinate system of
+                # the input raster. To work around this, we must construct an
+                # arcpy.Extent object that explicitly specifies that the
+                # input raster's spatial reference be used.
+
+                Logger.Debug(_(f'ProjectToTemplate: The extent of the template raster in the input\'s raster coordinate system is: {clipToInputExtent}.'))
 
                 [left, bottom, right, top] = EnvelopeTypeMetadata.ParseFromArcGISString(clipToInputExtent)
+
+                import arcpy
+
+                expandedExtent = arcpy.Extent(XMin=left - inputCellSize*10, 
+                                              XMax=right + inputCellSize*10, 
+                                              YMin=bottom - inputCellSize*10, 
+                                              YMax=top + inputCellSize*10, 
+                                              spatial_reference=arcpy.Describe(inputRaster).SpatialReference)    # We must pass an unadulterated SpatialReference object, not one wrapped by GeoprocessorManager
+
                 oldExtent = gp.env.extent
-                gp.env.extent = '%r %r %r %r' % (left - inputCellSize*10, bottom - inputCellSize*10, right + inputCellSize*10, top + inputCellSize*10)
+                gp.env.extent = expandedExtent
 
                 try:
                     oldSnapRaster = gp.env.snapRaster
@@ -887,9 +909,6 @@ class ArcGISRaster(object):
                             gp.env.outputCoordinateSystem = oldOutputCoordinateSystem
                     finally:
                         gp.env.snapRaster = oldSnapRaster
-
-                # Reset the Extent ArcGIS environment variable to what it was
-                # before.
                 
                 finally:
                     gp.env.extent = oldExtent
