@@ -228,6 +228,8 @@ class LarvalDispersal(object):
         newWaterMask = os.path.join(tempDir.Path, 'water_mask.img')
         r2.save(newWaterMask)
 
+        del r1, r2    # Explicitly free r2, so that newWaterMask is not locked until garbage collection, which can cause a warning saying it couldn't be deleted
+
         # Using the new water mask as a template, project and clip the current
         # rasters to the patch rasters' coordinate system, cell size, and
         # extent.
