@@ -664,7 +664,7 @@ class LarvalDispersal(object):
     def VisualizeResults2012(cls, simulationDirectory, resultsDirectory, outputGDBName, mortalityRate=None, mortalityMethod='A', createDensityRasters=True, minimumDensity=0.00001, useCompetencyForDensityRasters=False, createConnectionsFeatureClass=True, minimumDispersal=0.00001, minimumDispersalType='Quantity', overwriteExisting=False):
         cls.__doc__.Obj.ValidateMethodInvocation()
 
-        # Perform additinal validation.
+        # Perform additional validation.
 
         if not createDensityRasters and not createConnectionsFeatureClass:
             Logger.Warning(_('You requested that neither density rasters nor a connections feature class be generated. There is nothing to do. An output geodatabase was not created.'))
@@ -840,7 +840,53 @@ class LarvalDispersal(object):
                                            'Replace',
                                            buildPyramids=totalDensityMatrix.shape[0] > 1024 or totalDensityMatrix.shape[2] > 1024)
 
-            del outputWorkspace, waterMaskGrid, totalDensityGrid, totalDensityMatrix
+            del waterMaskGrid, totalDensityGrid, totalDensityMatrix
+
+            # Create a mosaic dataset for the rasters and add the rasters to it.
+
+            mosaic = os.path.join(outputGDB, 'DensityMosaic')
+
+            Logger.Info(_('Creating %s') % mosaic)
+
+            gp.CreateMosaicDataset_management(os.path.dirname(mosaic), os.path.basename(mosaic), describePatchIDsRaster.SpatialReference)
+
+            grids = outputWorkspace.QueryDatasets(reportProgress=False)
+            rasterPaths = sorted([os.path.join(outputGDB, os.path.basename(grid.ParentCollection.Path)) for grid in grids])
+
+            gp.AddRastersToMosaicDataset_management(in_mosaic_dataset=mosaic,
+                                                    raster_type="Raster Dataset",
+                                                    input_path=rasterPaths)
+
+            # Add StartTime and End time fields and populate them using the
+            # DateTime queryable attribute from the grid objects above.
+
+            gp.AddField_management(mosaic, 'StartTime', 'DATE')
+            gp.AddField_management(mosaic, 'EndTime', 'DATE')
+
+            mosaicTable = ArcGISTable(mosaic)
+            i = 0
+            with mosaicTable.OpenUpdateCursor(fields=['Name', 'StartTime', 'EndTime'], orderBy='Name ASC', reportProgress=False) as cursor:
+                while cursor.NextRow():
+                    rasterName = cursor.GetValue('Name')
+                    expectedName = os.path.basename(grids[i].ParentCollection.Path)
+                    if rasterName != expectedName:
+                        raise RuntimeError(_('The mosaic Name field had the value "%s", which did not match the expected raster name "%s". Please contact the MGET team for assistance.') % (rasterName, expectedName))
+
+                    cursor.SetValue('StartTime', grids[i].ParentCollection.GetQueryableAttributeValue('DateTime'))
+                    cursor.SetValue('EndTime', grids[i].ParentCollection.GetQueryableAttributeValue('DateTime') + datetime.timedelta(days=metadata['simulationTimeStep'] * metadata['summarizationPeriod']))
+                    cursor.UpdateRow()
+
+                    i += 1
+
+            # Configure the mosaic dataset to be aware of time.
+
+            gp.SetMosaicDatasetProperties_management(in_mosaic_dataset=mosaic,
+                                                     use_time='ENABLED',
+                                                     start_time_field='StartTime',
+                                                     end_time_field='EndTime',
+                                                     time_format='YYYY-MM-DD hh:mm:ss',
+                                                     time_interval=metadata['simulationTimeStep'] * metadata['summarizationPeriod'],
+                                                     time_interval_units='Days')
 
         # If requested, write the connectivity feature class.
         #
@@ -865,7 +911,7 @@ class LarvalDispersal(object):
 
         # Return successfully.
 
-        return resultsDirectory
+        return resultsDirectory, outputGDB
 
     @classmethod
     def VisualizeMultipleResults2012(cls, simulationDirectory, resultsDirectories, outputConnections, summaryStatistic, mortalityRate=None, mortalityMethod='A', minimumDispersal=0.00001, minimumDispersalType='Quantity', overwriteExisting=False):
@@ -2172,7 +2218,13 @@ exists."""),
 AddResultMetadata(LarvalDispersal.VisualizeResults2012, 'updatedResultsDirectory',
     typeMetadata=DirectoryTypeMetadata(),
     description=_('Updated results directory.'),
-    arcGISDisplayName=_('Updated results directory'))
+    arcGISDisplayName=_('Updated results directory'),
+    arcGISParameterDependencies=['resultsDirectory'])
+
+AddResultMetadata(LarvalDispersal.VisualizeResults2012, 'resultsGeodatabase',
+    typeMetadata=ArcGISWorkspaceTypeMetadata(),
+    description=_('Results geodatabase.'),
+    arcGISDisplayName=_('Results geodatabase'))
 
 # Public method: LarvalDispersal.VisualizeMultipleResults2012
 

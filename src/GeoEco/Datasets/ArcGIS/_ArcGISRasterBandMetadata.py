@@ -77,7 +77,7 @@ AddArgumentMetadata(ArcGISRasterBand.ConstructFromArcGISPath, 'cls',
     dependencies=[ArcGISDependency()])
 
 AddArgumentMetadata(ArcGISRasterBand.ConstructFromArcGISPath, 'path',
-    typeMetadata=ArcGISRasterLayerTypeMetadata(mustExist=True),
+    typeMetadata=ArcGISRasterLayerTypeMetadata(),
     description=_('ArcGIS catalog path to the raster or a raster band. If a path to a raster is given, the first band will be opened. If a path to a band is given, that band will be opened.'))
 
 CopyArgumentMetadata(ArcGISRaster.__init__, 'decompressedFileToReturn', ArcGISRasterBand.ConstructFromArcGISPath, 'decompressedFileToReturn')

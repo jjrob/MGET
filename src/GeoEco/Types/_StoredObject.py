@@ -29,7 +29,7 @@ class StoredObjectTypeMetadata(UnicodeStringTypeMetadata):
                  isPath=True,
                  canBeRelativePath=True,
                  basePathArgument=None,
-                 useArcGISWorkspace=True,
+                 useArcGISWorkspace=False,
                  normalizePath=True,
                  mustBeDifferentThanArguments=None,
                  mustExist=False,
@@ -260,13 +260,6 @@ class StoredObjectTypeMetadata(UnicodeStringTypeMetadata):
                     if value != value2:
                         value = value2
                         valueChanged = True
-                    madeAbsolute = True
-
-            if not madeAbsolute:
-                value2 = os.path.abspath(value)
-                if value != value2:
-                    value = value2
-                    valueChanged = True
 
         if self.NormalizePath:
             value2 = os.path.normpath(value)
@@ -337,7 +330,7 @@ class FileTypeMetadata(StoredObjectTypeMetadata):
                  typeDisplayName=_('file'),
                  canBeRelativePath=True,
                  basePathArgument=None,
-                 useArcGISWorkspace=True,
+                 useArcGISWorkspace=False,
                  normalizePath=True,
                  mustBeDifferentThanArguments=None,
                  mustExist=False,
@@ -416,7 +409,7 @@ class TextFileTypeMetadata(FileTypeMetadata):
                  typeDisplayName=_('text file'),
                  canBeRelativePath=True,
                  basePathArgument=None,
-                 useArcGISWorkspace=True,
+                 useArcGISWorkspace=False,
                  normalizePath=True,
                  mustBeDifferentThanArguments=None,
                  mustExist=False,
@@ -466,7 +459,7 @@ class DirectoryTypeMetadata(StoredObjectTypeMetadata):
                  typeDisplayName=_('directory'),
                  canBeRelativePath=True,
                  basePathArgument=None,
-                 useArcGISWorkspace=True,
+                 useArcGISWorkspace=False,
                  normalizePath=True,
                  mustBeDifferentThanArguments=None,
                  mustExist=False,

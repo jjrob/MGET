@@ -29,7 +29,7 @@ AddClassMetadata(ArcGISRaster,
 # Public properties
 
 AddPropertyMetadata(ArcGISRaster.Path,
-    typeMetadata=ArcGISRasterTypeMetadata(mustExist=True),
+    typeMetadata=ArcGISRasterTypeMetadata(),
     shortDescription=_('ArcGIS catalog path to the raster.'))
 
 CopyPropertyMetadata(FileDatasetCollection.DecompressedFileToReturn, ArcGISRaster.DecompressedFileToReturn)
