@@ -124,7 +124,17 @@ class TestSQLite():
             assert df['ObjectID'].tolist() == [1, 2, 3]
             assert df['FloatField'].tolist() == [row[0] for row in expected_rows]
             assert df['IntField'].tolist() == [row[1] for row in expected_rows]
-            assert df['StrField'].tolist() == [row[2] for row in expected_rows]
+
+            # Pandas 3.x has a native string type, which uses nan to represent
+            # a missing value rather than None. So df['StrField'].iloc[2] will
+            # be None on pandas 2.x and nan on 3.x. We therefore can't use the
+            # == operator to check for equality on 3.x. Use pandas.isna()
+            # instead.
+
+            assert df['StrField'].iloc[0] == expected_rows[0][2]
+            assert df['StrField'].iloc[1] == expected_rows[1][2]
+            assert pandas.isna(df['StrField'].iloc[2])
+
             assert df['DateTimeField'].tolist() == [row[3] for row in expected_rows]
         finally:
             db.Close()

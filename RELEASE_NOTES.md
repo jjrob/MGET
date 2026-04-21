@@ -5,6 +5,9 @@
 ### Added
 - Port the larval dispersal and connectivity tools from MGET 0.8 to MGET 3.6.0 ([#55](https://github.com/jjrob/MGET/issues/55))
 
+### Fixed
+- Pandas 3.x causes a test failure: test\GeoEco\Datasets\SQLite_test.py:127: AssertionError ([#56](https://github.com/jjrob/MGET/issues/56))
+
 ## [v3.5.0](https://github.com/jjrob/MGET/releases/tag/v3.5.0) - 2026-04-10
 
 ### Breaking changes
