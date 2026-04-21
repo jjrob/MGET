@@ -1,5 +1,10 @@
 # MGET Release Notes
 
+## [v3.6.0](https://github.com/jjrob/MGET/releases/tag/v3.6.0) - 2026-04-21
+
+### Added
+- Port the larval dispersal and connectivity tools from MGET 0.8 to MGET 3.6.0 ([#55](https://github.com/jjrob/MGET/issues/55))
+
 ## [v3.5.0](https://github.com/jjrob/MGET/releases/tag/v3.5.0) - 2026-04-10
 
 ### Breaking changes

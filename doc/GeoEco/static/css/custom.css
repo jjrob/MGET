@@ -44,3 +44,23 @@
 .py.property {
   display: block !important;
 }
+
+/* A class that adds space to the bottom of an image, that the RTD theme does not seem to add itself */
+
+.spaced-image {
+    margin-bottom: 1.5rem;
+}
+
+/* A class has monospaced text in a box, similar to a code-block or <pre> but that wraps */
+
+.wrapped-code {
+    background: #f8f8f8;
+    border: 1px solid #e1e4e5;
+    padding: 12px;
+    margin: 1em 0;
+}
+
+.wrapped-code p {
+    margin: 0;
+    font-family: SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace;
+}

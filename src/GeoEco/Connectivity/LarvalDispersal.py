@@ -1183,7 +1183,11 @@ AddModuleMetadata(shortDescription=_('Functions for simulating dispersal of mari
 ###############################################################################
 
 AddClassMetadata(LarvalDispersal,
-    shortDescription=_('Functions for simulating larval dispersal and settlement, with configurable pre-competency, settlement, and mortality rates.'))
+    shortDescription=_('Functions for simulating larval dispersal and settlement, with configurable pre-competency, settlement, and mortality rates.'),
+    longDescription=_(
+"""This class's functions are exposed as geoprocessing tools from MGET's 
+ArcGIS toolbox. Please see :ref:`this example 
+<arcgis-simulating-larval-dispersal>` showing how to use them."""))
 
 # Public method: LarvalDispersal.CreateSimulationFromArcGISRasters
 
@@ -1738,7 +1742,7 @@ simulation:
    the Visualize Larval Dispersal Simulation Results tool for more
    information.
 
-1. The temporal frequency of rasters produced by the Visualize Larval
+2. The temporal frequency of rasters produced by the Visualize Larval
    Dispersal Simulation Results tool that show the density of larvae
    throughout the study area as the simulation progresses. Here, the
    summarization period is mainly an aesthetic choice, e.g. do you want
@@ -2173,14 +2177,16 @@ Given enough time, an infinitesimal fraction of larvae from any given patch
 can theoretically spread throughout the entire ocean simply by diffusion.
 
 An important question is: why not set this parameter to a very small value and
-then filter weak connections later? This is a valid approach. The main reason
-not to do this is it may take the tool a long time to draw so many lines.
-Whether or not this is a problem depends on the number of patches you have.
-Assuming each patch can be both a source and sink for larvae, the number of
-possible connections is ``2 * P^2``, where ``P`` is the number of patches. So
-if you only have 20 patches, at most 800 lines will be drawn, a relatively
-small number. But if you have 500 patches, as many as 500,000 lines will be
-drawn."""),
+then filter weak connections later, e.g. in the map itself by applying a
+Definition Query to the layer? This is a valid approach. The main reason not
+to do this is it may take the tool a long time to create so many lines in the
+feature class. Whether or not this is a problem depends on the number of
+patches you have. Assuming each patch can be both a source and sink for
+larvae, the number of possible connections is ``2 * P^2``, where ``P`` is the
+number of patches. So if you only have 20 patches, at most 800 lines will be
+created, a relatively small number. But if you have 500 patches, as many as
+500,000 lines will be created, which can take a considerable amount of
+time."""),
     arcGISDisplayName=_('Minimum dispersal threshold'))
 
 AddArgumentMetadata(LarvalDispersal.VisualizeResults2012, 'minimumDispersalType',
